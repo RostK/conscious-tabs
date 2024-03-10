@@ -1,10 +1,5 @@
 import { FC, useCallback } from "react";
-import {
-  Avatar,
-  ListItemAvatar,
-  ListItemButton,
-  ListItemText,
-} from "@mui/material";
+import { ListItemAvatar, ListItemButton, ListItemText } from "@mui/material";
 
 export const TabItem: FC<{ tab: TabItem }> = ({ tab }) => {
   const handleActivate = useCallback(async () => {
@@ -16,14 +11,13 @@ export const TabItem: FC<{ tab: TabItem }> = ({ tab }) => {
 
   return (
     <ListItemButton
+      dense
       onClick={handleActivate}
       selected={tab.active}
       autoFocus={tab.active}
     >
-      <ListItemAvatar>
-        <Avatar>
-          <img src={tab.favIconUrl} width={24} />
-        </Avatar>
+      <ListItemAvatar style={{ paddingRight: "1rem", minWidth: "32px" }}>
+        <img src={tab.favIconUrl} width={24} />
       </ListItemAvatar>
       <ListItemText
         primaryTypographyProps={{ noWrap: true }}

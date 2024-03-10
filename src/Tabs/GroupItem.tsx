@@ -16,7 +16,12 @@ export const GroupItem: FC<{ group: GroupItem }> = ({ group }) => {
 
   return (
     <>
-      <ListItemButton onClick={handleClick}>
+      <ListItemButton
+        onClick={handleClick}
+        style={{
+          borderLeft: `.3rem solid color-mix(in srgb, ${group.color} 60%, transparent`,
+        }}
+      >
         <ListItemText
           primary={
             <Chip
@@ -35,8 +40,8 @@ export const GroupItem: FC<{ group: GroupItem }> = ({ group }) => {
         timeout="auto"
         unmountOnExit
         style={{
-          backgroundColor: `color-mix(in srgb, ${group.color} 10%, transparent`,
-          paddingLeft: ".5rem",
+          borderLeft: `.3rem solid color-mix(in srgb, ${group.color} 60%, transparent`,
+          paddingLeft: ".2rem",
         }}
       >
         <List>

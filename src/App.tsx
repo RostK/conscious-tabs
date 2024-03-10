@@ -5,23 +5,6 @@ import TabGroup = chrome.tabGroups.TabGroup;
 import { Tabs } from "./Tabs";
 import TAB_GROUP_ID_NONE = chrome.tabGroups.TAB_GROUP_ID_NONE;
 
-const constructTabsTree = (tabs: Tab[], groups: TabGroup[]): TabsStructure => {
-  const structure = tabs
-    .map(
-      ({ id, title, url, index, windowId, groupId, favIconUrl, active }) => ({
-        id,
-        title,
-        url,
-        index,
-        windowId,
-        groupId,
-        favIconUrl,
-        active,
-      }),
-    )
-    .sort((a, b) => a.index - b.index);
-  return structure;
-};
 const getTabsTree = (tabs: Tab[], groups: TabGroup[]): TabsStructure => {
   const structure = new Map<string, TabItem | GroupItem>();
   tabs
@@ -103,19 +86,6 @@ const getTabsTree = (tabs: Tab[], groups: TabGroup[]): TabsStructure => {
         });
       },
     );
-  // .map(
-  //   ({ id, title, url, index, windowId, groupId, favIconUrl, active }) => ({
-  //     id,
-  //     title,
-  //     url,
-  //     index,
-  //     windowId,
-  //     groupId,
-  //     favIconUrl,
-  //     active,
-  //   }),
-  // )
-  // .sort((a, b) => a.index - b.index);
   return [...structure.values()];
 };
 
@@ -125,11 +95,17 @@ function App() {
     const getTabs = async () => {
       const tabs = await chrome.tabs.query({});
       const groups = await chrome.tabGroups.query({});
-      // const windows = await chrome.windows.getAll();
-      // console.log(windows);
       setTabsStructure(getTabsTree(tabs, groups));
     };
+    chrome.tabs.onUpdated.addListener(getTabs);
+    chrome.tabs.onActivated.addListener(getTabs);
+    chrome.tabGroups.onUpdated.addListener(getTabs);
     void getTabs();
+    return () => {
+      chrome.tabs.onUpdated.removeListener(getTabs);
+      chrome.tabs.onActivated.removeListener(getTabs);
+      chrome.tabGroups.onUpdated.removeListener(getTabs);
+    };
   }, []);
   return (
     <>
