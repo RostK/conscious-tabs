@@ -1,11 +1,31 @@
-import { FC, useCallback } from "react";
-import { ListItemAvatar, ListItemButton, ListItemText } from "@mui/material";
+import { FC, MouseEventHandler, useCallback } from "react";
+import {
+  IconButton,
+  ListItemAvatar,
+  ListItemButton,
+  ListItemSecondaryAction,
+  ListItemText,
+} from "@mui/material";
+import { Close } from "@mui/icons-material";
 
 export const TabItem: FC<{ tab: TabItem }> = ({ tab }) => {
   const handleActivate = useCallback(async () => {
     if (tab.id) {
-      await chrome.tabs.update(tab.id, { active: true });
-      await chrome.windows.update(tab.windowId, { focused: true });
+      try {
+        await chrome.tabs.update(tab.id, { active: true });
+        await chrome.windows.update(tab.windowId, { focused: true });
+      } catch (e) {
+        /* empty */
+      }
+    }
+  }, [tab]);
+  const handleDelete = useCallback<MouseEventHandler>(async () => {
+    if (tab.id) {
+      try {
+        await chrome.tabs.remove(tab.id);
+      } catch (e) {
+        /* empty */
+      }
     }
   }, [tab]);
 
@@ -15,10 +35,34 @@ export const TabItem: FC<{ tab: TabItem }> = ({ tab }) => {
       onClick={handleActivate}
       selected={tab.active}
       autoFocus={tab.active}
+      sx={[
+        {
+          [`&:hover .itemAction`]: {
+            visibility: "visible",
+          },
+          [`& .itemAction`]: {
+            visibility: "hidden",
+            backgroundColor: "white",
+          },
+          [`& .itemAction:hover`]: {
+            backgroundColor: "rgb(199,199,199)",
+          },
+        },
+      ]}
     >
       <ListItemAvatar style={{ paddingRight: "1rem", minWidth: "32px" }}>
         <img src={tab.favIconUrl} width={24} />
       </ListItemAvatar>
+      <ListItemSecondaryAction>
+        <IconButton
+          onClick={handleDelete}
+          edge="end"
+          aria-label="delete"
+          className="itemAction"
+        >
+          <Close />
+        </IconButton>
+      </ListItemSecondaryAction>
       <ListItemText
         primaryTypographyProps={{ noWrap: true }}
         secondaryTypographyProps={{ noWrap: true }}
