@@ -4,6 +4,7 @@ import Tab = chrome.tabs.Tab;
 import TabGroup = chrome.tabGroups.TabGroup;
 import { Tabs } from "./Tabs";
 import TAB_GROUP_ID_NONE = chrome.tabGroups.TAB_GROUP_ID_NONE;
+import { useDebouncedCallback } from "use-debounce";
 
 const getTabsTree = (tabs: Tab[], groups: TabGroup[]): TabsStructure => {
   const structure = new Map<string, TabItem | GroupItem>();
@@ -91,22 +92,26 @@ const getTabsTree = (tabs: Tab[], groups: TabGroup[]): TabsStructure => {
 
 function App() {
   const [tabsStructure, setTabsStructure] = useState<TabsStructure>([]);
+  const getTabsFunc = async () => {
+    const tabs = await chrome.tabs.query({});
+    const groups = await chrome.tabGroups.query({});
+    setTabsStructure(getTabsTree(tabs, groups));
+  };
+  const getTabs = useDebouncedCallback(getTabsFunc, 200);
+
   useEffect(() => {
-    const getTabs = async () => {
-      const tabs = await chrome.tabs.query({});
-      const groups = await chrome.tabGroups.query({});
-      setTabsStructure(getTabsTree(tabs, groups));
-    };
     chrome.tabs.onUpdated.addListener(getTabs);
     chrome.tabs.onActivated.addListener(getTabs);
+    chrome.tabs.onRemoved.addListener(getTabs);
     chrome.tabGroups.onUpdated.addListener(getTabs);
     void getTabs();
     return () => {
       chrome.tabs.onUpdated.removeListener(getTabs);
       chrome.tabs.onActivated.removeListener(getTabs);
+      chrome.tabs.onRemoved.removeListener(getTabs);
       chrome.tabGroups.onUpdated.removeListener(getTabs);
     };
-  }, []);
+  }, [getTabs]);
   return (
     <>
       <Tabs tabsStructure={tabsStructure} />
