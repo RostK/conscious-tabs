@@ -162,7 +162,7 @@ function App() {
 
   useEffect(() => {
     getTabs();
-  }, [search]);
+  }, [getTabs, search]);
 
   const getWindows = useCallback(async () => {
     const windows = await chrome.windows.getAll();
