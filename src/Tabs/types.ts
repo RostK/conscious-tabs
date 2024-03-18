@@ -1,6 +1,6 @@
 import ColorEnum = chrome.tabGroups.ColorEnum;
 
-type TabItem = {
+export type TabItem = {
   type: "tab";
   title?: string;
   url?: string;
@@ -11,7 +11,7 @@ type TabItem = {
   favIconUrl?: string | undefined;
   active: boolean;
 };
-type GroupItem = {
+export type GroupItem = {
   type: "group";
   collapsed: boolean;
   /** The group's color. */
@@ -24,4 +24,5 @@ type GroupItem = {
   windowId: number;
   tabs: TabItem[];
 };
-type TabsStructure = (GroupItem | TabItem)[];
+
+export type TabsStructure = (GroupItem | TabItem)[];

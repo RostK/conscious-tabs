@@ -7,8 +7,9 @@ import {
   ListItemText,
 } from "@mui/material";
 import { Close } from "@mui/icons-material";
+import { TabItem } from "./types.ts";
 
-export const TabItem: FC<{ tab: TabItem }> = ({ tab }) => {
+export const TabListItem: FC<{ tab: TabItem }> = ({ tab }) => {
   const handleActivate = useCallback(async () => {
     if (tab.id) {
       try {

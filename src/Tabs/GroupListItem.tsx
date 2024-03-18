@@ -6,10 +6,11 @@ import {
   ListItemButton,
   ListItemText,
 } from "@mui/material";
-import { TabItem } from "./TabItem.tsx";
+import { TabListItem } from "./TabListItem.tsx";
 import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { GroupItem } from "./types.ts";
 
-export const GroupItem: FC<{ group: GroupItem }> = ({ group }) => {
+export const GroupListItem: FC<{ group: GroupItem }> = ({ group }) => {
   const handleClick = useCallback(async () => {
     await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
   }, [group]);
@@ -20,6 +21,7 @@ export const GroupItem: FC<{ group: GroupItem }> = ({ group }) => {
         onClick={handleClick}
         style={{
           borderLeft: `.3rem solid color-mix(in srgb, ${group.color} 60%, transparent`,
+          backgroundColor: `color-mix(in srgb, ${group.color} 10%, transparent`,
         }}
       >
         <ListItemText
@@ -42,11 +44,12 @@ export const GroupItem: FC<{ group: GroupItem }> = ({ group }) => {
         style={{
           borderLeft: `.3rem solid color-mix(in srgb, ${group.color} 60%, transparent`,
           paddingLeft: ".2rem",
+          backgroundColor: `color-mix(in srgb, ${group.color} 10%, transparent`,
         }}
       >
         <List>
           {group.tabs.map((tab) => (
-            <TabItem tab={tab} key={tab.id} />
+            <TabListItem tab={tab} key={tab.id} />
           ))}
         </List>
       </Collapse>
