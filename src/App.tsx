@@ -8,6 +8,16 @@ import TAB_GROUP_ID_NONE = chrome.tabGroups.TAB_GROUP_ID_NONE;
 import { useDebouncedCallback } from "use-debounce";
 import { GroupItem, TabItem, TabsStructure } from "./Tabs/types";
 import { WindowListItem } from "./Tabs/WindowListItem.tsx";
+import {
+  alpha,
+  AppBar,
+  IconButton,
+  InputBase,
+  styled,
+  Toolbar,
+} from "@mui/material";
+import logo from "./logo.svg";
+import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
 
 const getTabsTree = (tabs: Tab[], groups: TabGroup[]): TabsStructure => {
   const structure = new Map<string, TabItem | GroupItem>();
@@ -93,15 +103,67 @@ const getTabsTree = (tabs: Tab[], groups: TabGroup[]): TabsStructure => {
   return [...structure.values()];
 };
 
+const Search = styled("div")(({ theme }) => ({
+  position: "relative",
+  marginLeft: theme.spacing(1),
+  borderRadius: theme.shape.borderRadius,
+  backgroundColor: alpha(theme.palette.common.white, 0.15),
+  "&:hover": {
+    backgroundColor: alpha(theme.palette.common.white, 0.25),
+  },
+  width: "100%",
+  [theme.breakpoints.up("sm")]: {
+    width: "auto",
+  },
+}));
+
+const SearchIconWrapper = styled("div")(({ theme }) => ({
+  padding: theme.spacing(0, 2),
+  height: "100%",
+  position: "absolute",
+  pointerEvents: "none",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+}));
+
+const StyledInputBase = styled(InputBase)(({ theme }) => ({
+  color: "inherit",
+  width: "100%",
+  "& .MuiInputBase-input": {
+    padding: theme.spacing(1, 1, 1, 0),
+    // vertical padding + font size from searchIcon
+    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    transition: theme.transitions.create("width"),
+    [theme.breakpoints.up("sm")]: {
+      width: "12ch",
+      "&:focus": {
+        width: "20ch",
+      },
+    },
+  },
+}));
+
 function App() {
+  const [search, setSearch] = useState("");
   const [tabsStructure, setTabsStructure] = useState<TabsStructure>([]);
   const [windows, setWindows] = useState<Window[]>([]);
   const getTabsFunc = async () => {
-    const tabs = await chrome.tabs.query({});
+    const tabsData = await chrome.tabs.query({});
     const groups = await chrome.tabGroups.query({});
+    const tabs = search
+      ? tabsData.filter((tab) => {
+          return tab.title?.includes(search) || tab.url?.includes(search);
+        })
+      : tabsData;
     setTabsStructure(getTabsTree(tabs, groups));
   };
   const getTabs = useDebouncedCallback(getTabsFunc, 10);
+
+  useEffect(() => {
+    getTabs();
+  }, [search]);
+
   const getWindows = useCallback(async () => {
     const windows = await chrome.windows.getAll();
     setWindows(windows);
@@ -126,15 +188,50 @@ function App() {
       chrome.windows.onFocusChanged.removeListener(getWindows);
     };
   }, [getTabs, getWindows]);
-  return windows.map((window) => (
-    <WindowListItem
-      key={"w" + window.id + window.focused}
-      window={window}
-      tabsStructure={tabsStructure.filter(
-        ({ windowId }) => window.id === windowId,
-      )}
-    />
-  ));
+  return (
+    <>
+      <AppBar position="sticky">
+        <Toolbar>
+          <img src={logo} />
+          <Search>
+            <SearchIconWrapper>
+              <SearchOutlined />
+            </SearchIconWrapper>
+            <StyledInputBase
+              placeholder="Search…"
+              inputProps={{ "aria-label": "search" }}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+              }}
+              endAdornment={
+                search && (
+                  <IconButton
+                    onClick={() => {
+                      setSearch("");
+                    }}
+                  >
+                    <SearchOffOutlined />
+                  </IconButton>
+                )
+              }
+            />
+          </Search>
+        </Toolbar>
+      </AppBar>
+      {windows.map((window) => (
+        <WindowListItem
+          focus={!search}
+          key={"w" + window.id + window.focused}
+          window={window}
+          tabsStructure={tabsStructure.filter(
+            ({ windowId }) => window.id === windowId,
+          )}
+          single={Boolean(search) || windows.length === 1}
+        />
+      ))}
+    </>
+  );
 }
 
 export default App;

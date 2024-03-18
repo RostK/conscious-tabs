@@ -9,7 +9,10 @@ import {
 import { Close } from "@mui/icons-material";
 import { TabItem } from "./types.ts";
 
-export const TabListItem: FC<{ tab: TabItem }> = ({ tab }) => {
+export const TabListItem: FC<{ focus?: boolean; tab: TabItem }> = ({
+  tab,
+  focus = true,
+}) => {
   const handleActivate = useCallback(async () => {
     if (tab.id) {
       try {
@@ -35,7 +38,7 @@ export const TabListItem: FC<{ tab: TabItem }> = ({ tab }) => {
       dense
       onClick={handleActivate}
       selected={tab.active}
-      autoFocus={tab.active}
+      autoFocus={tab.active && focus}
       sx={[
         {
           [`&:hover .itemAction`]: {

@@ -15,7 +15,9 @@ import { Tabs } from "./index.tsx";
 export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;
-}> = ({ window, tabsStructure }) => {
+  single: boolean;
+  focus?: boolean;
+}> = ({ focus, single, window, tabsStructure }) => {
   const flatTabs = useMemo(() => {
     return tabsStructure.reduce((acc, item) => {
       return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
@@ -31,7 +33,9 @@ export const WindowListItem: FC<{
     },
     [window.id],
   );
-  return (
+  return single ? (
+    <Tabs focus={focus} tabsStructure={tabsStructure} />
+  ) : (
     <Accordion
       square
       disableGutters
