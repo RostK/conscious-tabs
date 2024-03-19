@@ -10,8 +10,7 @@ import {
   IconButton,
 } from "@mui/material";
 import { ArticleOutlined, ExpandMore } from "@mui/icons-material";
-import { Tabs } from "./index.tsx";
-
+import { Tabs } from "./Tabs";
 export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;

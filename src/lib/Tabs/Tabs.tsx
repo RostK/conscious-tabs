@@ -4,10 +4,11 @@ import { TabListItem } from "./TabListItem.tsx";
 import { GroupListItem } from "./GroupListItem.tsx";
 import Grid from "@mui/material/Unstable_Grid2";
 
-export const Tabs: FC<{ focus?: boolean; tabsStructure: TabsStructure }> = ({
-  tabsStructure,
-  focus,
-}) => {
+export const Tabs: FC<{
+  expandedGroups?: boolean;
+  focus?: boolean;
+  tabsStructure: TabsStructure;
+}> = ({ tabsStructure, focus, expandedGroups }) => {
   return (
     <Grid
       spacing={0}
@@ -20,7 +21,11 @@ export const Tabs: FC<{ focus?: boolean; tabsStructure: TabsStructure }> = ({
             <TabListItem focus={focus} tab={item} />
           </Grid>
         ) : (
-          <GroupListItem group={item as GroupItem} key={item.id} />
+          <GroupListItem
+            expanded={expandedGroups}
+            group={item as GroupItem}
+            key={item.id}
+          />
         ),
       )}
     </Grid>
