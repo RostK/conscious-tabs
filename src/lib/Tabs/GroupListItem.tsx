@@ -1,7 +1,13 @@
-import { FC, useCallback } from "react";
-import { Chip, IconButton, ListItemButton, ListItemText } from "@mui/material";
+import { FC, MouseEventHandler, useCallback } from "react";
+import {
+  Chip,
+  IconButton,
+  ListItemButton,
+  ListItemSecondaryAction,
+  ListItemText,
+} from "@mui/material";
 import { TabListItem } from "./TabListItem.tsx";
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { Close, ExpandLess, ExpandMore } from "@mui/icons-material";
 import { GroupItem } from "./types.ts";
 import Grid from "@mui/material/Unstable_Grid2";
 
@@ -11,6 +17,16 @@ export const GroupListItem: FC<{ expanded?: boolean; group: GroupItem }> = ({
 }) => {
   const handleClick = useCallback(async () => {
     await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
+  }, [group]);
+  const handleDelete = useCallback<MouseEventHandler>(async () => {
+    const tabIds = group.tabs
+      .map((tab) => tab.id)
+      .filter((id) => id !== undefined) as number[];
+    try {
+      await chrome.tabs.remove(tabIds);
+    } catch (e) {
+      /* empty */
+    }
   }, [group]);
 
   return (
@@ -22,12 +38,38 @@ export const GroupListItem: FC<{ expanded?: boolean; group: GroupItem }> = ({
             boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
             backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent`,
           }}
+          sx={[
+            {
+              [`&:hover .itemAction`]: {
+                visibility: "visible",
+              },
+              [`& .itemAction`]: {
+                visibility: "hidden",
+                backgroundColor: "white",
+              },
+              [`& .itemAction:hover`]: {
+                backgroundColor: "rgb(199,199,199)",
+              },
+            },
+          ]}
         >
           {expanded === undefined && (
             <IconButton edge="start">
               {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
             </IconButton>
           )}
+          <ListItemSecondaryAction>
+            {expanded === undefined && (
+              <IconButton
+                onClick={handleDelete}
+                edge="end"
+                aria-label="delete"
+                className="itemAction"
+              >
+                <Close />
+              </IconButton>
+            )}
+          </ListItemSecondaryAction>
           <ListItemText
             primary={
               <Chip
