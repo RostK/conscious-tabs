@@ -172,6 +172,7 @@ function App() {
     chrome.tabs.onUpdated.addListener(getTabs);
     chrome.tabs.onActivated.addListener(getTabs);
     chrome.tabs.onRemoved.addListener(getTabs);
+    chrome.tabs.onMoved.addListener(getTabs);
     chrome.tabGroups.onUpdated.addListener(getTabs);
     chrome.windows.onRemoved.addListener(getWindows);
     chrome.windows.onCreated.addListener(getWindows);
@@ -182,6 +183,7 @@ function App() {
       chrome.tabs.onUpdated.removeListener(getTabs);
       chrome.tabs.onActivated.removeListener(getTabs);
       chrome.tabs.onRemoved.removeListener(getTabs);
+      chrome.tabs.onMoved.removeListener(getTabs);
       chrome.tabGroups.onUpdated.removeListener(getTabs);
       chrome.windows.onRemoved.removeListener(getWindows);
       chrome.windows.onCreated.removeListener(getWindows);

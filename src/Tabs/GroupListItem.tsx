@@ -1,5 +1,5 @@
 import { FC, useCallback } from "react";
-import { Chip, ListItemButton, ListItemText } from "@mui/material";
+import { Chip, IconButton, ListItemButton, ListItemText } from "@mui/material";
 import { TabListItem } from "./TabListItem.tsx";
 import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import { GroupItem } from "./types.ts";
@@ -15,10 +15,13 @@ export const GroupListItem: FC<{ group: GroupItem }> = ({ group }) => {
       <ListItemButton
         onClick={handleClick}
         style={{
-          borderLeft: `.3rem solid color-mix(in srgb, ${group.color} 60%, transparent`,
-          backgroundColor: `color-mix(in srgb, ${group.color} 10%, transparent`,
+          boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
+          backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent`,
         }}
       >
+        <IconButton edge="start">
+          {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
+        </IconButton>
         <ListItemText
           primary={
             <Chip
@@ -30,7 +33,6 @@ export const GroupListItem: FC<{ group: GroupItem }> = ({ group }) => {
             />
           }
         />
-        {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
       </ListItemButton>
       {!group.collapsed &&
         group.tabs.map((tab) => (
@@ -43,7 +45,7 @@ export const GroupListItem: FC<{ group: GroupItem }> = ({ group }) => {
               width: "100%",
             }}
             style={{
-              backgroundColor: `color-mix(in srgb, ${group.color} 10%, transparent`,
+              backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent`,
             }}
           >
             <TabListItem tab={tab} key={tab.id} />

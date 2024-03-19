@@ -54,7 +54,7 @@ export const TabListItem: FC<{ focus?: boolean; tab: TabItem }> = ({
         },
       ]}
     >
-      <ListItemAvatar style={{ paddingRight: "1rem", minWidth: "32px" }}>
+      <ListItemAvatar style={{ minWidth: "32px" }}>
         <img src={tab.favIconUrl} width={24} />
       </ListItemAvatar>
       <ListItemSecondaryAction>
