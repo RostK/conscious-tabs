@@ -1,22 +1,28 @@
-import { List } from "@mui/material";
 import { FC } from "react";
 import { GroupItem, TabsStructure } from "./types.ts";
 import { TabListItem } from "./TabListItem.tsx";
 import { GroupListItem } from "./GroupListItem.tsx";
+import Grid from "@mui/material/Unstable_Grid2";
 
 export const Tabs: FC<{ focus?: boolean; tabsStructure: TabsStructure }> = ({
   tabsStructure,
   focus,
 }) => {
   return (
-    <List dense sx={{ width: "100%", bgcolor: "background.paper" }}>
-      {tabsStructure.map((item) => {
-        if (item.type === "tab") {
-          return <TabListItem focus={focus} tab={item} key={item.id} />;
-        } else {
-          return <GroupListItem group={item as GroupItem} key={item.id} />;
-        }
-      })}
-    </List>
+    <Grid
+      spacing={0}
+      sx={{ width: "100%", bgcolor: "background.paper" }}
+      container
+    >
+      {tabsStructure.map((item) =>
+        item.type === "tab" ? (
+          <Grid xs={12} sm={6} md={4} sx={{ width: "100%" }} key={item.id}>
+            <TabListItem focus={focus} tab={item} />
+          </Grid>
+        ) : (
+          <GroupListItem group={item as GroupItem} key={item.id} />
+        ),
+      )}
+    </Grid>
   );
 };

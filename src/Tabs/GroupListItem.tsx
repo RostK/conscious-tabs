@@ -1,14 +1,9 @@
 import { FC, useCallback } from "react";
-import {
-  Chip,
-  Collapse,
-  List,
-  ListItemButton,
-  ListItemText,
-} from "@mui/material";
+import { Chip, ListItemButton, ListItemText } from "@mui/material";
 import { TabListItem } from "./TabListItem.tsx";
 import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import { GroupItem } from "./types.ts";
+import Grid from "@mui/material/Unstable_Grid2";
 
 export const GroupListItem: FC<{ group: GroupItem }> = ({ group }) => {
   const handleClick = useCallback(async () => {
@@ -37,22 +32,23 @@ export const GroupListItem: FC<{ group: GroupItem }> = ({ group }) => {
         />
         {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
       </ListItemButton>
-      <Collapse
-        in={!group.collapsed}
-        timeout="auto"
-        unmountOnExit
-        style={{
-          borderLeft: `.3rem solid color-mix(in srgb, ${group.color} 60%, transparent`,
-          paddingLeft: ".2rem",
-          backgroundColor: `color-mix(in srgb, ${group.color} 10%, transparent`,
-        }}
-      >
-        <List>
-          {group.tabs.map((tab) => (
+      {!group.collapsed &&
+        group.tabs.map((tab) => (
+          <Grid
+            xs={12}
+            sm={6}
+            md={4}
+            key={tab.id}
+            sx={{
+              width: "100%",
+            }}
+            style={{
+              backgroundColor: `color-mix(in srgb, ${group.color} 10%, transparent`,
+            }}
+          >
             <TabListItem tab={tab} key={tab.id} />
-          ))}
-        </List>
-      </Collapse>
+          </Grid>
+        ))}
     </>
   );
 };
