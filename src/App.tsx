@@ -12,6 +12,7 @@ import logo from "./logo.svg";
 import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
 import { TabsView } from "./views/TabsView";
 import { SearchView } from "./views/SearchView";
+import { SnackbarProvider } from "notistack";
 
 const Search = styled("div")(({ theme }) => ({
   position: "relative",
@@ -58,7 +59,7 @@ function App() {
   const [search, setSearch] = useState("");
 
   return (
-    <>
+    <SnackbarProvider maxSnack={1}>
       <AppBar position="sticky">
         <Toolbar>
           <img src={logo} />
@@ -90,7 +91,7 @@ function App() {
       </AppBar>
       {!search && <TabsView />}
       {search && <SearchView search={search} />}
-    </>
+    </SnackbarProvider>
   );
 }
 

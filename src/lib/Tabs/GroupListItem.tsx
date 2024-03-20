@@ -12,6 +12,7 @@ import { TabListItem } from "./TabListItem.tsx";
 import { Close, ExpandLess, ExpandMore, MoreVert } from "@mui/icons-material";
 import { GroupItem } from "./types.ts";
 import Grid from "@mui/material/Unstable_Grid2";
+import { promptUndo } from "../promptUndo.tsx";
 
 export const GroupListItem: FC<{ expanded?: boolean; group: GroupItem }> = ({
   group,
@@ -37,6 +38,8 @@ export const GroupListItem: FC<{ expanded?: boolean; group: GroupItem }> = ({
       .filter((id) => id !== undefined) as number[];
     try {
       await chrome.tabs.remove(tabIds);
+      promptUndo(`${tabIds.length} tabs are closed`);
+      console.log(await chrome.sessions.getRecentlyClosed());
     } catch (e) {
       /* empty */
     }

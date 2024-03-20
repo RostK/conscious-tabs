@@ -4,7 +4,9 @@
   "version": "0.0.1",
   "permissions": [
     "sidePanel",
-    "tabs", "tabGroups"
+    "tabs",
+    "tabGroups",
+    "sessions"
   ],
   "side_panel": {
     "default_path": "index.html"

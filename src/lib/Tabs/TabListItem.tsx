@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import { Close } from "@mui/icons-material";
 import { TabItem } from "./types.ts";
+import { promptUndo } from "../promptUndo.tsx";
 
 export const TabListItem: FC<{ focus?: boolean; tab: TabItem }> = ({
   tab,
@@ -23,15 +24,21 @@ export const TabListItem: FC<{ focus?: boolean; tab: TabItem }> = ({
       }
     }
   }, [tab]);
-  const handleDelete = useCallback<MouseEventHandler>(async () => {
-    if (tab.id) {
-      try {
-        await chrome.tabs.remove(tab.id);
-      } catch (e) {
-        /* empty */
+  const handleDelete = useCallback<MouseEventHandler>(
+    async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (tab.id) {
+        try {
+          await chrome.tabs.remove(tab.id);
+          promptUndo("Tab is closed");
+        } catch (e) {
+          /* empty */
+        }
       }
-    }
-  }, [tab]);
+    },
+    [tab],
+  );
 
   return (
     <ListItemButton
