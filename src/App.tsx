@@ -59,7 +59,7 @@ function App() {
   const [search, setSearch] = useState("");
 
   return (
-    <SnackbarProvider maxSnack={1}>
+    <SnackbarProvider autoHideDuration={3000} maxSnack={1}>
       <AppBar position="sticky">
         <Toolbar>
           <img src={logo} />

@@ -1,10 +1,10 @@
 import { ReactNode } from "react";
-import { enqueueSnackbar } from "notistack";
+import { closeSnackbar, enqueueSnackbar } from "notistack";
 import { Button } from "@mui/material";
 
 export const promptUndo = (message: ReactNode): void => {
   enqueueSnackbar(message, {
-    action: () => (
+    action: (snackbarId) => (
       <Button
         variant="text"
         color="secondary"
@@ -33,6 +33,7 @@ export const promptUndo = (message: ReactNode): void => {
               void chrome.sessions.restore(id);
             });
           }
+          closeSnackbar(snackbarId);
         }}
       >
         UNDO
