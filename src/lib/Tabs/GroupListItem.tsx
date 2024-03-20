@@ -1,13 +1,15 @@
-import { FC, MouseEventHandler, useCallback } from "react";
+import { FC, MouseEventHandler, useCallback, useState } from "react";
 import {
   Chip,
   IconButton,
   ListItemButton,
   ListItemSecondaryAction,
   ListItemText,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import { TabListItem } from "./TabListItem.tsx";
-import { Close, ExpandLess, ExpandMore } from "@mui/icons-material";
+import { Close, ExpandLess, ExpandMore, MoreVert } from "@mui/icons-material";
 import { GroupItem } from "./types.ts";
 import Grid from "@mui/material/Unstable_Grid2";
 
@@ -15,6 +17,17 @@ export const GroupListItem: FC<{ expanded?: boolean; group: GroupItem }> = ({
   group,
   expanded,
 }) => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const handleOpenMenuClick: MouseEventHandler<HTMLElement> = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   const handleClick = useCallback(async () => {
     await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
   }, [group]);
@@ -27,6 +40,17 @@ export const GroupListItem: FC<{ expanded?: boolean; group: GroupItem }> = ({
     } catch (e) {
       /* empty */
     }
+  }, [group]);
+  const handleUngroup = useCallback<MouseEventHandler>(async () => {
+    const tabIds = group.tabs
+      .map((tab) => tab.id)
+      .filter((id) => id !== undefined) as number[];
+    try {
+      await chrome.tabs.ungroup(tabIds);
+    } catch (e) {
+      /* empty */
+    }
+    handleMenuClose();
   }, [group]);
 
   return (
@@ -45,10 +69,15 @@ export const GroupListItem: FC<{ expanded?: boolean; group: GroupItem }> = ({
               },
               [`& .itemAction`]: {
                 visibility: "hidden",
-                backgroundColor: "white",
               },
-              [`& .itemAction:hover`]: {
-                backgroundColor: "rgb(199,199,199)",
+              [`& .itemAction .close-button`]: {
+                bgcolor: `color-mix(in srgb, white 80%, transparent)`,
+                ["&: hover"]: { bgcolor: "rgb(199, 199, 199)" },
+              },
+            },
+            open && {
+              [`& .itemAction`]: {
+                visibility: "visible",
               },
             },
           ]}
@@ -60,14 +89,37 @@ export const GroupListItem: FC<{ expanded?: boolean; group: GroupItem }> = ({
           )}
           <ListItemSecondaryAction>
             {expanded === undefined && (
-              <IconButton
-                onClick={handleDelete}
-                edge="end"
-                aria-label="delete"
-                className="itemAction"
-              >
-                <Close />
-              </IconButton>
+              <div className="itemAction">
+                <IconButton
+                  onClick={handleOpenMenuClick}
+                  aria-label="delete"
+                  size="small"
+                >
+                  <MoreVert />
+                </IconButton>
+                <Menu
+                  id="basic-menu"
+                  anchorEl={anchorEl}
+                  open={open}
+                  onClose={handleMenuClose}
+                  MenuListProps={{
+                    "aria-labelledby": "basic-button",
+                  }}
+                  sx={{ padding: 0 }}
+                >
+                  <MenuItem dense onClick={handleUngroup}>
+                    Ungroup all tabs
+                  </MenuItem>
+                </Menu>
+                <IconButton
+                  className="close-button"
+                  onClick={handleDelete}
+                  edge="end"
+                  aria-label="delete"
+                >
+                  <Close />
+                </IconButton>
+              </div>
             )}
           </ListItemSecondaryAction>
           <ListItemText
