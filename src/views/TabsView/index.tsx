@@ -1,15 +1,58 @@
-import { FC } from "react";
+import { ComponentProps, FC, useCallback, useState } from "react";
 
-import { WindowListItem } from "../../lib/Tabs";
+import { TabItem, WindowListItem } from "../../lib/Tabs";
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  MouseSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { TabDisplay } from "../../lib/Tabs/TabDisplay.tsx";
+import { Paper } from "@mui/material";
 
 export const TabsView: FC = () => {
+  const [dragging, setDragging] = useState<TabItem | null>(null);
   const tabsStructure = useTabsStructure();
   const windows = useWindowsStructure();
 
+  const mouseSensor = useSensor(MouseSensor, {
+    // Require the mouse to move by 10 pixels before activating
+    activationConstraint: {
+      distance: 10,
+    },
+  });
+  const keyboardSensor = useSensor(KeyboardSensor);
+  const sensors = useSensors(mouseSensor, keyboardSensor);
+  const handleDragStart = useCallback<
+    Required<ComponentProps<typeof DndContext>>["onDragStart"]
+  >(({ active }) => {
+    setDragging(active.data.current as unknown as TabItem);
+  }, []);
+  const handleDragStop = useCallback<
+    Required<ComponentProps<typeof DndContext>>["onDragEnd"]
+  >(
+    ({ over }) => {
+      if (dragging?.id && over?.data.current) {
+        const overTab = over.data.current as TabItem;
+        chrome.tabs.move(dragging.id, {
+          index: overTab.index + 1,
+          windowId: overTab.windowId,
+        });
+      }
+      setDragging(null);
+    },
+    [dragging],
+  );
   return (
-    <>
+    <DndContext
+      sensors={sensors}
+      onDragEnd={handleDragStop}
+      onDragStart={handleDragStart}
+    >
       {windows.map((window) => (
         <WindowListItem
           key={"w" + window.id + window.focused}
@@ -20,6 +63,14 @@ export const TabsView: FC = () => {
           single={windows.length === 1}
         />
       ))}
-    </>
+
+      <DragOverlay style={{ pointerEvents: "none" }} dropAnimation={null}>
+        {dragging ? (
+          <Paper>
+            <TabDisplay tab={dragging} />
+          </Paper>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 };

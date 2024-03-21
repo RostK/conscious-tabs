@@ -17,6 +17,7 @@ export const useUpdateEvents = ({
       chrome.tabs.onActivated.addListener(onTabsUpdate);
       chrome.tabs.onRemoved.addListener(onTabsUpdate);
       chrome.tabs.onMoved.addListener(onTabsUpdate);
+      chrome.tabs.onDetached.addListener(onTabsUpdate);
     }
     if (onGroupsUpdate) {
       chrome.tabGroups.onUpdated.addListener(onGroupsUpdate);
@@ -35,6 +36,7 @@ export const useUpdateEvents = ({
         chrome.tabs.onActivated.removeListener(onTabsUpdate);
         chrome.tabs.onRemoved.removeListener(onTabsUpdate);
         chrome.tabs.onMoved.removeListener(onTabsUpdate);
+        chrome.tabs.onDetached.removeListener(onTabsUpdate);
       }
       if (onGroupsUpdate) {
         chrome.tabGroups.onUpdated.removeListener(onGroupsUpdate);
