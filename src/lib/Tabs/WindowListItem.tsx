@@ -23,10 +23,11 @@ export const WindowListItem: FC<{
     }, [] as TabItem[]);
   }, [tabsStructure]);
   const handleOpen = useCallback<MouseEventHandler<HTMLButtonElement>>(
-    (e) => {
+    async (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (window.id) {
+        await chrome.sidePanel.open({ windowId: window.id });
         void chrome.windows.update(window.id, { focused: true });
       }
     },

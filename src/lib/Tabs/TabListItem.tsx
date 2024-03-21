@@ -17,6 +17,7 @@ export const TabListItem: FC<{ focus?: boolean; tab: TabItem }> = ({
   const handleActivate = useCallback(async () => {
     if (tab.id) {
       try {
+        await chrome.sidePanel.open({ windowId: tab.windowId });
         await chrome.tabs.update(tab.id, { active: true });
         await chrome.windows.update(tab.windowId, { focused: true });
       } catch (e) {
