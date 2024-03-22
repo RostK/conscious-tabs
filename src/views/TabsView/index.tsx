@@ -42,6 +42,33 @@ export const TabsView: FC = () => {
         | TabItem
         | GroupItem
         | undefined;
+      if (dragging?.type === "group") {
+        if (dragging?.id && overData?.id && dragging.id !== overData.id) {
+          if (overData.type === "tab") {
+            const overTab = overData;
+            const firstTabIndex = dragging.tabs[0].index;
+            if (overTab.windowId === dragging.windowId) {
+              try {
+                await chrome.tabGroups.move(dragging.id, {
+                  //If dragged tab is before dropped, index has to be changed
+                  index:
+                    overTab.index > firstTabIndex
+                      ? overTab.index - dragging.tabs.length
+                      : overTab.index,
+                  //windowId: overTab.windowId,
+                });
+              } catch (e) {
+                console.error(e);
+              }
+            } else {
+              await chrome.tabGroups.move(dragging.id, {
+                index: overTab.index,
+                windowId: overTab.windowId,
+              });
+            }
+          }
+        }
+      }
       if (dragging?.type === "tab") {
         if (dragging?.id && overData?.id && dragging.id !== overData.id) {
           if (overData.type === "tab") {
