@@ -1,6 +1,6 @@
-import { Droppable } from "../DnD/Droppable.tsx";
-import { Draggable } from "../DnD/Draggable.tsx";
-import { TabDisplay } from "./TabDisplay.tsx";
+import { Droppable } from "../../DnD/Droppable.tsx";
+import { Draggable } from "../../DnD/Draggable.tsx";
+import { TabDisplay } from "../displays/TabDisplay.tsx";
 
 export const TabListItem: typeof TabDisplay = ({ tab, ...props }) => {
   return (

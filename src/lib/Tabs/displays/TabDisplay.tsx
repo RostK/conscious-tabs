@@ -7,8 +7,8 @@ import {
   ListItemText,
 } from "@mui/material";
 import { Close } from "@mui/icons-material";
-import { TabItem } from "./types.ts";
-import { promptUndo } from "../promptUndo.tsx";
+import { TabItem } from "../types.ts";
+import { promptUndo } from "../../promptUndo.tsx";
 
 export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
   tab,

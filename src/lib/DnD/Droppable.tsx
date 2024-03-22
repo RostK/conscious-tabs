@@ -1,9 +1,9 @@
 import { FC, PropsWithChildren } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { TabItem } from "../Tabs";
+import { GroupItem, TabItem } from "../Tabs";
 
 export const Droppable: FC<
-  PropsWithChildren<{ id: string | number; data: TabItem }>
+  PropsWithChildren<{ id: string | number; data: TabItem | GroupItem }>
 > = ({ children, id, data }) => {
   const { isOver, active, setNodeRef } = useDroppable({
     id,

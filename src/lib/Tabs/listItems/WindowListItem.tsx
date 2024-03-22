@@ -1,5 +1,5 @@
 import { FC, MouseEventHandler, useCallback, useMemo } from "react";
-import { TabItem, TabsStructure } from "./types.ts";
+import { TabItem, TabsStructure } from "../types.ts";
 import {
   Accordion,
   AccordionDetails,
@@ -10,7 +10,7 @@ import {
   IconButton,
 } from "@mui/material";
 import { ArticleOutlined, ExpandMore } from "@mui/icons-material";
-import { Tabs } from "./Tabs";
+import { Tabs } from "../Tabs.tsx";
 export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;

@@ -1,6 +1,6 @@
 import { ComponentProps, FC, useCallback, useState } from "react";
 
-import { TabItem, WindowListItem } from "../../lib/Tabs";
+import { GroupItem, TabItem } from "../../lib/Tabs";
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 import {
@@ -11,11 +11,12 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { TabDisplay } from "../../lib/Tabs/TabDisplay.tsx";
+import { TabDisplay } from "../../lib/Tabs/displays/TabDisplay.tsx";
 import { Paper } from "@mui/material";
+import { WindowListItem } from "../../lib/Tabs/listItems/WindowListItem.tsx";
 
 export const TabsView: FC = () => {
-  const [dragging, setDragging] = useState<TabItem | null>(null);
+  const [dragging, setDragging] = useState<TabItem | GroupItem | null>(null);
   const tabsStructure = useTabsStructure();
   const windows = useWindowsStructure();
 
@@ -30,18 +31,20 @@ export const TabsView: FC = () => {
   const handleDragStart = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragStart"]
   >(({ active }) => {
-    setDragging(active.data.current as unknown as TabItem);
+    setDragging(active.data.current as unknown as TabItem | GroupItem);
   }, []);
   const handleDragStop = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragEnd"]
   >(
     ({ over }) => {
       if (dragging?.id && over?.data.current) {
-        const overTab = over.data.current as TabItem;
-        chrome.tabs.move(dragging.id, {
-          index: overTab.index + 1,
-          windowId: overTab.windowId,
-        });
+        if (over.data.current.type === "tab") {
+          const overTab = over.data.current as TabItem;
+          void chrome.tabs.move(dragging.id, {
+            index: overTab.index + 1,
+            windowId: overTab.windowId,
+          });
+        }
       }
       setDragging(null);
     },
@@ -67,7 +70,7 @@ export const TabsView: FC = () => {
       <DragOverlay style={{ pointerEvents: "none" }} dropAnimation={null}>
         {dragging ? (
           <Paper>
-            <TabDisplay tab={dragging} />
+            {dragging.type === "tab" && <TabDisplay tab={dragging} />}
           </Paper>
         ) : null}
       </DragOverlay>
