@@ -22,6 +22,7 @@ export const GroupDisplay: FC<{
       onClick={handleClick}
       sx={[
         {
+          minHeight: 55.4,
           boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
         },
         {

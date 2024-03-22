@@ -14,6 +14,7 @@ import {
 import { TabDisplay } from "../../lib/Tabs/displays/TabDisplay.tsx";
 import { Paper } from "@mui/material";
 import { WindowListItem } from "../../lib/Tabs";
+import { GroupDisplay } from "../../lib/Tabs/displays/GroupDisplay.tsx";
 
 export const TabsView: FC = () => {
   const [dragging, setDragging] = useState<TabItem | GroupItem | null>(null);
@@ -41,19 +42,32 @@ export const TabsView: FC = () => {
         | TabItem
         | GroupItem
         | undefined;
-      if (dragging?.id && overData?.id) {
-        if (overData.type === "tab") {
-          const overTab = overData;
-          await chrome.tabs.move(dragging.id, {
-            index: overTab.index,
-            windowId: overTab.windowId,
-          });
-        }
-        if (overData.type === "group") {
-          await chrome.tabs.group({
-            groupId: overData.id,
-            tabIds: dragging.id,
-          });
+      if (dragging?.type === "tab") {
+        if (dragging?.id && overData?.id && dragging.id !== overData.id) {
+          if (overData.type === "tab") {
+            const overTab = overData;
+            await chrome.tabs.move(dragging.id, {
+              index:
+                overTab.index > dragging.index
+                  ? overTab.index - 1
+                  : overTab.index,
+              windowId: overTab.windowId,
+            });
+            if (overTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
+              void chrome.tabs.ungroup(dragging.id);
+            } else {
+              void chrome.tabs.group({
+                groupId: overData.groupId,
+                tabIds: dragging.id,
+              });
+            }
+          }
+          if (overData.type === "group") {
+            await chrome.tabs.group({
+              groupId: overData.id,
+              tabIds: dragging.id,
+            });
+          }
         }
       }
       setDragging(null);
@@ -77,10 +91,18 @@ export const TabsView: FC = () => {
         />
       ))}
 
-      <DragOverlay style={{ pointerEvents: "none" }} dropAnimation={null}>
+      <DragOverlay
+        style={{ pointerEvents: "none", opacity: 0.85 }}
+        dropAnimation={null}
+      >
         {dragging ? (
           <Paper>
-            {dragging.type === "tab" && <TabDisplay tab={dragging} />}
+            {dragging.type === "tab" && (
+              <TabDisplay key={`drag-${dragging.id}`} tab={dragging} />
+            )}
+            {dragging.type === "group" && (
+              <GroupDisplay key={`drag-${dragging.id}`} group={dragging} />
+            )}
           </Paper>
         ) : null}
       </DragOverlay>

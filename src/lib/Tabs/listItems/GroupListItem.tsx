@@ -12,11 +12,32 @@ import { Close, ExpandLess, ExpandMore, MoreVert } from "@mui/icons-material";
 import { promptUndo } from "../../promptUndo.tsx";
 import { TabListItem } from "./TabListItem.tsx";
 import { TabGrid } from "../elements/TabGrid.tsx";
-import { Droppable } from "../../DnD/Droppable.tsx";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
 > = ({ group, expanded }) => {
+  const {
+    isOver,
+    active,
+    setNodeRef: setNodeRefDroppable,
+  } = useDroppable({
+    id: group.id as number,
+    data: group,
+  });
+  const {
+    isDragging,
+    attributes,
+    listeners,
+    setNodeRef: setNodeRefDraggable,
+  } = useDraggable({
+    id: group.id as number,
+    data: group,
+  });
+  const styleDropable = {
+    pointerEvents: active?.id ? ("none" as const) : undefined,
+  };
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -35,7 +56,6 @@ export const GroupListItem: FC<
     try {
       await chrome.tabs.remove(tabIds);
       promptUndo(`${tabIds.length} tabs are closed`);
-      console.log(await chrome.sessions.getRecentlyClosed());
     } catch (e) {
       /* empty */
     }
@@ -98,29 +118,37 @@ export const GroupListItem: FC<
   }, [expanded, group.collapsed]);
   return (
     <>
-      <TabGrid
-        sx={[
-          {
-            backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
-          },
-        ]}
-      >
-        <Droppable id={group.id} data={group}>
-          <GroupDisplay
-            group={group}
-            sx={[
-              open && {
-                [`& .itemAction`]: {
-                  visibility: "visible",
-                },
-              },
-            ]}
-            itemAction={itemAction}
-            pre={pre}
-          />
-        </Droppable>
-      </TabGrid>
-      {(!group.collapsed || expanded) &&
+      {!isDragging && (
+        <TabGrid
+          sx={[
+            {
+              backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
+            },
+          ]}
+        >
+          <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
+            <div ref={setNodeRefDroppable} style={styleDropable}>
+              <GroupDisplay
+                group={group}
+                sx={[
+                  open && {
+                    [`& .itemAction`]: {
+                      visibility: "visible",
+                    },
+                  },
+                ]}
+                itemAction={itemAction}
+                pre={pre}
+              />
+            </div>
+          </div>
+          {isOver && active?.id !== group.id ? (
+            <TabGrid sx={{ minHeight: 55.4 }} />
+          ) : null}
+        </TabGrid>
+      )}
+      {!isDragging &&
+        (!group.collapsed || expanded) &&
         group.tabs.map((tab) => (
           <TabGrid
             sx={{

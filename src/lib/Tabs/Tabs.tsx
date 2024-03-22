@@ -3,7 +3,6 @@ import { GroupItem, TabsStructure } from "./types.ts";
 import { TabListItem } from "./listItems/TabListItem.tsx";
 import { GroupListItem } from "./listItems/GroupListItem.tsx";
 import Grid from "@mui/material/Unstable_Grid2";
-import { TabGrid } from "./elements/TabGrid.tsx";
 
 export const Tabs: FC<{
   expandedGroups?: boolean;
@@ -18,9 +17,7 @@ export const Tabs: FC<{
     >
       {tabsStructure.map((item) =>
         item.type === "tab" ? (
-          <TabGrid key={item.id}>
-            <TabListItem focus={focus} tab={item} />
-          </TabGrid>
+          <TabListItem focus={focus} tab={item} key={item.id} />
         ) : (
           <GroupListItem
             expanded={expandedGroups}

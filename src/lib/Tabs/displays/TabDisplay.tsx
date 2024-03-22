@@ -42,47 +42,45 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
   );
 
   return (
-    <>
-      <ListItemButton
-        dense
-        onClick={handleActivate}
-        selected={tab.active}
-        autoFocus={tab.active && focus}
-        sx={[
-          {
-            [`&:hover .itemAction`]: {
-              visibility: "visible",
-            },
-            [`& .itemAction`]: {
-              visibility: "hidden",
-              backgroundColor: "white",
-            },
-            [`& .itemAction:hover`]: {
-              backgroundColor: "rgb(199,199,199)",
-            },
+    <ListItemButton
+      dense
+      onClick={handleActivate}
+      selected={tab.active}
+      autoFocus={tab.active && focus}
+      sx={[
+        {
+          [`&:hover .itemAction`]: {
+            visibility: "visible",
           },
-        ]}
-      >
-        <ListItemAvatar style={{ minWidth: "32px" }}>
-          <img src={tab.favIconUrl} width={24} />
-        </ListItemAvatar>
-        <ListItemSecondaryAction>
-          <IconButton
-            onClick={handleDelete}
-            edge="end"
-            aria-label="delete"
-            className="itemAction"
-          >
-            <Close />
-          </IconButton>
-        </ListItemSecondaryAction>
-        <ListItemText
-          primaryTypographyProps={{ noWrap: true }}
-          secondaryTypographyProps={{ noWrap: true }}
-          primary={tab.title}
-          secondary={tab.url}
-        />
-      </ListItemButton>
-    </>
+          [`& .itemAction`]: {
+            visibility: "hidden",
+            backgroundColor: "white",
+          },
+          [`& .itemAction:hover`]: {
+            backgroundColor: "rgb(199,199,199)",
+          },
+        },
+      ]}
+    >
+      <ListItemAvatar style={{ minWidth: "32px" }}>
+        <img src={tab.favIconUrl} width={24} />
+      </ListItemAvatar>
+      <ListItemSecondaryAction>
+        <IconButton
+          onClick={handleDelete}
+          edge="end"
+          aria-label="delete"
+          className="itemAction"
+        >
+          <Close />
+        </IconButton>
+      </ListItemSecondaryAction>
+      <ListItemText
+        primaryTypographyProps={{ noWrap: true }}
+        secondaryTypographyProps={{ noWrap: true }}
+        primary={tab.title}
+        secondary={tab.url}
+      />
+    </ListItemButton>
   );
 };
