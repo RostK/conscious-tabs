@@ -12,6 +12,7 @@ import { Close, ExpandLess, ExpandMore, MoreVert } from "@mui/icons-material";
 import { promptUndo } from "../../promptUndo.tsx";
 import { TabListItem } from "./TabListItem.tsx";
 import { TabGrid } from "../elements/TabGrid.tsx";
+import { Droppable } from "../../DnD/Droppable.tsx";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
@@ -97,18 +98,29 @@ export const GroupListItem: FC<
   }, [expanded, group.collapsed]);
   return (
     <>
-      <GroupDisplay
-        group={group}
+      <TabGrid
         sx={[
-          open && {
-            [`& .itemAction`]: {
-              visibility: "visible",
-            },
+          {
+            boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
+            backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
           },
         ]}
-        itemAction={itemAction}
-        pre={pre}
-      />
+      >
+        <Droppable id={group.id} data={group}>
+          <GroupDisplay
+            group={group}
+            sx={[
+              open && {
+                [`& .itemAction`]: {
+                  visibility: "visible",
+                },
+              },
+            ]}
+            itemAction={itemAction}
+            pre={pre}
+          />
+        </Droppable>
+      </TabGrid>
       {(!group.collapsed || expanded) &&
         group.tabs.map((tab) => (
           <TabGrid

@@ -6,7 +6,6 @@ import {
   ListItemText,
 } from "@mui/material";
 import { GroupItem } from "../types.ts";
-import { TabGrid } from "../elements/TabGrid.tsx";
 
 export const GroupDisplay: FC<{
   group: GroupItem;
@@ -19,50 +18,39 @@ export const GroupDisplay: FC<{
   }, [group]);
 
   return (
-    <>
-      <TabGrid
-        sx={[
-          {
-            boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
-            backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
+    <ListItemButton
+      onClick={handleClick}
+      sx={[
+        {
+          [`&:hover .itemAction`]: {
+            visibility: "visible",
           },
-        ]}
-      >
-        <ListItemButton
-          onClick={handleClick}
-          sx={[
-            {
-              [`&:hover .itemAction`]: {
-                visibility: "visible",
-              },
-              [`& .itemAction`]: {
-                visibility: "hidden",
-              },
-              [`& .itemAction .close-button`]: {
-                bgcolor: `color-mix(in srgb, white 80%, transparent)`,
-                ["&: hover"]: { bgcolor: "rgb(199, 199, 199)" },
-              },
-            },
-            ...(Array.isArray(sx) ? sx : [sx]),
-          ]}
-        >
-          {pre}
-          <ListItemSecondaryAction>
-            <div className="itemAction">{itemAction}</div>
-          </ListItemSecondaryAction>
-          <ListItemText
-            primary={
-              <Chip
-                label={group.title}
-                size="small"
-                style={{
-                  backgroundColor: `color-mix(in srgb, ${group.color} 30%, transparent`,
-                }}
-              />
-            }
+          [`& .itemAction`]: {
+            visibility: "hidden",
+          },
+          [`& .itemAction .close-button`]: {
+            bgcolor: `color-mix(in srgb, white 80%, transparent)`,
+            ["&: hover"]: { bgcolor: "rgb(199, 199, 199)" },
+          },
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
+    >
+      {pre}
+      <ListItemSecondaryAction>
+        <div className="itemAction">{itemAction}</div>
+      </ListItemSecondaryAction>
+      <ListItemText
+        primary={
+          <Chip
+            label={group.title}
+            size="small"
+            style={{
+              backgroundColor: `color-mix(in srgb, ${group.color} 30%, transparent`,
+            }}
           />
-        </ListItemButton>
-      </TabGrid>
-    </>
+        }
+      />
+    </ListItemButton>
   );
 };

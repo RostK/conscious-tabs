@@ -13,7 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { TabDisplay } from "../../lib/Tabs/displays/TabDisplay.tsx";
 import { Paper } from "@mui/material";
-import { WindowListItem } from "../../lib/Tabs/listItems/WindowListItem.tsx";
+import { WindowListItem } from "../../lib/Tabs";
 
 export const TabsView: FC = () => {
   const [dragging, setDragging] = useState<TabItem | GroupItem | null>(null);
@@ -36,13 +36,24 @@ export const TabsView: FC = () => {
   const handleDragStop = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragEnd"]
   >(
-    ({ over }) => {
-      if (dragging?.id && over?.data.current) {
-        if (over.data.current.type === "tab") {
-          const overTab = over.data.current as TabItem;
-          void chrome.tabs.move(dragging.id, {
-            index: overTab.index + 1,
+    async ({ over }) => {
+      const overData: TabItem | GroupItem | undefined = over?.data.current as
+        | TabItem
+        | GroupItem
+        | undefined;
+      if (dragging?.id && overData?.id) {
+        if (overData.type === "tab") {
+          const overTab = overData;
+          await chrome.tabs.move(dragging.id, {
+            index: overTab.index,
             windowId: overTab.windowId,
+          });
+        }
+        if (overData.type === "group") {
+          const overGroup = overData;
+          await chrome.tabs.group({
+            groupId: overGroup.id,
+            tabIds: dragging.id,
           });
         }
       }
