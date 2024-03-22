@@ -10,6 +10,10 @@ export const promptUndo = (message: ReactNode): void => {
         color="secondary"
         onClick={async () => {
           const focusedWindow = await chrome.windows.getLastFocused();
+          const [activeTab] = await chrome.tabs.query({
+            active: true,
+            windowId: focusedWindow.id,
+          });
           const recentSessions = await chrome.sessions.getRecentlyClosed();
           const recentSessionsIds: string[] = [];
           let recentTimestamp = 0;
@@ -37,6 +41,9 @@ export const promptUndo = (message: ReactNode): void => {
             );
             if (focusedWindow.id) {
               void chrome.windows.update(focusedWindow.id, { focused: true });
+            }
+            if (activeTab.id) {
+              void chrome.tabs.update(activeTab.id, { active: true });
             }
           }
           closeSnackbar(snackbarId);
