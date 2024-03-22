@@ -22,6 +22,9 @@ export const GroupDisplay: FC<{
       onClick={handleClick}
       sx={[
         {
+          boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
+        },
+        {
           [`&:hover .itemAction`]: {
             visibility: "visible",
           },

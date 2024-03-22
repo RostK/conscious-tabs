@@ -50,9 +50,8 @@ export const TabsView: FC = () => {
           });
         }
         if (overData.type === "group") {
-          const overGroup = overData;
           await chrome.tabs.group({
-            groupId: overGroup.id,
+            groupId: overData.id,
             tabIds: dragging.id,
           });
         }
