@@ -1,8 +1,13 @@
 import { TabDisplay } from "../displays/TabDisplay.tsx";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { TabGrid } from "../elements/TabGrid.tsx";
+import { ComponentProps, FC } from "react";
 
-export const TabListItem: typeof TabDisplay = ({ tab, ...props }) => {
+import { GroupItem } from "../types.ts";
+
+export const TabListItem: FC<
+  ComponentProps<typeof TabDisplay> & { group?: GroupItem }
+> = ({ tab, group, ...props }) => {
   const {
     isOver,
     active,
@@ -29,7 +34,15 @@ export const TabListItem: typeof TabDisplay = ({ tab, ...props }) => {
         <TabGrid sx={{ minHeight: 55.4 }} />
       ) : null}
       {!isDragging && (
-        <TabGrid>
+        <TabGrid
+          sx={[
+            group
+              ? {
+                  backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
+                }
+              : {},
+          ]}
+        >
           <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
             <div ref={setNodeRefDroppable} style={styleDropable}>
               <TabDisplay tab={tab} {...props} />

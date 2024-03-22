@@ -119,44 +119,46 @@ export const GroupListItem: FC<
   return (
     <>
       {!isDragging && (
-        <TabGrid
-          sx={[
-            {
-              backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
-            },
-          ]}
-        >
-          <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
-            <div ref={setNodeRefDroppable} style={styleDropable}>
-              <GroupDisplay
-                group={group}
-                sx={[
-                  open && {
-                    [`& .itemAction`]: {
-                      visibility: "visible",
+        <>
+          <TabGrid
+            sx={[
+              {
+                backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
+              },
+            ]}
+          >
+            <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
+              <div ref={setNodeRefDroppable} style={styleDropable}>
+                <GroupDisplay
+                  group={group}
+                  sx={[
+                    open && {
+                      [`& .itemAction`]: {
+                        visibility: "visible",
+                      },
                     },
-                  },
-                ]}
-                itemAction={itemAction}
-                pre={pre}
-              />
+                  ]}
+                  itemAction={itemAction}
+                  pre={pre}
+                />
+              </div>
             </div>
-          </div>
+          </TabGrid>
+
           {isOver && active?.id !== group.id ? (
-            <TabGrid sx={{ minHeight: 55.4 }} />
+            <TabGrid
+              sx={{
+                minHeight: 55.4,
+                backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
+              }}
+            />
           ) : null}
-        </TabGrid>
+        </>
       )}
       {!isDragging &&
         (!group.collapsed || expanded) &&
         group.tabs.map((tab) => (
-          <TabGrid
-            sx={{
-              backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
-            }}
-          >
-            <TabListItem tab={tab} key={tab.id} />
-          </TabGrid>
+          <TabListItem group={group} tab={tab} key={tab.id} />
         ))}
     </>
   );

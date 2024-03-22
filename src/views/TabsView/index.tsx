@@ -47,20 +47,13 @@ export const TabsView: FC = () => {
           if (overData.type === "tab") {
             const overTab = overData;
             await chrome.tabs.move(dragging.id, {
+              //If dragged tab is before dropped, index has to be changed
               index:
                 overTab.index > dragging.index
                   ? overTab.index - 1
                   : overTab.index,
               windowId: overTab.windowId,
             });
-            if (overTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
-              void chrome.tabs.ungroup(dragging.id);
-            } else {
-              void chrome.tabs.group({
-                groupId: overData.groupId,
-                tabIds: dragging.id,
-              });
-            }
           }
           if (overData.type === "group") {
             await chrome.tabs.group({
