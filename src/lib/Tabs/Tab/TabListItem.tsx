@@ -1,21 +1,21 @@
-import { TabDisplay } from "../displays/TabDisplay.tsx";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { TabDisplay } from "./TabDisplay.tsx";
+import { useDraggable } from "@dnd-kit/core";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { ComponentProps, FC } from "react";
 
 import { GroupItem } from "../types.ts";
-import { DropPlaceholder } from "../DropPlaceholder.tsx";
+import { DropPlaceholder } from "../DnD";
+import { useDropzone } from "../DnD/useDropzone.tsx";
+import { handleDrop } from "./handleDrop.ts";
 
 export const TabListItem: FC<
   ComponentProps<typeof TabDisplay> & { group?: GroupItem }
 > = ({ tab, group, ...props }) => {
-  const {
-    isOver,
-    active,
-    setNodeRef: setNodeRefDroppable,
-  } = useDroppable({
+  const { isOver, isSelf, Dropzone } = useDropzone({
     id: tab.id as number,
+    type: "tab",
     data: tab,
+    onDrop: handleDrop,
   });
   const {
     isDragging,
@@ -26,12 +26,10 @@ export const TabListItem: FC<
     id: tab.id as number,
     data: tab,
   });
-  const styleDropable = {
-    pointerEvents: active?.id ? ("none" as const) : undefined,
-  };
+
   return (
     <>
-      {isOver && active?.id !== tab.id ? <DropPlaceholder /> : null}
+      {isOver && !isSelf ? <DropPlaceholder /> : null}
       {!isDragging && (
         <TabGrid
           sx={[
@@ -43,9 +41,9 @@ export const TabListItem: FC<
           ]}
         >
           <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
-            <div ref={setNodeRefDroppable} style={styleDropable}>
+            <Dropzone>
               <TabDisplay tab={tab} {...props} />
-            </div>
+            </Dropzone>
           </div>
         </TabGrid>
       )}

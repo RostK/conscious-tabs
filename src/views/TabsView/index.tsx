@@ -11,10 +11,11 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { TabDisplay } from "../../lib/Tabs/displays/TabDisplay.tsx";
+import { TabDisplay } from "../../lib/Tabs/Tab/TabDisplay.tsx";
 import { Paper } from "@mui/material";
 import { WindowListItem } from "../../lib/Tabs";
 import { GroupDisplay } from "../../lib/Tabs/displays/GroupDisplay.tsx";
+import { DZCurrentData } from "../../lib/Tabs/DnD/useDropzone.tsx";
 
 export const TabsView: FC = () => {
   const [dragging, setDragging] = useState<TabItem | GroupItem | null>(null);
@@ -38,37 +39,29 @@ export const TabsView: FC = () => {
     Required<ComponentProps<typeof DndContext>>["onDragEnd"]
   >(
     async ({ over }) => {
-      const overData: TabItem | GroupItem | chrome.windows.Window | undefined =
-        over?.data.current as
-          | TabItem
-          | GroupItem
-          | chrome.windows.Window
-          | undefined;
+      const overData:
+        | TabItem
+        | GroupItem
+        | chrome.windows.Window
+        | DZCurrentData
+        | undefined = over?.data.current as
+        | TabItem
+        | GroupItem
+        | chrome.windows.Window
+        | DZCurrentData
+        | undefined;
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      if (overData?.dropHandler) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        await overData.dropHandler(dragging, overData);
+        setDragging(null);
+        return;
+      }
       if (dragging?.type === "group") {
         if (dragging?.id && overData?.id && dragging.id !== overData.id) {
-          if (overData.type === "tab") {
-            const overTab = overData;
-            const firstTabIndex = dragging.tabs[0].index;
-            if (overTab.windowId === dragging.windowId) {
-              try {
-                await chrome.tabGroups.move(dragging.id, {
-                  //If dragged tab is before dropped, index has to be changed
-                  index:
-                    overTab.index > firstTabIndex
-                      ? overTab.index - dragging.tabs.length
-                      : overTab.index,
-                  //windowId: overTab.windowId,
-                });
-              } catch (e) {
-                console.error(e);
-              }
-            } else {
-              await chrome.tabGroups.move(dragging.id, {
-                index: overTab.index,
-                windowId: overTab.windowId,
-              });
-            }
-          }
           if (overData.type === "normal") {
             if (overData.id === dragging.windowId) {
               await chrome.tabGroups.move(dragging.id, {
@@ -85,17 +78,6 @@ export const TabsView: FC = () => {
       }
       if (dragging?.type === "tab") {
         if (dragging?.id && overData?.id && dragging.id !== overData.id) {
-          if (overData.type === "tab") {
-            const overTab = overData;
-            await chrome.tabs.move(dragging.id, {
-              //If dragged tab is before dropped, index has to be changed
-              index:
-                overTab.index > dragging.index
-                  ? overTab.index - 1
-                  : overTab.index,
-              windowId: overTab.windowId,
-            });
-          }
           if (overData.type === "group") {
             await chrome.tabs.group({
               groupId: overData.id,

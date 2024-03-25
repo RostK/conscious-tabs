@@ -1,11 +1,11 @@
 import { FC } from "react";
 import { GroupItem, TabsStructure } from "./types.ts";
-import { TabListItem } from "./listItems/TabListItem.tsx";
+import { TabListItem } from "./Tab/TabListItem.tsx";
 import { GroupListItem } from "./listItems/GroupListItem.tsx";
 import Grid from "@mui/material/Unstable_Grid2";
 import { TabGrid } from "./elements/TabGrid.tsx";
 import { useDroppable } from "@dnd-kit/core";
-import { DropPlaceholder } from "./DropPlaceholder.tsx";
+import { DropPlaceholder } from "./DnD";
 
 export const Tabs: FC<{
   expandedGroups?: boolean;

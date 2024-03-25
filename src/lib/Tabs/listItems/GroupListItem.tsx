@@ -10,10 +10,10 @@ import {
 import { IconButton, Menu, MenuItem } from "@mui/material";
 import { Close, ExpandLess, ExpandMore, MoreVert } from "@mui/icons-material";
 import { promptUndo } from "../../promptUndo.tsx";
-import { TabListItem } from "./TabListItem.tsx";
+import { TabListItem } from "../Tab/TabListItem.tsx";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { DropPlaceholder } from "../DropPlaceholder.tsx";
+import { DropPlaceholder } from "../DnD";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
