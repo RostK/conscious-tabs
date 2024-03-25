@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { GroupItem, TabsStructure } from "./types.ts";
 import { TabListItem } from "./Tab/TabListItem.tsx";
-import { GroupListItem } from "./listItems/GroupListItem.tsx";
+import { GroupListItem } from "./TabsGroup/GroupListItem.tsx";
 import Grid from "@mui/material/Unstable_Grid2";
 import { TabGrid } from "./elements/TabGrid.tsx";
 import { useDroppable } from "@dnd-kit/core";

@@ -41,7 +41,13 @@ export const TabListItem: FC<
           ]}
         >
           <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
-            <Dropzone>
+            <Dropzone
+              sx={[
+                Boolean(group) && {
+                  backgroundColor: `color-mix(in srgb, ${group?.color as string} 15%, transparent)`,
+                },
+              ]}
+            >
               <TabDisplay tab={tab} {...props} />
             </Dropzone>
           </div>

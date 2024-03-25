@@ -14,7 +14,7 @@ import {
 import { TabDisplay } from "../../lib/Tabs/Tab/TabDisplay.tsx";
 import { Paper } from "@mui/material";
 import { WindowListItem } from "../../lib/Tabs";
-import { GroupDisplay } from "../../lib/Tabs/displays/GroupDisplay.tsx";
+import { GroupDisplay } from "../../lib/Tabs/TabsGroup/GroupDisplay.tsx";
 import { DZCurrentData } from "../../lib/Tabs/DnD/useDropzone.tsx";
 
 export const TabsView: FC = () => {
@@ -78,12 +78,6 @@ export const TabsView: FC = () => {
       }
       if (dragging?.type === "tab") {
         if (dragging?.id && overData?.id && dragging.id !== overData.id) {
-          if (overData.type === "group") {
-            await chrome.tabs.group({
-              groupId: overData.id,
-              tabIds: dragging.id,
-            });
-          }
           if (overData.type === "normal") {
             await chrome.tabs.move(dragging.id, {
               windowId: overData.id,

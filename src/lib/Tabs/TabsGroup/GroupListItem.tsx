@@ -1,4 +1,4 @@
-import { GroupDisplay } from "../displays/GroupDisplay.tsx";
+import { GroupDisplay } from "./GroupDisplay.tsx";
 import {
   ComponentProps,
   FC,
@@ -12,19 +12,19 @@ import { Close, ExpandLess, ExpandMore, MoreVert } from "@mui/icons-material";
 import { promptUndo } from "../../promptUndo.tsx";
 import { TabListItem } from "../Tab/TabListItem.tsx";
 import { TabGrid } from "../elements/TabGrid.tsx";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDraggable } from "@dnd-kit/core";
 import { DropPlaceholder } from "../DnD";
+import { useDropzone } from "../DnD/useDropzone.tsx";
+import { handleDrop } from "./handleDrop.ts";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
 > = ({ group, expanded }) => {
-  const {
-    isOver,
-    active,
-    setNodeRef: setNodeRefDroppable,
-  } = useDroppable({
+  const { isOver, isSelf, Dropzone } = useDropzone({
     id: group.id as number,
+    type: "group",
     data: group,
+    onDrop: handleDrop,
   });
   const {
     isDragging,
@@ -35,9 +35,6 @@ export const GroupListItem: FC<
     id: group.id as number,
     data: group,
   });
-  const styleDropable = {
-    pointerEvents: active?.id ? ("none" as const) : undefined,
-  };
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -129,7 +126,7 @@ export const GroupListItem: FC<
             ]}
           >
             <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
-              <div ref={setNodeRefDroppable} style={styleDropable}>
+              <Dropzone>
                 <GroupDisplay
                   group={group}
                   sx={[
@@ -142,11 +139,11 @@ export const GroupListItem: FC<
                   itemAction={itemAction}
                   pre={pre}
                 />
-              </div>
+              </Dropzone>
             </div>
           </TabGrid>
 
-          {isOver && active?.id !== group.id ? (
+          {isOver && !isSelf ? (
             <DropPlaceholder
               sx={{
                 backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
