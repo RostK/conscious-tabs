@@ -13,6 +13,7 @@ import { promptUndo } from "../../promptUndo.tsx";
 import { TabListItem } from "./TabListItem.tsx";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { DropPlaceholder } from "../DropPlaceholder.tsx";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
@@ -146,9 +147,8 @@ export const GroupListItem: FC<
           </TabGrid>
 
           {isOver && active?.id !== group.id ? (
-            <TabGrid
+            <DropPlaceholder
               sx={{
-                minHeight: 55.4,
                 backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
               }}
             />

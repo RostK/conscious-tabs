@@ -38,10 +38,12 @@ export const TabsView: FC = () => {
     Required<ComponentProps<typeof DndContext>>["onDragEnd"]
   >(
     async ({ over }) => {
-      const overData: TabItem | GroupItem | undefined = over?.data.current as
-        | TabItem
-        | GroupItem
-        | undefined;
+      const overData: TabItem | GroupItem | chrome.windows.Window | undefined =
+        over?.data.current as
+          | TabItem
+          | GroupItem
+          | chrome.windows.Window
+          | undefined;
       if (dragging?.type === "group") {
         if (dragging?.id && overData?.id && dragging.id !== overData.id) {
           if (overData.type === "tab") {
@@ -67,6 +69,18 @@ export const TabsView: FC = () => {
               });
             }
           }
+          if (overData.type === "normal") {
+            if (overData.id === dragging.windowId) {
+              await chrome.tabGroups.move(dragging.id, {
+                index: -1,
+              });
+            } else {
+              await chrome.tabGroups.move(dragging.id, {
+                index: -1,
+                windowId: overData.id,
+              });
+            }
+          }
         }
       }
       if (dragging?.type === "tab") {
@@ -86,6 +100,12 @@ export const TabsView: FC = () => {
             await chrome.tabs.group({
               groupId: overData.id,
               tabIds: dragging.id,
+            });
+          }
+          if (overData.type === "normal") {
+            await chrome.tabs.move(dragging.id, {
+              windowId: overData.id,
+              index: -1,
             });
           }
         }

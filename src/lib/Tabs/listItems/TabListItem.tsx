@@ -4,6 +4,7 @@ import { TabGrid } from "../elements/TabGrid.tsx";
 import { ComponentProps, FC } from "react";
 
 import { GroupItem } from "../types.ts";
+import { DropPlaceholder } from "../DropPlaceholder.tsx";
 
 export const TabListItem: FC<
   ComponentProps<typeof TabDisplay> & { group?: GroupItem }
@@ -30,9 +31,7 @@ export const TabListItem: FC<
   };
   return (
     <>
-      {isOver && active?.id !== tab.id ? (
-        <TabGrid sx={{ minHeight: 55.4 }} />
-      ) : null}
+      {isOver && active?.id !== tab.id ? <DropPlaceholder /> : null}
       {!isDragging && (
         <TabGrid
           sx={[

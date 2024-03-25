@@ -33,8 +33,9 @@ export const WindowListItem: FC<{
     },
     [window.id],
   );
+
   return single ? (
-    <Tabs focus={focus} tabsStructure={tabsStructure} />
+    <Tabs focus={focus} tabsStructure={tabsStructure} window={window} />
   ) : (
     <Accordion
       square
@@ -74,7 +75,7 @@ export const WindowListItem: FC<{
         </Button>
       </AccordionSummary>
       <AccordionDetails style={{ padding: 0 }}>
-        <Tabs tabsStructure={tabsStructure} />
+        <Tabs tabsStructure={tabsStructure} window={window} />
       </AccordionDetails>
     </Accordion>
   );
