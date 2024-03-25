@@ -68,17 +68,14 @@ export const useDropzone: <DZData = unknown, DropData = DefaultDrag>({
       return (
         <DropzoneEl
           ref={setDroppableRef}
-          sx={[
-            Boolean(active?.id) && { pointerEvents: "none" },
-            ...(Array.isArray(sx) ? sx : [sx]),
-          ]}
+          sx={[...(Array.isArray(sx) ? sx : [sx])]}
         >
           {children}
         </DropzoneEl>
       );
     };
     return Dz;
-  }, [active?.id, setDroppableRef]);
+  }, [setDroppableRef]);
 
   return { isOver, isSelf: active?.id === id, Dropzone, active };
 };

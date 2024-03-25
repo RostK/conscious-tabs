@@ -13,6 +13,14 @@ export const handleDrop: DZonDrop<TabItem> = async (drop, dropzone) => {
             : dropzone.data.index,
         windowId: dropzone.data.windowId,
       });
+      if (dropzone.data.groupId) {
+        await chrome.tabs.group({
+          tabIds: drop.id as number,
+          groupId: dropzone.data.groupId,
+        });
+      } else {
+        await chrome.tabs.ungroup(drop.id as number);
+      }
       return;
     case "group":
       if (dropzone.data.windowId === drop.windowId) {
