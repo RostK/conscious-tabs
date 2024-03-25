@@ -8,7 +8,7 @@ export const DropPlaceholder: FC<{
     <TabGrid
       sx={[
         {
-          minHeight: 55.4,
+          minHeight: 54.5,
           border: "2px dashed lightgray",
         },
         ...(Array.isArray(sx) ? sx : [sx]),

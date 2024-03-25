@@ -30,66 +30,26 @@ export const TabsView: FC = () => {
   });
   const keyboardSensor = useSensor(KeyboardSensor);
   const sensors = useSensors(mouseSensor, keyboardSensor);
+
   const handleDragStart = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragStart"]
   >(({ active }) => {
     setDragging(active.data.current as unknown as TabItem | GroupItem);
   }, []);
+
   const handleDragStop = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragEnd"]
   >(
     async ({ over }) => {
-      const overData:
-        | TabItem
-        | GroupItem
-        | chrome.windows.Window
-        | DZCurrentData
-        | undefined = over?.data.current as
-        | TabItem
-        | GroupItem
-        | chrome.windows.Window
-        | DZCurrentData
-        | undefined;
-
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      if (overData?.dropHandler) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
+      const overData = over?.data.current as DZCurrentData | undefined;
+      if (overData?.dropHandler && dragging) {
         await overData.dropHandler(dragging, overData);
-        setDragging(null);
-        return;
-      }
-      if (dragging?.type === "group") {
-        if (dragging?.id && overData?.id && dragging.id !== overData.id) {
-          if (overData.type === "normal") {
-            if (overData.id === dragging.windowId) {
-              await chrome.tabGroups.move(dragging.id, {
-                index: -1,
-              });
-            } else {
-              await chrome.tabGroups.move(dragging.id, {
-                index: -1,
-                windowId: overData.id,
-              });
-            }
-          }
-        }
-      }
-      if (dragging?.type === "tab") {
-        if (dragging?.id && overData?.id && dragging.id !== overData.id) {
-          if (overData.type === "normal") {
-            await chrome.tabs.move(dragging.id, {
-              windowId: overData.id,
-              index: -1,
-            });
-          }
-        }
       }
       setDragging(null);
     },
     [dragging],
   );
+
   return (
     <DndContext
       sensors={sensors}

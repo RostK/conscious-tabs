@@ -3,9 +3,7 @@ import { GroupItem, TabsStructure } from "./types.ts";
 import { TabListItem } from "./Tab/TabListItem.tsx";
 import { GroupListItem } from "./TabsGroup/GroupListItem.tsx";
 import Grid from "@mui/material/Unstable_Grid2";
-import { TabGrid } from "./elements/TabGrid.tsx";
-import { useDroppable } from "@dnd-kit/core";
-import { DropPlaceholder } from "./DnD";
+import { WindowDropzone } from "./Window/WindowDropzone.tsx";
 
 export const Tabs: FC<{
   expandedGroups?: boolean;
@@ -13,19 +11,6 @@ export const Tabs: FC<{
   tabsStructure: TabsStructure;
   window?: chrome.windows.Window;
 }> = ({ tabsStructure, window, focus, expandedGroups }) => {
-  const {
-    isOver,
-    active,
-    setNodeRef: setNodeRefDroppable,
-  } = useDroppable({
-    id: window?.id ?? 0,
-    data: window,
-  });
-
-  const styleDropable = {
-    pointerEvents: active?.id ? ("none" as const) : undefined,
-    minHeight: "2rem",
-  };
   return (
     <Grid
       spacing={0}
@@ -43,12 +28,7 @@ export const Tabs: FC<{
           />
         ),
       )}
-      {isOver && <DropPlaceholder />}
-      {active?.id && (
-        <TabGrid>
-          <div ref={setNodeRefDroppable} style={styleDropable} />
-        </TabGrid>
-      )}
+      {window && <WindowDropzone window={window} />}
     </Grid>
   );
 };

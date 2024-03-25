@@ -7,12 +7,12 @@ export type DefaultDrag = TabItem | GroupItem;
 
 export type DZonDrop<DZData, DropData = DefaultDrag> = (
   drop: DropData,
-  dropzone: { id: string | number; type: string; data: DZData },
+  dropzone: { type: string; data: DZData },
 ) => Promise<void>;
 
 export type DZCurrentData<DZData = unknown, DropData = DefaultDrag> = {
   type: string;
-  data?: DZData;
+  data: DZData;
   dropHandler?: DZonDrop<DZData, DropData>;
 };
 
@@ -26,7 +26,7 @@ export const useDropzone: <DZData = unknown, DropData = DefaultDrag>({
 }: {
   type: string;
   id: string | number;
-  data?: DZData;
+  data: DZData;
   onDrop?: DZonDrop<DZData, DropData>;
 }) => {
   Dropzone: FC<
@@ -43,7 +43,7 @@ export const useDropzone: <DZData = unknown, DropData = DefaultDrag>({
 }: {
   type: string;
   id: string | number;
-  data?: DZData;
+  data: DZData;
   onDrop?: DZonDrop<DZData, DropData>;
 }) => {
   const dzPayload: DZCurrentData<DZData, DropData> = {
