@@ -57,7 +57,7 @@ export const useDropzone: <DZData = unknown, DropData = DefaultDrag>({
     active,
     setNodeRef: setDroppableRef,
   } = useDroppable({
-    id: id,
+    id: `${type}--${id}`,
     data: dzPayload,
   });
 

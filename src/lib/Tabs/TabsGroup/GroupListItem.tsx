@@ -15,17 +15,27 @@ import { TabGrid } from "../elements/TabGrid.tsx";
 import { useDraggable } from "@dnd-kit/core";
 import { DropPlaceholder } from "../DnD";
 import { useDropzone } from "../DnD/useDropzone.tsx";
+import { handleInnerDrop } from "./handleInnerDrop.ts";
 import { handleDrop } from "./handleDrop.ts";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
 > = ({ group, expanded }) => {
-  const { isOver, isSelf, Dropzone } = useDropzone({
+  const outerDZ = useDropzone({
     id: group.id as number,
     type: "group",
     data: group,
     onDrop: handleDrop,
   });
+  const OuterDropzone = outerDZ.Dropzone;
+  const innerDZ = useDropzone({
+    id: group.id as number,
+    type: "group-inner",
+    data: group,
+    onDrop: handleInnerDrop,
+  });
+  const InnerDropzone = innerDZ.Dropzone;
+
   const {
     isDragging,
     attributes,
@@ -116,17 +126,29 @@ export const GroupListItem: FC<
   }, [expanded, group.collapsed]);
   return (
     <>
+      {outerDZ.isOver && !outerDZ.isSelf ? <DropPlaceholder /> : null}
       {!isDragging && (
         <>
           <TabGrid
             sx={[
               {
                 backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
+                position: "relative",
               },
             ]}
           >
+            {innerDZ.active?.data.current?.type !== "group" && (
+              <InnerDropzone
+                sx={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "50%",
+                  top: "50%",
+                }}
+              />
+            )}
             <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
-              <Dropzone>
+              <OuterDropzone>
                 <GroupDisplay
                   group={group}
                   sx={[
@@ -135,15 +157,17 @@ export const GroupListItem: FC<
                         visibility: "visible",
                       },
                     },
+                    Boolean(innerDZ.active?.data.current) && {
+                      pointerEvents: "none",
+                    },
                   ]}
                   itemAction={itemAction}
                   pre={pre}
                 />
-              </Dropzone>
+              </OuterDropzone>
             </div>
           </TabGrid>
-
-          {isOver && !isSelf ? (
+          {innerDZ.isOver && !innerDZ.isSelf ? (
             <DropPlaceholder
               sx={{
                 backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
