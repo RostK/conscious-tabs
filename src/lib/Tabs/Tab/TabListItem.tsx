@@ -29,7 +29,15 @@ export const TabListItem: FC<
 
   return (
     <>
-      {isOver && !isSelf ? <DropPlaceholder /> : null}
+      {isOver && !isSelf ? (
+        <DropPlaceholder
+          sx={[
+            Boolean(group) && {
+              backgroundColor: `color-mix(in srgb, ${group?.color as string} 15%, transparent)`,
+            },
+          ]}
+        />
+      ) : null}
       {!isDragging && (
         <TabGrid
           sx={[
@@ -41,13 +49,7 @@ export const TabListItem: FC<
           ]}
         >
           <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
-            <Dropzone
-              sx={[
-                Boolean(group) && {
-                  backgroundColor: `color-mix(in srgb, ${group?.color as string} 15%, transparent)`,
-                },
-              ]}
-            >
+            <Dropzone>
               <TabDisplay tab={tab} {...props} />
             </Dropzone>
           </div>
