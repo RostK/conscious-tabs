@@ -37,6 +37,7 @@ export const GroupListItem: FC<
   const InnerDropzone = innerDZ.Dropzone;
 
   const {
+    over,
     isDragging,
     attributes,
     listeners,
@@ -127,7 +128,7 @@ export const GroupListItem: FC<
   return (
     <>
       {outerDZ.isOver && !outerDZ.isSelf ? <DropPlaceholder /> : null}
-      {!isDragging && (
+      {(!isDragging || !over) && (
         <>
           <TabGrid
             sx={[

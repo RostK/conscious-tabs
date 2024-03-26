@@ -11,6 +11,9 @@ import {
 } from "@mui/material";
 import { ArticleOutlined, ExpandMore } from "@mui/icons-material";
 import { Tabs } from "../Tabs.tsx";
+import { useDropzone } from "../DnD/useDropzone.tsx";
+import { DropPlaceholder } from "../DnD";
+import { handleInnerDrop } from "./handleInnerDrop.ts";
 export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;
@@ -33,6 +36,12 @@ export const WindowListItem: FC<{
     },
     [window.id],
   );
+  const { isOver, Dropzone } = useDropzone({
+    id: window.id as number,
+    type: "in-window",
+    data: window,
+    onDrop: handleInnerDrop,
+  });
 
   return single ? (
     <Tabs focus={focus} tabsStructure={tabsStructure} window={window} />
@@ -43,37 +52,44 @@ export const WindowListItem: FC<{
       key={window.id}
       defaultExpanded={window.focused}
     >
-      <AccordionSummary
-        expandIcon={
-          <IconButton>
-            <ExpandMore />
-          </IconButton>
-        }
-        id={`window-${window.id}`}
-      >
-        <Button onClick={handleOpen}>
-          <AvatarGroup
-            total={flatTabs.length}
-            max={10}
-            slotProps={{
-              additionalAvatar: {
-                sx: { fontSize: "0.7rem", width: 24, height: 24 },
-              },
-            }}
-            renderSurplus={(surplus) => <span>{surplus}</span>}
-          >
-            {flatTabs.slice(0, 10).map((tab) => (
-              <Avatar
-                sx={{ background: "lightgray", width: 24, height: 24 }}
-                key={tab.id}
-                src={tab.favIconUrl}
-              >
-                <ArticleOutlined />
-              </Avatar>
-            ))}
-          </AvatarGroup>
-        </Button>
-      </AccordionSummary>
+      <Dropzone>
+        <AccordionSummary
+          expandIcon={
+            <IconButton>
+              <ExpandMore />
+            </IconButton>
+          }
+          id={`window-${window.id}`}
+        >
+          <Button onClick={handleOpen}>
+            <AvatarGroup
+              total={flatTabs.length}
+              max={10}
+              slotProps={{
+                additionalAvatar: {
+                  sx: { fontSize: "0.7rem", width: 24, height: 24 },
+                },
+              }}
+              renderSurplus={(surplus) => <span>{surplus}</span>}
+            >
+              {flatTabs.slice(0, 10).map((tab) => (
+                <Avatar
+                  sx={{ background: "lightgray", width: 24, height: 24 }}
+                  key={tab.id}
+                  src={tab.favIconUrl}
+                >
+                  <ArticleOutlined />
+                </Avatar>
+              ))}
+            </AvatarGroup>
+          </Button>
+        </AccordionSummary>
+        {isOver && (
+          <AccordionDetails style={{ padding: 0 }}>
+            <DropPlaceholder />
+          </AccordionDetails>
+        )}
+      </Dropzone>
       <AccordionDetails style={{ padding: 0 }}>
         <Tabs tabsStructure={tabsStructure} window={window} />
       </AccordionDetails>
