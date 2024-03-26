@@ -15,7 +15,17 @@ const getTabsTree = (
     .filter((tab) => (filter ? filter(tab) : true))
     .sort((a, b) => a.index - b.index)
     .forEach(
-      ({ id, title, url, index, windowId, groupId, favIconUrl, active }) => {
+      ({
+        id,
+        title,
+        url,
+        index,
+        windowId,
+        groupId,
+        favIconUrl,
+        active,
+        highlighted,
+      }) => {
         if (groupId === TAB_GROUP_ID_NONE) {
           // Tab not in a group
           structure.set(`tab:${id}`, {
@@ -28,6 +38,7 @@ const getTabsTree = (
             groupId,
             favIconUrl,
             active,
+            highlighted,
           });
           return;
         }
@@ -49,6 +60,7 @@ const getTabsTree = (
                 groupId,
                 favIconUrl,
                 active,
+                highlighted,
               },
             ],
           });
@@ -68,6 +80,7 @@ const getTabsTree = (
             groupId,
             favIconUrl,
             active,
+            highlighted,
           });
           return;
         }
@@ -86,6 +99,7 @@ const getTabsTree = (
               groupId,
               favIconUrl,
               active,
+              highlighted,
             },
           ],
         });

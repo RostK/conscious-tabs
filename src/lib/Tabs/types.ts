@@ -10,6 +10,7 @@ export type TabItem = {
   groupId: number;
   favIconUrl?: string | undefined;
   active: boolean;
+  highlighted: boolean;
 };
 export type GroupItem = {
   type: "group";

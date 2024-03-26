@@ -6,25 +6,38 @@ import {
   ListItemSecondaryAction,
   ListItemText,
 } from "@mui/material";
-import { Close } from "@mui/icons-material";
+import {
+  CheckBoxOutlineBlankOutlined,
+  CheckBoxOutlined,
+  Close,
+} from "@mui/icons-material";
 import { TabItem } from "../types.ts";
 import { promptUndo } from "../../promptUndo.tsx";
+import { useSelected } from "../selection";
 
 export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
   tab,
   focus = true,
 }) => {
-  const handleActivate = useCallback(async () => {
-    if (tab.id) {
-      try {
-        await chrome.sidePanel.open({ windowId: tab.windowId });
-        await chrome.tabs.update(tab.id, { active: true });
-        await chrome.windows.update(tab.windowId, { focused: true });
-      } catch (e) {
-        /* empty */
+  const { isSelected, switchSelection } = useSelected(tab.id as number);
+  const handleActivate = useCallback<MouseEventHandler>(
+    async (e) => {
+      if (tab.id) {
+        if (e.ctrlKey) {
+          switchSelection();
+        } else {
+          try {
+            await chrome.sidePanel.open({ windowId: tab.windowId });
+            await chrome.tabs.update(tab.id, { active: true });
+            await chrome.windows.update(tab.windowId, { focused: true });
+          } catch (e) {
+            /* empty */
+          }
+        }
       }
-    }
-  }, [tab]);
+    },
+    [switchSelection, tab.id, tab.windowId],
+  );
   const handleDelete = useCallback<MouseEventHandler>(
     async (e) => {
       e.preventDefault();
@@ -39,6 +52,14 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
       }
     },
     [tab],
+  );
+  const handleHighlight = useCallback<MouseEventHandler>(
+    async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      switchSelection();
+    },
+    [switchSelection],
   );
 
   return (
@@ -62,6 +83,20 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
         },
       ]}
     >
+      <IconButton
+        onClick={handleHighlight}
+        className={!isSelected ? "itemAction" : undefined}
+        sx={{
+          position: "absolute",
+          left: -8,
+          backgroundColor: "white",
+          ["&:hover"]: {
+            backgroundColor: "rgb(199,199,199)",
+          },
+        }}
+      >
+        {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
+      </IconButton>
       <ListItemAvatar style={{ minWidth: "32px" }}>
         <img src={tab.favIconUrl} width={24} />
       </ListItemAvatar>

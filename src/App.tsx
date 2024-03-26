@@ -13,6 +13,7 @@ import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
 import { TabsView } from "./views/TabsView";
 import { SearchView } from "./views/SearchView";
 import { SnackbarProvider } from "notistack";
+import { SelectionProvider, SelectionToolbar } from "./lib/Tabs/selection";
 
 const Search = styled("div")(({ theme }) => ({
   position: "relative",
@@ -60,37 +61,41 @@ function App() {
 
   return (
     <SnackbarProvider autoHideDuration={3000} maxSnack={1}>
-      <AppBar position="sticky">
-        <Toolbar>
-          <img src={logo} />
-          <Search>
-            <SearchIconWrapper>
-              <SearchOutlined />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Search…"
-              inputProps={{ "aria-label": "search" }}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-              }}
-              endAdornment={
-                search && (
-                  <IconButton
-                    onClick={() => {
-                      setSearch("");
-                    }}
-                  >
-                    <SearchOffOutlined />
-                  </IconButton>
-                )
-              }
-            />
-          </Search>
-        </Toolbar>
-      </AppBar>
-      {!search && <TabsView />}
-      {search && <SearchView search={search} />}
+      <SelectionProvider>
+        <AppBar position="sticky">
+          <Toolbar>
+            <img src={logo} />
+            <Search>
+              <SearchIconWrapper>
+                <SearchOutlined />
+              </SearchIconWrapper>
+              <StyledInputBase
+                placeholder="Search…"
+                inputProps={{ "aria-label": "search" }}
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                }}
+                endAdornment={
+                  search && (
+                    <IconButton
+                      onClick={() => {
+                        setSearch("");
+                      }}
+                    >
+                      <SearchOffOutlined />
+                    </IconButton>
+                  )
+                }
+              />
+            </Search>
+          </Toolbar>
+        </AppBar>
+        {!search && <TabsView />}
+        {search && <SearchView search={search} />}
+
+        <SelectionToolbar />
+      </SelectionProvider>
     </SnackbarProvider>
   );
 }
