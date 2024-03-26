@@ -32,3 +32,18 @@ h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
+
+&::-webkit-scrollbar {
+  width: 8px; /* Mostly for vertical scrollbars */
+  height: 10px; /* Mostly for horizontal scrollbars */
+}
+&::-webkit-scrollbar-thumb {
+  /* Foreground */
+  background: #aaa;
+  border-radius: 4px;
+}
+&::-webkit-scrollbar-track {
+  /* Background */
+  background: #ddd;
+  margin: 2px;
+}
