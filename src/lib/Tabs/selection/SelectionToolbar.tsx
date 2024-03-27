@@ -1,4 +1,4 @@
-import { FC, useCallback, useContext, useMemo } from "react";
+import { FC, MouseEventHandler, useCallback, useContext, useMemo } from "react";
 import { SelectionContext } from "./SelectionContext.tsx";
 import { useTabsStructure } from "../useTabsStructure.ts";
 import {
@@ -17,6 +17,7 @@ import {
   FolderOpen,
 } from "@mui/icons-material";
 import { TabItem } from "../types.ts";
+import { promptUndo } from "../../promptUndo.tsx";
 
 export const SelectionToolbar: FC = () => {
   const { selected, dispatch } = useContext(SelectionContext);
@@ -37,6 +38,16 @@ export const SelectionToolbar: FC = () => {
     dispatch({ type: "clear" });
   }, [dispatch]);
 
+  const handleClose = useCallback<MouseEventHandler>(async () => {
+    try {
+      await chrome.tabs.remove(selected);
+      promptUndo(`${selected.length} tabs are closed`);
+      dispatch({ type: "clear" });
+    } catch (e) {
+      /* empty */
+    }
+  }, [dispatch, selected]);
+
   return selected.length ? (
     <>
       <Toolbar sx={{ visibility: "hidden" }} />
@@ -46,7 +57,7 @@ export const SelectionToolbar: FC = () => {
         sx={{ top: "auto", bottom: 0 }}
       >
         <Paper sx={{ width: "100%" }}>
-          <Box sx={{ display: "flex", p: "0.5rem" }}>
+          <Box sx={{ display: "flex", p: "0.5rem", justifyContent: "center" }}>
             <AvatarGroup
               total={flatTabs.length}
               max={10}
@@ -81,7 +92,7 @@ export const SelectionToolbar: FC = () => {
             <ButtonBase sx={{ fontSize: "0.7rem" }} onClick={handleClear}>
               <DeselectOutlined fontSize="small" /> Deselect
             </ButtonBase>
-            <ButtonBase sx={{ fontSize: "0.7rem" }}>
+            <ButtonBase sx={{ fontSize: "0.7rem" }} onClick={handleClose}>
               <CancelOutlined fontSize="small" />
               Close
             </ButtonBase>
