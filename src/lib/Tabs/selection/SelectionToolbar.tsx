@@ -29,13 +29,13 @@ import { GroupForm } from "./GroupForm.tsx";
 
 export const SelectionToolbar: FC = () => {
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
-
   const handleCloseGroupDialog = useCallback(() => {
     setGroupDialogOpen(false);
   }, []);
   const handleOpenGroupDialog = useCallback(() => {
     setGroupDialogOpen(true);
   }, []);
+
   const { selected, dispatch } = useContext(SelectionContext);
   const filter = useCallback(
     ({ id }: { id?: number }) => Boolean(id && selected.includes(id)),
@@ -64,11 +64,11 @@ export const SelectionToolbar: FC = () => {
     }
   }, [dispatch, selected]);
   const handleNewGroup = useCallback(
-    async ({ name, color }: { name: string; color: string }) => {
+    async ({ title, color }: { title: string; color: string }) => {
       try {
         const newTabId = await chrome.tabs.group({ tabIds: selected });
         await chrome.tabGroups.update(newTabId, {
-          title: name,
+          title: title,
           color: color as chrome.tabGroups.ColorEnum,
         });
         dispatch({ type: "clear" });

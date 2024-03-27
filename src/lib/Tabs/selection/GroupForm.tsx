@@ -25,24 +25,28 @@ const GROUP_COLOURS = [
 export const GroupForm: FC<{
   open?: boolean;
   onClose: () => void;
-  handleSave: (data: { name: string; color: string }) => Promise<void>;
-}> = ({ open, onClose, handleSave }) => {
-  const { control, reset, handleSubmit } = useForm({
-    defaultValues: {
-      name: "New group",
-      color:
-        GROUP_COLOURS[Math.floor(Math.random() * (GROUP_COLOURS.length - 1))],
-    },
-  });
+  handleSave: (data: { title?: string; color: string }) => Promise<void>;
+  group?: { title?: string; color: string };
+}> = ({ open, onClose, handleSave, group }) => {
+  const { control, reset, handleSubmit } = useForm<{
+    title?: string;
+    color: string;
+  }>();
   useEffect(() => {
-    reset({
-      name: "New group",
-      color:
-        GROUP_COLOURS[Math.floor(Math.random() * (GROUP_COLOURS.length - 1))],
-    });
+    reset(
+      Boolean(group)
+        ? group
+        : {
+            title: "New group",
+            color:
+              GROUP_COLOURS[
+                Math.floor(Math.random() * (GROUP_COLOURS.length - 1))
+              ],
+          },
+    );
   }, [open, reset]);
   const handleFormSubmit = useCallback<
-    (data: { name: string; color: string }) => Promise<void>
+    (data: { title?: string; color: string }) => Promise<void>
   >(
     async (data) => {
       await handleSave(data);
@@ -61,9 +65,13 @@ export const GroupForm: FC<{
     >
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <DialogContent>
-          <DialogContentText>Add tabs to new group</DialogContentText>
+          <DialogContentText>
+            {group !== undefined
+              ? `Change group "${group.title}"`
+              : "Add tabs to new group"}
+          </DialogContentText>
           <FormInputText
-            name="name"
+            name="title"
             control={control}
             label="Group name"
             size="small"

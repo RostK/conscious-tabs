@@ -17,10 +17,36 @@ import { DropPlaceholder } from "../DnD";
 import { useDropzone } from "../DnD/useDropzone.tsx";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
 import { handleDrop } from "./handleDrop.ts";
+import { GroupForm } from "../selection/GroupForm.tsx";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
 > = ({ group, expanded }) => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const handleCloseGroupDialog = useCallback(() => {
+    setGroupDialogOpen(false);
+  }, []);
+  const handleOpenGroupDialog = useCallback(() => {
+    setAnchorEl(null);
+    setGroupDialogOpen(true);
+  }, []);
+  const handleUpdateGroup = useCallback(
+    async ({ title, color }: { title?: string; color: string }) => {
+      try {
+        await chrome.tabGroups.update(group.id, {
+          title: title,
+          color: color as chrome.tabGroups.ColorEnum,
+        });
+      } catch (e) {
+        /* empty */
+      }
+    },
+    [group],
+  );
+
   const outerDZ = useDropzone({
     id: group.id as number,
     type: "group",
@@ -46,9 +72,6 @@ export const GroupListItem: FC<
     id: group.id as number,
     data: group,
   });
-
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
 
   const handleOpenMenuClick: MouseEventHandler<HTMLElement> = (event) => {
     event.preventDefault();
@@ -91,20 +114,6 @@ export const GroupListItem: FC<
         >
           <MoreVert />
         </IconButton>
-        <Menu
-          id="basic-menu"
-          anchorEl={anchorEl}
-          open={open}
-          onClose={handleMenuClose}
-          MenuListProps={{
-            "aria-labelledby": "basic-button",
-          }}
-          sx={{ padding: 0 }}
-        >
-          <MenuItem dense onClick={handleUngroup}>
-            Ungroup all tabs
-          </MenuItem>
-        </Menu>
         <IconButton
           className="close-button"
           onClick={handleDelete}
@@ -182,6 +191,30 @@ export const GroupListItem: FC<
         group.tabs.map((tab) => (
           <TabListItem group={group} tab={tab} key={tab.id} />
         ))}
+
+      <Menu
+        id="basic-menu"
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleMenuClose}
+        MenuListProps={{
+          "aria-labelledby": "basic-button",
+        }}
+        sx={{ padding: 0 }}
+      >
+        <MenuItem dense onClick={handleUngroup}>
+          Ungroup all tabs
+        </MenuItem>
+        <MenuItem dense onClick={handleOpenGroupDialog}>
+          Change group
+        </MenuItem>
+      </Menu>
+      <GroupForm
+        onClose={handleCloseGroupDialog}
+        open={groupDialogOpen}
+        group={group}
+        handleSave={handleUpdateGroup}
+      />
     </>
   );
 };
