@@ -1,4 +1,11 @@
-import { FC, MouseEventHandler, useCallback, useContext, useMemo } from "react";
+import {
+  FC,
+  MouseEventHandler,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import { SelectionContext } from "./SelectionContext.tsx";
 import { useTabsStructure } from "../useTabsStructure.ts";
 import {
@@ -18,8 +25,17 @@ import {
 } from "@mui/icons-material";
 import { TabItem } from "../types.ts";
 import { promptUndo } from "../../promptUndo.tsx";
+import { GroupForm } from "./GroupForm.tsx";
 
 export const SelectionToolbar: FC = () => {
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+
+  const handleCloseGroupDialog = useCallback(() => {
+    setGroupDialogOpen(false);
+  }, []);
+  const handleOpenGroupDialog = useCallback(() => {
+    setGroupDialogOpen(true);
+  }, []);
   const { selected, dispatch } = useContext(SelectionContext);
   const filter = useCallback(
     ({ id }: { id?: number }) => Boolean(id && selected.includes(id)),
@@ -47,6 +63,21 @@ export const SelectionToolbar: FC = () => {
       /* empty */
     }
   }, [dispatch, selected]);
+  const handleNewGroup = useCallback(
+    async ({ name, color }: { name: string; color: string }) => {
+      try {
+        const newTabId = await chrome.tabs.group({ tabIds: selected });
+        await chrome.tabGroups.update(newTabId, {
+          title: name,
+          color: color as chrome.tabGroups.ColorEnum,
+        });
+        dispatch({ type: "clear" });
+      } catch (e) {
+        /* empty */
+      }
+    },
+    [dispatch, selected],
+  );
 
   return selected.length ? (
     <>
@@ -96,12 +127,20 @@ export const SelectionToolbar: FC = () => {
               <CancelOutlined fontSize="small" />
               Close
             </ButtonBase>
-            <ButtonBase sx={{ fontSize: "0.7rem" }}>
+            <ButtonBase
+              sx={{ fontSize: "0.7rem" }}
+              onClick={handleOpenGroupDialog}
+            >
               <FolderOpen fontSize="small" /> New group
             </ButtonBase>
           </Box>
         </Paper>
       </AppBar>
+      <GroupForm
+        onClose={handleCloseGroupDialog}
+        open={groupDialogOpen}
+        handleSave={handleNewGroup}
+      />
     </>
   ) : null;
 };
