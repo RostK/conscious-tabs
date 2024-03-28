@@ -1,4 +1,4 @@
-import { ComponentProps, FC, useCallback, useState } from "react";
+import { ComponentProps, FC, useCallback, useContext, useState } from "react";
 
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
@@ -14,11 +14,13 @@ import { TabDisplay } from "../../lib/Tabs/Tab/TabDisplay.tsx";
 import { ListItemButton, Paper } from "@mui/material";
 import { WindowListItem } from "../../lib/Tabs";
 import { GroupDisplay } from "../../lib/Tabs/TabsGroup/GroupDisplay.tsx";
-import { DefaultDrag, DZCurrentData } from "../../lib/Tabs/DnD/useDropzone.tsx";
-import { SelectionToolbar } from "../../lib/Tabs/selection";
+import { DefaultDrag, DZCurrentData } from "../../lib/Tabs/DnD";
+import { SelectionContext, SelectionToolbar } from "../../lib/Tabs/selection";
 import { TabAvatarsDisplay } from "../../lib/Tabs/elements/TabAvatarsDisplay.tsx";
 
 export const TabsView: FC = () => {
+  const { dispatch: dispatchSelected } = useContext(SelectionContext);
+
   const [dragging, setDragging] = useState<DefaultDrag | null>(null);
   const tabsStructure = useTabsStructure();
   const windows = useWindowsStructure();
@@ -45,9 +47,12 @@ export const TabsView: FC = () => {
       if (overData?.dropHandler && dragging) {
         await overData.dropHandler(dragging, overData);
       }
+      if (Array.isArray(dragging)) {
+        dispatchSelected({ type: "clear" });
+      }
       setDragging(null);
     },
-    [dragging],
+    [dispatchSelected, dragging],
   );
 
   return (
