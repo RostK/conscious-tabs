@@ -3,7 +3,7 @@ import { styled } from "@mui/material";
 import { ComponentProps, FC, PropsWithChildren, useMemo } from "react";
 import { GroupItem, TabItem } from "../types.ts";
 
-export type DefaultDrag = TabItem | GroupItem;
+export type DefaultDrag = TabItem[] | TabItem | GroupItem;
 
 export type DZonDrop<DZData, DropData = DefaultDrag> = (
   drop: DropData,

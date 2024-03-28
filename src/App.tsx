@@ -13,7 +13,7 @@ import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
 import { TabsView } from "./views/TabsView";
 import { SearchView } from "./views/SearchView";
 import { SnackbarProvider } from "notistack";
-import { SelectionProvider, SelectionToolbar } from "./lib/Tabs/selection";
+import { SelectionProvider } from "./lib/Tabs/selection";
 
 const Search = styled("div")(({ theme }) => ({
   position: "relative",
@@ -93,8 +93,6 @@ function App() {
         </AppBar>
         {!search && <TabsView />}
         {search && <SearchView search={search} />}
-
-        <SelectionToolbar />
       </SelectionProvider>
     </SnackbarProvider>
   );

@@ -10,22 +10,23 @@ import { SelectionContext } from "./SelectionContext.tsx";
 import { useTabsStructure } from "../useTabsStructure.ts";
 import {
   AppBar,
-  Avatar,
-  AvatarGroup,
   Box,
   ButtonBase,
+  IconButton,
   Paper,
   Toolbar,
 } from "@mui/material";
 import {
-  ArticleOutlined,
   CancelOutlined,
   DeselectOutlined,
+  DragIndicator,
   FolderOpen,
 } from "@mui/icons-material";
 import { TabItem } from "../types.ts";
 import { promptUndo } from "../../promptUndo.tsx";
 import { GroupForm } from "./GroupForm.tsx";
+import { useDraggable } from "@dnd-kit/core";
+import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
 
 export const SelectionToolbar: FC = () => {
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
@@ -44,6 +45,16 @@ export const SelectionToolbar: FC = () => {
   const tabsStructure = useTabsStructure({
     filter,
   });
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setNodeRefDraggable,
+  } = useDraggable({
+    id: "selection",
+    data: tabsStructure,
+  });
+
   const flatTabs = useMemo(() => {
     return tabsStructure.reduce((acc, item) => {
       return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
@@ -64,7 +75,7 @@ export const SelectionToolbar: FC = () => {
     }
   }, [dispatch, selected]);
   const handleNewGroup = useCallback(
-    async ({ title, color }: { title: string; color: string }) => {
+    async ({ title, color }: { title?: string; color: string }) => {
       try {
         const newTabId = await chrome.tabs.group({ tabIds: selected });
         await chrome.tabGroups.update(newTabId, {
@@ -81,34 +92,23 @@ export const SelectionToolbar: FC = () => {
 
   return selected.length ? (
     <>
-      <Toolbar sx={{ visibility: "hidden" }} />
+      <Toolbar sx={{ visibility: "hidden", height: "75px" }} />
       <AppBar
         position="fixed"
         color="transparent"
         sx={{ top: "auto", bottom: 0 }}
       >
         <Paper sx={{ width: "100%" }}>
-          <Box sx={{ display: "flex", p: "0.5rem", justifyContent: "center" }}>
-            <AvatarGroup
-              total={flatTabs.length}
-              max={10}
-              slotProps={{
-                additionalAvatar: {
-                  sx: { fontSize: "0.7rem", width: 24, height: 24 },
-                },
-              }}
-              renderSurplus={(surplus) => <span>{surplus}</span>}
-            >
-              {flatTabs.slice(0, 10).map((tab) => (
-                <Avatar
-                  sx={{ background: "lightgray", width: 24, height: 24 }}
-                  key={tab.id}
-                  src={tab.favIconUrl}
-                >
-                  <ArticleOutlined />
-                </Avatar>
-              ))}
-            </AvatarGroup>
+          <Box
+            sx={{ display: "flex", p: "0.5rem", justifyContent: "center" }}
+            ref={setNodeRefDraggable}
+            {...listeners}
+            {...attributes}
+          >
+            <IconButton size="small" sx={{ cursor: "grab" }}>
+              <DragIndicator />
+            </IconButton>
+            <TabAvatarsDisplay tabsStructure={flatTabs} />
           </Box>
           <Box
             sx={{

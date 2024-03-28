@@ -1,6 +1,5 @@
 import { ComponentProps, FC, useCallback, useState } from "react";
 
-import { GroupItem, TabItem } from "../../lib/Tabs";
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 import {
@@ -12,13 +11,15 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { TabDisplay } from "../../lib/Tabs/Tab/TabDisplay.tsx";
-import { Paper } from "@mui/material";
+import { ListItemButton, Paper } from "@mui/material";
 import { WindowListItem } from "../../lib/Tabs";
 import { GroupDisplay } from "../../lib/Tabs/TabsGroup/GroupDisplay.tsx";
-import { DZCurrentData } from "../../lib/Tabs/DnD/useDropzone.tsx";
+import { DefaultDrag, DZCurrentData } from "../../lib/Tabs/DnD/useDropzone.tsx";
+import { SelectionToolbar } from "../../lib/Tabs/selection";
+import { TabAvatarsDisplay } from "../../lib/Tabs/elements/TabAvatarsDisplay.tsx";
 
 export const TabsView: FC = () => {
-  const [dragging, setDragging] = useState<TabItem | GroupItem | null>(null);
+  const [dragging, setDragging] = useState<DefaultDrag | null>(null);
   const tabsStructure = useTabsStructure();
   const windows = useWindowsStructure();
 
@@ -34,7 +35,7 @@ export const TabsView: FC = () => {
   const handleDragStart = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragStart"]
   >(({ active }) => {
-    setDragging(active.data.current as unknown as TabItem | GroupItem);
+    setDragging(active.data.current as unknown as DefaultDrag);
   }, []);
 
   const handleDragStop = useCallback<
@@ -73,15 +74,21 @@ export const TabsView: FC = () => {
       >
         {dragging ? (
           <Paper>
-            {dragging.type === "tab" && (
+            {Array.isArray(dragging) && (
+              <ListItemButton dense sx={{ minHeight: 54.5 }}>
+                <TabAvatarsDisplay tabsStructure={dragging} />
+              </ListItemButton>
+            )}
+            {!Array.isArray(dragging) && dragging.type === "tab" && (
               <TabDisplay key={`drag-${dragging.id}`} tab={dragging} />
             )}
-            {dragging.type === "group" && (
+            {!Array.isArray(dragging) && dragging.type === "group" && (
               <GroupDisplay key={`drag-${dragging.id}`} group={dragging} />
             )}
           </Paper>
         ) : null}
       </DragOverlay>
+      <SelectionToolbar />
     </DndContext>
   );
 };

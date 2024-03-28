@@ -4,16 +4,15 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
-  Avatar,
-  AvatarGroup,
   Button,
   IconButton,
 } from "@mui/material";
-import { ArticleOutlined, ExpandMore } from "@mui/icons-material";
+import { ExpandMore } from "@mui/icons-material";
 import { Tabs } from "../Tabs.tsx";
 import { useDropzone } from "../DnD/useDropzone.tsx";
 import { DropPlaceholder } from "../DnD";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
+import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
 export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;
@@ -62,26 +61,7 @@ export const WindowListItem: FC<{
           id={`window-${window.id}`}
         >
           <Button onClick={handleOpen}>
-            <AvatarGroup
-              total={flatTabs.length}
-              max={10}
-              slotProps={{
-                additionalAvatar: {
-                  sx: { fontSize: "0.7rem", width: 24, height: 24 },
-                },
-              }}
-              renderSurplus={(surplus) => <span>{surplus}</span>}
-            >
-              {flatTabs.slice(0, 10).map((tab) => (
-                <Avatar
-                  sx={{ background: "lightgray", width: 24, height: 24 }}
-                  key={tab.id}
-                  src={tab.favIconUrl}
-                >
-                  <ArticleOutlined />
-                </Avatar>
-              ))}
-            </AvatarGroup>
+            <TabAvatarsDisplay tabsStructure={flatTabs} />
           </Button>
         </AccordionSummary>
         {isOver && (
