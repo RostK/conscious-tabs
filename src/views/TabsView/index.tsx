@@ -22,7 +22,6 @@ export const TabsView: FC = () => {
   const [dragging, setDragging] = useState<DefaultDrag | null>(null);
   const tabsStructure = useTabsStructure();
   const windows = useWindowsStructure();
-
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 10 pixels before activating
     activationConstraint: {

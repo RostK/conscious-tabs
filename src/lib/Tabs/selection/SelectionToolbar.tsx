@@ -46,20 +46,20 @@ export const SelectionToolbar: FC = () => {
     filter,
   });
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setNodeRefDraggable,
-  } = useDraggable({
-    id: "selection",
-    data: tabsStructure,
-  });
-
   const flatTabs = useMemo(() => {
     return tabsStructure.reduce((acc, item) => {
       return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
     }, [] as TabItem[]);
   }, [tabsStructure]);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setNodeRefDraggable,
+  } = useDraggable({
+    id: `sel${selected.join("|")}`,
+    data: flatTabs,
+  });
 
   const handleClear = useCallback(() => {
     dispatch({ type: "clear" });
