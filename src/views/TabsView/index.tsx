@@ -46,9 +46,9 @@ export const TabsView: FC = () => {
       const overData = over?.data.current as DZCurrentData | undefined;
       if (overData?.dropHandler && dragging) {
         await overData.dropHandler(dragging, overData);
-      }
-      if (Array.isArray(dragging)) {
-        dispatchSelected({ type: "clear" });
+        if (Array.isArray(dragging)) {
+          dispatchSelected({ type: "clear" });
+        }
       }
       setDragging(null);
     },

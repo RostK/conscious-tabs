@@ -9,8 +9,7 @@ import {
 } from "@mui/material";
 import { ExpandMore } from "@mui/icons-material";
 import { Tabs } from "../Tabs.tsx";
-import { useDropzone } from "../DnD/useDropzone.tsx";
-import { DropPlaceholder } from "../DnD";
+import { useDropzone, DropPlaceholder } from "../DnD";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
 export const WindowListItem: FC<{

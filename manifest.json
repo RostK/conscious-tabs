@@ -2,12 +2,7 @@
   "manifest_version": 3,
   "name": "Conscious Tabs",
   "version": "0.0.1",
-  "permissions": [
-    "sidePanel",
-    "tabs",
-    "tabGroups",
-    "sessions"
-  ],
+  "permissions": ["sidePanel", "tabs", "tabGroups", "sessions"],
   "side_panel": {
     "default_path": "index.html"
   },

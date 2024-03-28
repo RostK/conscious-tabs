@@ -34,7 +34,7 @@ export const GroupForm: FC<{
   }>();
   useEffect(() => {
     reset(
-      Boolean(group)
+      group
         ? group
         : {
             title: "New group",
@@ -44,7 +44,7 @@ export const GroupForm: FC<{
               ],
           },
     );
-  }, [open, reset]);
+  }, [group, open, reset]);
   const handleFormSubmit = useCallback<
     (data: { title?: string; color: string }) => Promise<void>
   >(

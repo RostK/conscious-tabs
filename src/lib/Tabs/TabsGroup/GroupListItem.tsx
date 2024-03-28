@@ -124,7 +124,7 @@ export const GroupListItem: FC<
         </IconButton>
       </>
     );
-  }, [anchorEl, handleDelete, handleUngroup, open]);
+  }, [handleDelete]);
   const pre = useMemo(() => {
     return (
       expanded === undefined && (
