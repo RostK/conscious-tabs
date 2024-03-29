@@ -104,7 +104,9 @@ export const SelectionToolbar: FC = () => {
           sx={{ width: "100%", bgcolor: "background.paper" }}
           container
         >
-          <Grid xs={0} sm={3} md={4} sx={[{ width: "100%" }]} />
+          <Grid xs={0} sm={3} md={4} sx={[{ width: "100%" }]}>
+            <></>
+          </Grid>
           <Grid xs={12} sm={6} md={4} sx={[{ width: "100%" }]}>
             <Box
               sx={{
@@ -147,7 +149,9 @@ export const SelectionToolbar: FC = () => {
               </ButtonBase>
             </Box>
           </Grid>
-          <Grid xs={0} sm={3} md={4} sx={[{ width: "100%" }]} />
+          <Grid xs={0} sm={3} md={4} sx={[{ width: "100%" }]}>
+            <></>
+          </Grid>
         </Grid>
       </AppBar>
       <GroupForm

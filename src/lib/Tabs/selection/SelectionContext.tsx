@@ -4,6 +4,7 @@ import {
   FC,
   PropsWithChildren,
   ReducerAction,
+  useEffect,
   useMemo,
   useReducer,
 } from "react";
@@ -54,6 +55,17 @@ export const SelectionProvider: FC<PropsWithChildren> = ({ children }) => {
     }),
     [selected],
   );
+  useEffect(() => {
+    const handleRemove = (id: number | undefined) => {
+      if (id) {
+        dispatch({ type: "deselect", data: [id] });
+      }
+    };
+    chrome.tabs.onRemoved.addListener(handleRemove);
+    return () => {
+      chrome.tabs.onRemoved.removeListener(handleRemove);
+    };
+  }, []);
   return (
     <SelectionContext.Provider value={selectionControls}>
       {children}
