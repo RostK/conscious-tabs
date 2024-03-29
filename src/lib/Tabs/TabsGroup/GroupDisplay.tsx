@@ -4,7 +4,13 @@ import {
   ListItemSecondaryAction,
   ListItemText,
 } from "@mui/material";
-import { ComponentProps, FC, ReactNode, useCallback } from "react";
+import {
+  ComponentProps,
+  FC,
+  MouseEventHandler,
+  ReactNode,
+  useCallback,
+} from "react";
 
 import { GroupItem } from "../types.ts";
 
@@ -13,10 +19,17 @@ export const GroupDisplay: FC<{
   pre?: ReactNode;
   itemAction?: ReactNode;
   sx?: ComponentProps<typeof ListItemButton>["sx"];
-}> = ({ group, itemAction, pre, sx }) => {
-  const handleClick = useCallback(async () => {
-    await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
-  }, [group]);
+  onCtrlClick?: MouseEventHandler;
+}> = ({ group, onCtrlClick, itemAction, pre, sx }) => {
+  const handleClick = useCallback<MouseEventHandler>(
+    async (e) => {
+      if (e.ctrlKey) {
+        onCtrlClick && onCtrlClick(e);
+      }
+      await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
+    },
+    [group.collapsed, group.id, onCtrlClick],
+  );
 
   return (
     <ListItemButton

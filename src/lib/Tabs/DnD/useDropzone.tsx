@@ -17,6 +17,7 @@ export type DZCurrentData<DZData = unknown, DropData = DefaultDrag> = {
   dropHandler?: DZonDrop<DZData, DropData>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 const DropzoneEl = styled("div")``;
 
 export const useDropzone: <DZData = unknown, DropData = DefaultDrag>({

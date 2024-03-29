@@ -10,6 +10,9 @@ import {
 
 export type SelectionData = number[];
 export type SelectionAction =
+  | { type: "set"; data: number[] }
+  | { type: "deselect"; data: number[] }
+  | { type: "select"; data: number[] }
   | { type: "switch"; data: number }
   | { type: "clear" };
 
@@ -17,15 +20,23 @@ const reducer = (
   state: SelectionData,
   action: SelectionAction,
 ): SelectionData => {
-  if (action.type === "clear") {
-    return [];
-  } else {
-    const index = state.indexOf(action.data);
-    if (index < 0) {
-      return [...state, action.data];
-    } else {
-      return state.toSpliced(index, 1);
-    }
+  switch (action.type) {
+    case "clear":
+      return [];
+    case "switch":
+      // eslint-disable-next-line no-case-declarations
+      const index = state.indexOf(action.data);
+      if (index < 0) {
+        return [...state, action.data];
+      } else {
+        return state.toSpliced(index, 1);
+      }
+    case "select":
+      return [...state, ...action.data];
+    case "deselect":
+      return [...state.filter((index) => !action.data.includes(index))];
+    case "set":
+      return [...action.data];
   }
 };
 

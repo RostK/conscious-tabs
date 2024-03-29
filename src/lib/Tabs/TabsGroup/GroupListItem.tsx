@@ -1,19 +1,28 @@
 import { useDraggable } from "@dnd-kit/core";
-import { Close, ExpandLess, ExpandMore, MoreVert } from "@mui/icons-material";
+import {
+  CheckBoxOutlineBlankOutlined,
+  CheckBoxOutlined,
+  Close,
+  ExpandLess,
+  ExpandMore,
+  MoreVert,
+} from "@mui/icons-material";
 import { IconButton, Menu, MenuItem } from "@mui/material";
 import {
   ComponentProps,
   FC,
   MouseEventHandler,
   useCallback,
+  useContext,
   useMemo,
   useState,
 } from "react";
 
 import { promptUndo } from "../../promptUndo.tsx";
 import { DropPlaceholder } from "../DnD";
-import { useDropzone } from "../DnD/useDropzone.tsx";
+import { useDropzone } from "../DnD";
 import { TabGrid } from "../elements/TabGrid.tsx";
+import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
 import { TabListItem } from "../Tab/TabListItem.tsx";
 import { GroupDisplay } from "./GroupDisplay.tsx";
@@ -23,6 +32,7 @@ import { handleInnerDrop } from "./handleInnerDrop.ts";
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
 > = ({ group, expanded }) => {
+  const { selected, dispatch } = useContext(SelectionContext);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -126,15 +136,53 @@ export const GroupListItem: FC<
       </>
     );
   }, [handleDelete]);
+
+  const isSelected = useMemo(
+    () => !group.tabs.find(({ id }) => id && !selected.includes(id)),
+    [group.tabs, selected],
+  );
+  const handleSelectButton = useCallback<MouseEventHandler>(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isSelected
+        ? dispatch({
+            type: "deselect",
+            data: group.tabs.map((tab) => tab.id as number),
+          })
+        : dispatch({
+            type: "select",
+            data: group.tabs.map((tab) => tab.id as number),
+          });
+    },
+    [dispatch, group.tabs, isSelected],
+  );
+
   const pre = useMemo(() => {
     return (
-      expanded === undefined && (
-        <IconButton edge="start">
-          {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
+      <>
+        {expanded === undefined && (
+          <IconButton>
+            {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
+          </IconButton>
+        )}
+        <IconButton
+          onClick={handleSelectButton}
+          className={!isSelected ? "itemAction" : undefined}
+          sx={{
+            position: "absolute",
+            left: -8,
+            backgroundColor: "white",
+            ["&:hover"]: {
+              backgroundColor: "rgb(199,199,199)",
+            },
+          }}
+        >
+          {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
         </IconButton>
-      )
+      </>
     );
-  }, [expanded, group.collapsed]);
+  }, [expanded, group.collapsed, handleSelectButton, isSelected]);
   return (
     <>
       {outerDZ.isOver && !outerDZ.isSelf ? <DropPlaceholder /> : null}
@@ -161,6 +209,7 @@ export const GroupListItem: FC<
             <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
               <OuterDropzone>
                 <GroupDisplay
+                  onCtrlClick={handleSelectButton}
                   group={group}
                   sx={[
                     open && {
