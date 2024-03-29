@@ -1,18 +1,11 @@
-import { ExpandMore } from "@mui/icons-material";
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Button,
-  IconButton,
-} from "@mui/material";
-import { FC, MouseEventHandler, useCallback, useMemo } from "react";
+import { FC, MouseEventHandler, useCallback, useMemo, useState } from "react";
 
-import { DropPlaceholder,useDropzone } from "../DnD";
-import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
+import { DropPlaceholder, useDropzone } from "../DnD";
 import { Tabs } from "../Tabs.tsx";
 import { TabItem, TabsStructure } from "../types.ts";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
+import { WindowDisplay } from "./WindowDisplay.tsx";
+
 export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;
@@ -24,7 +17,11 @@ export const WindowListItem: FC<{
       return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
     }, [] as TabItem[]);
   }, [tabsStructure]);
-  const handleOpen = useCallback<MouseEventHandler<HTMLButtonElement>>(
+  const [isOpen, setIsOpen] = useState(window.focused);
+  const handleOpen = useCallback(() => {
+    setIsOpen((state) => !state);
+  }, []);
+  const handleActivate = useCallback<MouseEventHandler<HTMLButtonElement>>(
     async (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -42,37 +39,22 @@ export const WindowListItem: FC<{
     onDrop: handleInnerDrop,
   });
 
-  return single ? (
-    <Tabs focus={focus} tabsStructure={tabsStructure} window={window} />
-  ) : (
-    <Accordion
-      square
-      disableGutters
-      key={window.id}
-      defaultExpanded={window.focused}
-    >
-      <Dropzone>
-        <AccordionSummary
-          expandIcon={
-            <IconButton>
-              <ExpandMore />
-            </IconButton>
-          }
-          id={`window-${window.id}`}
-        >
-          <Button onClick={handleOpen}>
-            <TabAvatarsDisplay tabsStructure={flatTabs} />
-          </Button>
-        </AccordionSummary>
-        {isOver && (
-          <AccordionDetails style={{ padding: 0 }}>
-            <DropPlaceholder />
-          </AccordionDetails>
-        )}
-      </Dropzone>
-      <AccordionDetails style={{ padding: 0 }}>
-        <Tabs tabsStructure={tabsStructure} window={window} />
-      </AccordionDetails>
-    </Accordion>
+  return (
+    <>
+      {!single && (
+        <Dropzone>
+          <WindowDisplay
+            tabs={flatTabs}
+            isOpen={isOpen}
+            handleOpenClick={handleOpen}
+            handleActivateClick={handleActivate}
+          />
+          {isOver && <DropPlaceholder />}
+        </Dropzone>
+      )}
+      {(single || isOpen) && (
+        <Tabs focus={focus} tabsStructure={tabsStructure} window={window} />
+      )}
+    </>
   );
 };
