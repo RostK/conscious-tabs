@@ -14,7 +14,7 @@ import { FC, MouseEventHandler, useCallback } from "react";
 
 import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
-import { promptUndo } from "../undo/promptUndo.tsx";
+import { promptUndo } from "../undo";
 
 export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
   tab,

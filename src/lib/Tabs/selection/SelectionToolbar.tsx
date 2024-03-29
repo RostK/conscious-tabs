@@ -24,7 +24,7 @@ import {
 
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
 import { TabItem } from "../types.ts";
-import { promptUndo } from "../undo/promptUndo.tsx";
+import { promptUndo } from "../undo";
 import { useTabsStructure } from "../useTabsStructure.ts";
 import { GroupForm } from "./GroupForm.tsx";
 import { SelectionContext } from "./SelectionContext.tsx";

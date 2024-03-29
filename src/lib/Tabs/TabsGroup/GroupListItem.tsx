@@ -23,7 +23,7 @@ import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
 import { TabListItem } from "../Tab/TabListItem.tsx";
-import { promptUndo } from "../undo/promptUndo.tsx";
+import { promptUndo } from "../undo";
 import { GroupDisplay } from "./GroupDisplay.tsx";
 import { handleDrop } from "./handleDrop.ts";
 import { handleInnerDrop } from "./handleInnerDrop.ts";

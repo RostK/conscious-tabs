@@ -12,7 +12,7 @@ import {
 import { useState } from "react";
 
 import { SelectionProvider } from "./lib/Tabs/selection";
-import { PromptProvider } from "./lib/Tabs/undo/PromptProvider.tsx";
+import { PromptProvider } from "./lib/Tabs/undo";
 import logo from "./logo.svg";
 import { SearchView } from "./views/SearchView";
 import { TabsView } from "./views/TabsView";
