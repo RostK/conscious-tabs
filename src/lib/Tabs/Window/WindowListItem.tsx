@@ -1,5 +1,8 @@
+import { Close } from "@mui/icons-material";
+import { IconButton } from "@mui/material";
 import { FC, MouseEventHandler, useCallback, useMemo, useState } from "react";
 
+import { promptUndo } from "../../promptUndo.tsx";
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { Tabs } from "../Tabs.tsx";
 import { TabItem, TabsStructure } from "../types.ts";
@@ -32,6 +35,30 @@ export const WindowListItem: FC<{
     },
     [window.id],
   );
+
+  const handleCloseWindow = useCallback<MouseEventHandler>(async () => {
+    try {
+      await chrome.windows.remove(window.id as number);
+      promptUndo("Window is closed");
+    } catch (e) {
+      /* empty */
+    }
+  }, [window]);
+  const itemAction = useMemo(() => {
+    return (
+      <>
+        <IconButton
+          className="close-button"
+          onClick={handleCloseWindow}
+          edge="end"
+          aria-label="delete"
+        >
+          <Close />
+        </IconButton>
+      </>
+    );
+  }, [handleCloseWindow]);
+
   const { isOver, Dropzone } = useDropzone({
     id: window.id as number,
     type: "in-window",
@@ -48,6 +75,7 @@ export const WindowListItem: FC<{
             isOpen={isOpen}
             handleOpenClick={handleOpen}
             handleActivateClick={handleActivate}
+            itemAction={itemAction}
           />
           {isOver && <DropPlaceholder />}
         </Dropzone>
