@@ -9,10 +9,10 @@ import {
   useState,
 } from "react";
 
-import { promptUndo } from "../../promptUndo.tsx";
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { Tabs } from "../Tabs.tsx";
 import { TabItem, TabsStructure } from "../types.ts";
+import { promptUndo } from "../undo/promptUndo.tsx";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
 import { WindowDisplay } from "./WindowDisplay.tsx";
 

@@ -12,9 +12,9 @@ import {
 } from "@mui/material";
 import { FC, MouseEventHandler, useCallback } from "react";
 
-import { promptUndo } from "../../promptUndo.tsx";
 import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
+import { promptUndo } from "../undo/promptUndo.tsx";
 
 export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
   tab,

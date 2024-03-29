@@ -9,10 +9,10 @@ import {
   styled,
   Toolbar,
 } from "@mui/material";
-import { SnackbarProvider } from "notistack";
 import { useState } from "react";
 
 import { SelectionProvider } from "./lib/Tabs/selection";
+import { PromptProvider } from "./lib/Tabs/undo/PromptProvider.tsx";
 import logo from "./logo.svg";
 import { SearchView } from "./views/SearchView";
 import { TabsView } from "./views/TabsView";
@@ -62,7 +62,7 @@ function App() {
   const [search, setSearch] = useState("");
 
   return (
-    <SnackbarProvider autoHideDuration={3000} maxSnack={1}>
+    <PromptProvider>
       <SelectionProvider>
         <AppBar position="sticky">
           <Toolbar>
@@ -96,7 +96,7 @@ function App() {
         {!search && <TabsView />}
         {search && <SearchView search={search} />}
       </SelectionProvider>
-    </SnackbarProvider>
+    </PromptProvider>
   );
 }
 
