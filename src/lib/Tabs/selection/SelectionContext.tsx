@@ -10,13 +10,14 @@ import {
 } from "react";
 
 export type SelectionData = number[];
-export type SelectionAction =
+export type SelectionAction = { noBroadcast?: boolean } & (
   | { type: "set"; data: number[] }
   | { type: "sync"; data: number[] }
   | { type: "deselect"; data: number[] }
   | { type: "select"; data: number[] }
   | { type: "switch"; data: number }
-  | { type: "clear" };
+  | { type: "clear" }
+);
 
 const broadcast = (payload: number[]): void => {
   void chrome.runtime.sendMessage({ type: "selection", payload });
@@ -52,7 +53,7 @@ const reducer = (
   action: SelectionAction,
 ): SelectionData => {
   const newState = updateSelected(state, action);
-  if (action.type !== "sync") {
+  if (action.type !== "sync" && !action.noBroadcast) {
     broadcast(newState);
   }
   return newState;
@@ -75,7 +76,7 @@ export const SelectionProvider: FC<PropsWithChildren> = ({ children }) => {
   useEffect(() => {
     const handleRemove = (id: number | undefined) => {
       if (id) {
-        dispatch({ type: "deselect", data: [id] });
+        dispatch({ type: "deselect", data: [id], noBroadcast: true });
       }
     };
     const handleMessage = ({
