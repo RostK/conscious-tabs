@@ -1,15 +1,21 @@
-import { Close } from "@mui/icons-material";
+import {
+  CheckBoxOutlineBlankOutlined,
+  CheckBoxOutlined,
+  Close,
+} from "@mui/icons-material";
 import { IconButton } from "@mui/material";
 import {
   FC,
   MouseEventHandler,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
 
 import { DropPlaceholder, useDropzone } from "../DnD";
+import { SelectionContext } from "../selection";
 import { Tabs } from "../Tabs.tsx";
 import { TabItem, TabsStructure } from "../types.ts";
 import { promptUndo } from "../undo";
@@ -34,6 +40,8 @@ export const WindowListItem: FC<{
   useEffect(() => {
     setIsOpen(window.focused);
   }, [window.focused]);
+
+  const { selected, dispatch } = useContext(SelectionContext);
 
   const handleActivate = useCallback<MouseEventHandler<HTMLButtonElement>>(
     async (e) => {
@@ -68,6 +76,46 @@ export const WindowListItem: FC<{
     );
   }, [handleCloseWindow]);
 
+  const isSelected = useMemo(
+    () => !flatTabs.find(({ id }) => id && !selected.includes(id)),
+    [flatTabs, selected],
+  );
+  const handleSelectButton = useCallback<MouseEventHandler>(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isSelected
+        ? dispatch({
+            type: "deselect",
+            data: flatTabs.map((tab) => tab.id as number),
+          })
+        : dispatch({
+            type: "select",
+            data: flatTabs.map((tab) => tab.id as number),
+          });
+    },
+    [dispatch, flatTabs, isSelected],
+  );
+
+  const pre = useMemo(() => {
+    return (
+      <IconButton
+        onClick={handleSelectButton}
+        className={!isSelected ? "itemAction" : undefined}
+        sx={{
+          position: "absolute",
+          left: -8,
+          backgroundColor: "white",
+          ["&:hover"]: {
+            backgroundColor: "rgb(199,199,199)",
+          },
+        }}
+      >
+        {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
+      </IconButton>
+    );
+  }, [handleSelectButton, isSelected]);
+
   const { isOver, Dropzone } = useDropzone({
     id: window.id as number,
     type: "in-window",
@@ -80,6 +128,7 @@ export const WindowListItem: FC<{
       {!single && (
         <Dropzone>
           <WindowDisplay
+            pre={pre}
             tabs={flatTabs}
             isOpen={isOpen}
             handleOpenClick={handleOpen}

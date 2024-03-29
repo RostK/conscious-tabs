@@ -12,6 +12,7 @@ import { TabItem } from "../types.ts";
 
 export const WindowDisplay: FC<{
   tabs: TabItem[];
+  pre?: ReactNode;
   itemAction?: ReactNode;
   isOpen?: boolean;
   handleOpenClick: () => void;
@@ -22,6 +23,7 @@ export const WindowDisplay: FC<{
   tabs,
   isOpen,
   handleOpenClick,
+  pre,
   itemAction,
   sx,
 }) => {
@@ -31,6 +33,7 @@ export const WindowDisplay: FC<{
       sx={[
         {
           minHeight: 54.5,
+          pl: "1.8rem",
         },
         {
           [`&:hover .itemAction`]: {
@@ -50,6 +53,7 @@ export const WindowDisplay: FC<{
       <IconButton edge="start">
         {isOpen ? <ExpandLess /> : <ExpandMore />}
       </IconButton>
+      {pre}
       <ListItemSecondaryAction>
         <div className="itemAction">{itemAction}</div>
       </ListItemSecondaryAction>
