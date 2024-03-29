@@ -46,16 +46,14 @@ export const WindowListItem: FC<{
   }, [window]);
   const itemAction = useMemo(() => {
     return (
-      <>
-        <IconButton
-          className="close-button"
-          onClick={handleCloseWindow}
-          edge="end"
-          aria-label="delete"
-        >
-          <Close />
-        </IconButton>
-      </>
+      <IconButton
+        className="close-button"
+        onClick={handleCloseWindow}
+        edge="end"
+        aria-label="delete"
+      >
+        <Close />
+      </IconButton>
     );
   }, [handleCloseWindow]);
 

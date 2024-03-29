@@ -1,14 +1,14 @@
+import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import {
   Button,
   IconButton,
   ListItemButton,
   ListItemSecondaryAction,
 } from "@mui/material";
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import { ComponentProps, FC, MouseEventHandler, ReactNode } from "react";
 
-import { TabItem } from "../types.ts";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
+import { TabItem } from "../types.ts";
 
 export const WindowDisplay: FC<{
   tabs: TabItem[];
