@@ -1,6 +1,13 @@
 import { Close } from "@mui/icons-material";
 import { IconButton } from "@mui/material";
-import { FC, MouseEventHandler, useCallback, useMemo, useState } from "react";
+import {
+  FC,
+  MouseEventHandler,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { promptUndo } from "../../promptUndo.tsx";
 import { DropPlaceholder, useDropzone } from "../DnD";
@@ -24,6 +31,10 @@ export const WindowListItem: FC<{
   const handleOpen = useCallback(() => {
     setIsOpen((state) => !state);
   }, []);
+  useEffect(() => {
+    setIsOpen(window.focused);
+  }, [window.focused]);
+
   const handleActivate = useCallback<MouseEventHandler<HTMLButtonElement>>(
     async (e) => {
       e.preventDefault();
