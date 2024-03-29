@@ -93,7 +93,7 @@ export const SelectionProvider: FC<PropsWithChildren> = ({ children }) => {
     chrome.tabs.onRemoved.addListener(handleRemove);
     return () => {
       chrome.tabs.onRemoved.removeListener(handleRemove);
-      chrome.runtime.onMessage.addListener(handleMessage);
+      chrome.runtime.onMessage.removeListener(handleMessage);
     };
   }, []);
 

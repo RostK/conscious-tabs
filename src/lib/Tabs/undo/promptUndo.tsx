@@ -1,8 +1,10 @@
 import { Button } from "@mui/material";
 import { closeSnackbar, enqueueSnackbar } from "notistack";
-import { ReactNode } from "react";
 
-export const promptUndo = (message: ReactNode): void => {
+const broadcast = (message: string): void => {
+  void chrome.runtime.sendMessage({ type: "undo-prompt", payload: message });
+};
+export const promptUndo = (message: string, noBroadcast?: boolean): void => {
   enqueueSnackbar(message, {
     action: (snackbarId) => (
       <Button
@@ -53,4 +55,7 @@ export const promptUndo = (message: ReactNode): void => {
       </Button>
     ),
   });
+  if (!noBroadcast) {
+    broadcast(message);
+  }
 };
