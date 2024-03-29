@@ -1,5 +1,4 @@
-import { DZonDrop } from "../DnD";
-import { moveTabsOnTab } from "../DnD";
+import { DZonDrop , moveTabsOnTab } from "../DnD";
 import { TabItem } from "../types.ts";
 
 export const handleDrop: DZonDrop<TabItem> = async (drop, dropzone) => {

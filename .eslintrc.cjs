@@ -12,13 +12,16 @@ module.exports = {
     "sourceType": "module",
     "ecmaVersion": "latest"
   },
-  plugins: ["react-refresh", "simple-import-sort"],
+  plugins: ["react-refresh", "simple-import-sort", "import"],
   rules: {
     "react-refresh/only-export-components": [
       "warn",
       { allowConstantExport: true },
     ],
     "simple-import-sort/imports": "error",
-    "simple-import-sort/exports": "error"
+    "simple-import-sort/exports": "error",
+    "import/first": "error",
+    "import/newline-after-import": "error",
+    "import/no-duplicates": "error"
   },
 };

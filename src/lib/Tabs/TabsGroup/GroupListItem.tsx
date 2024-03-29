@@ -19,8 +19,7 @@ import {
 } from "react";
 
 import { promptUndo } from "../../promptUndo.tsx";
-import { DropPlaceholder } from "../DnD";
-import { useDropzone } from "../DnD";
+import { DropPlaceholder , useDropzone } from "../DnD";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
