@@ -12,12 +12,17 @@ import {
 export type SelectionData = number[];
 export type SelectionAction =
   | { type: "set"; data: number[] }
+  | { type: "sync"; data: number[] }
   | { type: "deselect"; data: number[] }
   | { type: "select"; data: number[] }
   | { type: "switch"; data: number }
   | { type: "clear" };
 
-const reducer = (
+const broadcast = (payload: number[]): void => {
+  void chrome.runtime.sendMessage({ type: "selection", payload });
+};
+
+const updateSelected = (
   state: SelectionData,
   action: SelectionAction,
 ): SelectionData => {
@@ -37,8 +42,20 @@ const reducer = (
     case "deselect":
       return [...state.filter((index) => !action.data.includes(index))];
     case "set":
+    case "sync":
       return [...action.data];
   }
+};
+
+const reducer = (
+  state: SelectionData,
+  action: SelectionAction,
+): SelectionData => {
+  const newState = updateSelected(state, action);
+  if (action.type !== "sync") {
+    broadcast(newState);
+  }
+  return newState;
 };
 
 export const SelectionContext = createContext<{
@@ -61,11 +78,25 @@ export const SelectionProvider: FC<PropsWithChildren> = ({ children }) => {
         dispatch({ type: "deselect", data: [id] });
       }
     };
+    const handleMessage = ({
+      type,
+      payload,
+    }: {
+      type: string;
+      payload: number[];
+    }) => {
+      if (type === "selection") {
+        dispatch({ type: "sync", data: payload });
+      }
+    };
+    chrome.runtime.onMessage.addListener(handleMessage);
     chrome.tabs.onRemoved.addListener(handleRemove);
     return () => {
       chrome.tabs.onRemoved.removeListener(handleRemove);
+      chrome.runtime.onMessage.addListener(handleMessage);
     };
   }, []);
+
   return (
     <SelectionContext.Provider value={selectionControls}>
       {children}
