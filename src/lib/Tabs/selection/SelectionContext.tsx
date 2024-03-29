@@ -33,12 +33,12 @@ const updateSelected = (
       // eslint-disable-next-line no-case-declarations
       const index = state.indexOf(action.data);
       if (index < 0) {
-        return [...state, action.data];
+        return [action.data, ...state];
       } else {
         return state.toSpliced(index, 1);
       }
     case "select":
-      return [...state, ...action.data];
+      return [...action.data, ...state];
     case "deselect":
       return [...state.filter((index) => !action.data.includes(index))];
     case "set":

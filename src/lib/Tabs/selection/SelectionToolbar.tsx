@@ -48,10 +48,15 @@ export const SelectionToolbar: FC = () => {
   });
 
   const flatTabs = useMemo(() => {
-    return tabsStructure.reduce((acc, item) => {
-      return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
-    }, [] as TabItem[]);
-  }, [tabsStructure]);
+    return tabsStructure
+      .reduce((acc, item) => {
+        return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
+      }, [] as TabItem[])
+      .sort(
+        (a, b) =>
+          selected.indexOf(a.id as number) - selected.indexOf(b.id as number),
+      );
+  }, [selected, tabsStructure]);
 
   const {
     attributes,
