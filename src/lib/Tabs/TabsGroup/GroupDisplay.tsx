@@ -1,10 +1,11 @@
-import { ComponentProps, FC, ReactNode, useCallback } from "react";
 import {
   Chip,
   ListItemButton,
   ListItemSecondaryAction,
   ListItemText,
 } from "@mui/material";
+import { ComponentProps, FC, ReactNode, useCallback } from "react";
+
 import { GroupItem } from "../types.ts";
 
 export const GroupDisplay: FC<{

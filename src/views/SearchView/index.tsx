@@ -1,9 +1,9 @@
 import { FC, useCallback } from "react";
 
 import { Tabs } from "../../lib/Tabs";
+import { SelectionToolbar } from "../../lib/Tabs/selection";
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
-import { SelectionToolbar } from "../../lib/Tabs/selection";
 
 export const SearchView: FC<{ search: string }> = ({ search }) => {
   const filterTabs = useCallback(

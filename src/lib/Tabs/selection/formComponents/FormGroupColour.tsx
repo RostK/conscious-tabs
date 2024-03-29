@@ -1,8 +1,8 @@
-import { Controller } from "react-hook-form";
+import { Radio, RadioGroup } from "@mui/material";
 import { ComponentProps } from "react";
+import { Controller } from "react-hook-form";
 import { FieldPath, FieldValues } from "react-hook-form";
 import { UseControllerProps } from "react-hook-form";
-import { Radio, RadioGroup } from "@mui/material";
 
 export const FormGroupColour = <
   TFieldValues extends FieldValues = FieldValues,

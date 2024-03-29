@@ -1,4 +1,6 @@
-import { GroupDisplay } from "./GroupDisplay.tsx";
+import { useDraggable } from "@dnd-kit/core";
+import { Close, ExpandLess, ExpandMore, MoreVert } from "@mui/icons-material";
+import { IconButton, Menu, MenuItem } from "@mui/material";
 import {
   ComponentProps,
   FC,
@@ -7,17 +9,16 @@ import {
   useMemo,
   useState,
 } from "react";
-import { IconButton, Menu, MenuItem } from "@mui/material";
-import { Close, ExpandLess, ExpandMore, MoreVert } from "@mui/icons-material";
+
 import { promptUndo } from "../../promptUndo.tsx";
-import { TabListItem } from "../Tab/TabListItem.tsx";
-import { TabGrid } from "../elements/TabGrid.tsx";
-import { useDraggable } from "@dnd-kit/core";
 import { DropPlaceholder } from "../DnD";
 import { useDropzone } from "../DnD/useDropzone.tsx";
-import { handleInnerDrop } from "./handleInnerDrop.ts";
-import { handleDrop } from "./handleDrop.ts";
+import { TabGrid } from "../elements/TabGrid.tsx";
 import { GroupForm } from "../selection/GroupForm.tsx";
+import { TabListItem } from "../Tab/TabListItem.tsx";
+import { GroupDisplay } from "./GroupDisplay.tsx";
+import { handleDrop } from "./handleDrop.ts";
+import { handleInnerDrop } from "./handleInnerDrop.ts";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }

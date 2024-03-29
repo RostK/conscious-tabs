@@ -1,6 +1,7 @@
 import { Active, useDroppable } from "@dnd-kit/core";
 import { styled } from "@mui/material";
 import { ComponentProps, FC, PropsWithChildren, useMemo } from "react";
+
 import { GroupItem, TabItem } from "../types.ts";
 
 export type DefaultDrag = TabItem[] | TabItem | GroupItem;

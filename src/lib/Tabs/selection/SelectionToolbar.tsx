@@ -1,13 +1,10 @@
+import { useDraggable } from "@dnd-kit/core";
 import {
-  FC,
-  MouseEventHandler,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
-import { SelectionContext } from "./SelectionContext.tsx";
-import { useTabsStructure } from "../useTabsStructure.ts";
+  CancelOutlined,
+  DeselectOutlined,
+  DragIndicator,
+  FolderOpen,
+} from "@mui/icons-material";
 import {
   AppBar,
   Box,
@@ -17,16 +14,20 @@ import {
   Toolbar,
 } from "@mui/material";
 import {
-  CancelOutlined,
-  DeselectOutlined,
-  DragIndicator,
-  FolderOpen,
-} from "@mui/icons-material";
-import { TabItem } from "../types.ts";
+  FC,
+  MouseEventHandler,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
+
 import { promptUndo } from "../../promptUndo.tsx";
-import { GroupForm } from "./GroupForm.tsx";
-import { useDraggable } from "@dnd-kit/core";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
+import { TabItem } from "../types.ts";
+import { useTabsStructure } from "../useTabsStructure.ts";
+import { GroupForm } from "./GroupForm.tsx";
+import { SelectionContext } from "./SelectionContext.tsx";
 
 export const SelectionToolbar: FC = () => {
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);

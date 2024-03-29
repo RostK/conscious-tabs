@@ -1,5 +1,6 @@
-import { TabGrid } from "../elements/TabGrid.tsx";
 import { ComponentProps, FC } from "react";
+
+import { TabGrid } from "../elements/TabGrid.tsx";
 
 export const DropPlaceholder: FC<{
   sx?: ComponentProps<typeof TabGrid>["sx"];

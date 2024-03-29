@@ -1,8 +1,9 @@
 import { FC, PropsWithChildren } from "react";
-import { useDropzone } from "../DnD/useDropzone.tsx";
-import { handleDrop } from "./handleDrop.ts";
+
 import { DropPlaceholder } from "../DnD";
+import { useDropzone } from "../DnD/useDropzone.tsx";
 import { TabGrid } from "../elements/TabGrid.tsx";
+import { handleDrop } from "./handleDrop.ts";
 
 export const WindowDropzone: FC<
   PropsWithChildren<{ window: chrome.windows.Window }>

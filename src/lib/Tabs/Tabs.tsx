@@ -1,8 +1,9 @@
+import Grid from "@mui/material/Unstable_Grid2";
 import { FC } from "react";
-import { GroupItem, TabsStructure } from "./types.ts";
+
 import { TabListItem } from "./Tab/TabListItem.tsx";
 import { GroupListItem } from "./TabsGroup/GroupListItem.tsx";
-import Grid from "@mui/material/Unstable_Grid2";
+import { GroupItem, TabsStructure } from "./types.ts";
 import { WindowDropzone } from "./Window/WindowDropzone.tsx";
 
 export const Tabs: FC<{

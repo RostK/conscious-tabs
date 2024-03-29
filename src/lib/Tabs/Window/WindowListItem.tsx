@@ -1,5 +1,4 @@
-import { FC, MouseEventHandler, useCallback, useMemo } from "react";
-import { TabItem, TabsStructure } from "../types.ts";
+import { ExpandMore } from "@mui/icons-material";
 import {
   Accordion,
   AccordionDetails,
@@ -7,11 +6,13 @@ import {
   Button,
   IconButton,
 } from "@mui/material";
-import { ExpandMore } from "@mui/icons-material";
-import { Tabs } from "../Tabs.tsx";
-import { useDropzone, DropPlaceholder } from "../DnD";
-import { handleInnerDrop } from "./handleInnerDrop.ts";
+import { FC, MouseEventHandler, useCallback, useMemo } from "react";
+
+import { DropPlaceholder,useDropzone } from "../DnD";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
+import { Tabs } from "../Tabs.tsx";
+import { TabItem, TabsStructure } from "../types.ts";
+import { handleInnerDrop } from "./handleInnerDrop.ts";
 export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;

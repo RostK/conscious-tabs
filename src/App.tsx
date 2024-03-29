@@ -1,5 +1,6 @@
-import { useState } from "react";
 import "./App.css";
+
+import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
 import {
   alpha,
   AppBar,
@@ -8,12 +9,13 @@ import {
   styled,
   Toolbar,
 } from "@mui/material";
-import logo from "./logo.svg";
-import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
-import { TabsView } from "./views/TabsView";
-import { SearchView } from "./views/SearchView";
 import { SnackbarProvider } from "notistack";
+import { useState } from "react";
+
 import { SelectionProvider } from "./lib/Tabs/selection";
+import logo from "./logo.svg";
+import { SearchView } from "./views/SearchView";
+import { TabsView } from "./views/TabsView";
 
 const Search = styled("div")(({ theme }) => ({
   position: "relative",

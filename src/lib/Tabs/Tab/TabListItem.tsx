@@ -1,12 +1,12 @@
-import { TabDisplay } from "./TabDisplay.tsx";
 import { useDraggable } from "@dnd-kit/core";
-import { TabGrid } from "../elements/TabGrid.tsx";
 import { ComponentProps, FC } from "react";
 
-import { GroupItem } from "../types.ts";
 import { DropPlaceholder } from "../DnD";
 import { useDropzone } from "../DnD/useDropzone.tsx";
+import { TabGrid } from "../elements/TabGrid.tsx";
+import { GroupItem } from "../types.ts";
 import { handleDrop } from "./handleDrop.ts";
+import { TabDisplay } from "./TabDisplay.tsx";
 
 export const TabListItem: FC<
   ComponentProps<typeof TabDisplay> & { group?: GroupItem }

@@ -1,7 +1,3 @@
-import { ComponentProps, FC, useCallback, useContext, useState } from "react";
-
-import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
-import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 import {
   DndContext,
   DragOverlay,
@@ -10,13 +6,17 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { TabDisplay } from "../../lib/Tabs/Tab/TabDisplay.tsx";
 import { ListItemButton, Paper } from "@mui/material";
+import { ComponentProps, FC, useCallback, useContext, useState } from "react";
+
 import { WindowListItem } from "../../lib/Tabs";
-import { GroupDisplay } from "../../lib/Tabs/TabsGroup/GroupDisplay.tsx";
 import { DefaultDrag, DZCurrentData } from "../../lib/Tabs/DnD";
-import { SelectionContext, SelectionToolbar } from "../../lib/Tabs/selection";
 import { TabAvatarsDisplay } from "../../lib/Tabs/elements/TabAvatarsDisplay.tsx";
+import { SelectionContext, SelectionToolbar } from "../../lib/Tabs/selection";
+import { TabDisplay } from "../../lib/Tabs/Tab/TabDisplay.tsx";
+import { GroupDisplay } from "../../lib/Tabs/TabsGroup/GroupDisplay.tsx";
+import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
+import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 
 export const TabsView: FC = () => {
   const { dispatch: dispatchSelected } = useContext(SelectionContext);

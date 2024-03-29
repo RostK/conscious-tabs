@@ -1,5 +1,3 @@
-import { FC, useCallback, useEffect } from "react";
-import { useForm } from "react-hook-form";
 import {
   Button,
   Dialog,
@@ -7,8 +5,11 @@ import {
   DialogContent,
   DialogContentText,
 } from "@mui/material";
-import { FormInputText } from "./formComponents/FormInputText.tsx";
+import { FC, useCallback, useEffect } from "react";
+import { useForm } from "react-hook-form";
+
 import { FormGroupColour } from "./formComponents/FormGroupColour.tsx";
+import { FormInputText } from "./formComponents/FormInputText.tsx";
 
 const GROUP_COLOURS = [
   "grey",

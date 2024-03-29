@@ -1,4 +1,8 @@
-import { FC, MouseEventHandler, useCallback } from "react";
+import {
+  CheckBoxOutlineBlankOutlined,
+  CheckBoxOutlined,
+  Close,
+} from "@mui/icons-material";
 import {
   IconButton,
   ListItemAvatar,
@@ -6,14 +10,11 @@ import {
   ListItemSecondaryAction,
   ListItemText,
 } from "@mui/material";
-import {
-  CheckBoxOutlineBlankOutlined,
-  CheckBoxOutlined,
-  Close,
-} from "@mui/icons-material";
-import { TabItem } from "../types.ts";
+import { FC, MouseEventHandler, useCallback } from "react";
+
 import { promptUndo } from "../../promptUndo.tsx";
 import { useSelected } from "../selection";
+import { TabItem } from "../types.ts";
 
 export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
   tab,

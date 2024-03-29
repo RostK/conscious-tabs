@@ -1,7 +1,8 @@
-import { FC, useMemo } from "react";
-import { TabItem, TabsStructure } from "../types.ts";
-import { Avatar, AvatarGroup } from "@mui/material";
 import { ArticleOutlined } from "@mui/icons-material";
+import { Avatar, AvatarGroup } from "@mui/material";
+import { FC, useMemo } from "react";
+
+import { TabItem, TabsStructure } from "../types.ts";
 
 export const TabAvatarsDisplay: FC<{ tabsStructure: TabsStructure }> = ({
   tabsStructure,

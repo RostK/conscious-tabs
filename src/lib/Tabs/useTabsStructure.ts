@@ -1,7 +1,8 @@
-import { GroupItem, TabItem, TabsStructure } from "./types.ts";
 import { useCallback, useEffect, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
+
 import { useUpdateEvents } from "../useUpdateEvents.ts";
+import { GroupItem, TabItem, TabsStructure } from "./types.ts";
 
 import TAB_GROUP_ID_NONE = chrome.tabGroups.TAB_GROUP_ID_NONE;
 

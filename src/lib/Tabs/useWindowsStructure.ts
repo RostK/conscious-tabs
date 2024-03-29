@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+
 import { useUpdateEvents } from "../useUpdateEvents.ts";
 
 export const useWindowsStructure = (): chrome.windows.Window[] => {
