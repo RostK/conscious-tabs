@@ -4,8 +4,9 @@ import {
   DeselectOutlined,
   DragIndicator,
   FolderOpen,
+  OpenInBrowser,
 } from "@mui/icons-material";
-import { Box, ButtonBase, Grid, IconButton, Toolbar } from "@mui/material";
+import { Box, Button, Grid, IconButton, Toolbar } from "@mui/material";
 import {
   FC,
   MouseEventHandler,
@@ -88,6 +89,21 @@ export const SelectionToolbar: FC = () => {
     },
     [dispatch, selected],
   );
+  const handleNewWindow = useCallback(async () => {
+    try {
+      const { id } = await chrome.windows.create({
+        focused: true,
+        tabId: selected[0],
+      });
+      if (id) {
+        await chrome.tabs.move(selected, { index: 0, windowId: id });
+        await chrome.sidePanel.open({ windowId: id });
+      }
+      dispatch({ type: "clear" });
+    } catch (e) {
+      /* empty */
+    }
+  }, [dispatch, selected]);
 
   return selected.length ? (
     <>
@@ -103,35 +119,10 @@ export const SelectionToolbar: FC = () => {
           <Grid xs={12} sm={6} md={4} sx={[{ width: "100%" }]}>
             <Box
               sx={{
-                flexGrow: 1,
                 display: "flex",
-                fontSize: "0.3rem",
-                gap: "1rem",
-                justifyContent: "center",
-                color: "black",
-                p: ".3rem 0 0 0",
-              }}
-            >
-              <ButtonBase sx={{ fontSize: "0.7rem" }} onClick={handleClear}>
-                <DeselectOutlined fontSize="small" /> Deselect
-              </ButtonBase>
-              <ButtonBase sx={{ fontSize: "0.7rem" }} onClick={handleClose}>
-                <CancelOutlined fontSize="small" />
-                Close
-              </ButtonBase>
-              <ButtonBase
-                sx={{ fontSize: "0.7rem" }}
-                onClick={handleOpenGroupDialog}
-              >
-                <FolderOpen fontSize="small" /> Group
-              </ButtonBase>
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                p: "0.5rem",
                 justifyContent: "center",
                 cursor: "grab",
+                p: "0.3rem 0 0 0",
               }}
               ref={setNodeRefDraggable}
               {...listeners}
@@ -141,6 +132,38 @@ export const SelectionToolbar: FC = () => {
                 <DragIndicator />
               </IconButton>
               <TabAvatarsDisplay tabsStructure={flatTabs} />
+            </Box>
+            <Box
+              sx={{
+                flexGrow: 1,
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <Button startIcon={<DeselectOutlined />} onClick={handleClear}>
+                Deselect
+              </Button>
+              <Button
+                size="small"
+                startIcon={<FolderOpen />}
+                onClick={handleOpenGroupDialog}
+              >
+                Group
+              </Button>
+              <Button
+                size="small"
+                startIcon={<OpenInBrowser />}
+                onClick={handleNewWindow}
+              >
+                Window
+              </Button>
+              <Button
+                size="small"
+                startIcon={<CancelOutlined />}
+                onClick={handleClose}
+              >
+                Close
+              </Button>
             </Box>
           </Grid>
           <Grid xs={0} sm={3} md={4} sx={[{ width: "100%" }]}>
