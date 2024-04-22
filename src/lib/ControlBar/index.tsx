@@ -18,6 +18,18 @@ const handleNewWindow = async () => {
     await chrome.sidePanel.open({ windowId: id });
   }
 };
+
+const handleCRXWindow = async () => {
+  const crxTabs = await chrome.tabs.query({ url: chrome.runtime.getURL("*") });
+  const crxTab = crxTabs[0];
+  if (crxTab && crxTab.id) {
+    await chrome.tabs.update(crxTab.id, { active: true });
+    void chrome.windows.update(crxTab.windowId, { focused: true });
+  } else {
+    await chrome.windows.create({ url: chrome.runtime.getURL("index.html") });
+  }
+};
+
 const handleNewTab = async () => {
   await chrome.tabs.create({ active: true });
 };
@@ -42,7 +54,7 @@ export const ControlBar: FC = () => {
         <SelectionToolbar />
         <Divider />
         <Toolbar>
-          <IconButton>
+          <IconButton onClick={handleCRXWindow}>
             <img src={logo} />
           </IconButton>
           <Box
