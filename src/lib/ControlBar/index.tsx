@@ -26,7 +26,9 @@ const handleCRXWindow = async () => {
     await chrome.tabs.update(crxTab.id, { active: true });
     void chrome.windows.update(crxTab.windowId, { focused: true });
   } else {
-    await chrome.windows.create({ url: chrome.runtime.getURL("index.html") });
+    await chrome.windows.create({
+      url: chrome.runtime.getURL("index.html"),
+    });
   }
 };
 
@@ -49,6 +51,10 @@ export const ControlBar: FC = () => {
           top: "auto",
           bottom: 0,
           backgroundColor: "white",
+          maxWidth: "1024px",
+          m: "0 auto",
+          right: "initial",
+          left: "initial",
         }}
       >
         <SelectionToolbar />
