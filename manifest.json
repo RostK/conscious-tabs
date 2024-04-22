@@ -2,12 +2,13 @@
   "manifest_version": 3,
   "name": "Conscious Tabs",
   "version": "0.0.1",
+  "description": "Manage your tabs in a conscious way",
   "permissions": ["sidePanel", "tabs", "tabGroups", "sessions"],
   "side_panel": {
     "default_path": "index.html"
   },
   "action": {
-    "default_title": "Click to open panel"
+    "default_title": "Open Conscious Tabs"
   },
   "background": {
     "service_worker": "src/worker/index.ts",

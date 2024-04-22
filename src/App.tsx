@@ -11,15 +11,14 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
+import { ControlBar } from "./lib/ControlBar";
 import { SelectionProvider } from "./lib/Tabs/selection";
 import { PromptProvider } from "./lib/Tabs/undo";
-import logo from "./logo.svg";
 import { SearchView } from "./views/SearchView";
 import { TabsView } from "./views/TabsView";
 
 const Search = styled("div")(({ theme }) => ({
   position: "relative",
-  marginLeft: theme.spacing(1),
   borderRadius: theme.shape.borderRadius,
   backgroundColor: alpha(theme.palette.common.white, 0.15),
   "&:hover": {
@@ -66,7 +65,6 @@ function App() {
       <SelectionProvider>
         <AppBar position="sticky">
           <Toolbar>
-            <img src={logo} />
             <Search>
               <SearchIconWrapper>
                 <SearchOutlined />
@@ -95,6 +93,7 @@ function App() {
         </AppBar>
         {!search && <TabsView />}
         {search && <SearchView search={search} />}
+        <ControlBar />
       </SelectionProvider>
     </PromptProvider>
   );

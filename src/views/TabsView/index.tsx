@@ -92,7 +92,6 @@ export const TabsView: FC = () => {
           </Paper>
         ) : null}
       </DragOverlay>
-      <SelectionToolbar />
     </DndContext>
   );
 };

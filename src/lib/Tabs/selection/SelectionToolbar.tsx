@@ -5,14 +5,7 @@ import {
   DragIndicator,
   FolderOpen,
 } from "@mui/icons-material";
-import {
-  AppBar,
-  Box,
-  ButtonBase,
-  Grid,
-  IconButton,
-  Toolbar,
-} from "@mui/material";
+import { Box, ButtonBase, Grid, IconButton, Toolbar } from "@mui/material";
 import {
   FC,
   MouseEventHandler,
@@ -98,12 +91,7 @@ export const SelectionToolbar: FC = () => {
 
   return selected.length ? (
     <>
-      <Toolbar sx={{ visibility: "hidden", height: "75px" }} />
-      <AppBar
-        position="fixed"
-        color="transparent"
-        sx={{ top: "auto", bottom: 0 }}
-      >
+      <Toolbar>
         <Grid
           spacing={0}
           sx={{ width: "100%", bgcolor: "background.paper" }}
@@ -113,6 +101,31 @@ export const SelectionToolbar: FC = () => {
             <></>
           </Grid>
           <Grid xs={12} sm={6} md={4} sx={[{ width: "100%" }]}>
+            <Box
+              sx={{
+                flexGrow: 1,
+                display: "flex",
+                fontSize: "0.3rem",
+                gap: "1rem",
+                justifyContent: "center",
+                color: "black",
+                p: ".3rem 0 0 0",
+              }}
+            >
+              <ButtonBase sx={{ fontSize: "0.7rem" }} onClick={handleClear}>
+                <DeselectOutlined fontSize="small" /> Deselect
+              </ButtonBase>
+              <ButtonBase sx={{ fontSize: "0.7rem" }} onClick={handleClose}>
+                <CancelOutlined fontSize="small" />
+                Close
+              </ButtonBase>
+              <ButtonBase
+                sx={{ fontSize: "0.7rem" }}
+                onClick={handleOpenGroupDialog}
+              >
+                <FolderOpen fontSize="small" /> Group
+              </ButtonBase>
+            </Box>
             <Box
               sx={{
                 display: "flex",
@@ -129,36 +142,12 @@ export const SelectionToolbar: FC = () => {
               </IconButton>
               <TabAvatarsDisplay tabsStructure={flatTabs} />
             </Box>
-            <Box
-              sx={{
-                flexGrow: 1,
-                display: "flex",
-                fontSize: "0.3rem",
-                gap: "1rem",
-                justifyContent: "center",
-                p: "0 0 .3rem 0",
-              }}
-            >
-              <ButtonBase sx={{ fontSize: "0.7rem" }} onClick={handleClear}>
-                <DeselectOutlined fontSize="small" /> Deselect
-              </ButtonBase>
-              <ButtonBase sx={{ fontSize: "0.7rem" }} onClick={handleClose}>
-                <CancelOutlined fontSize="small" />
-                Close
-              </ButtonBase>
-              <ButtonBase
-                sx={{ fontSize: "0.7rem" }}
-                onClick={handleOpenGroupDialog}
-              >
-                <FolderOpen fontSize="small" /> New group
-              </ButtonBase>
-            </Box>
           </Grid>
           <Grid xs={0} sm={3} md={4} sx={[{ width: "100%" }]}>
             <></>
           </Grid>
         </Grid>
-      </AppBar>
+      </Toolbar>
       <GroupForm
         onClose={handleCloseGroupDialog}
         open={groupDialogOpen}
