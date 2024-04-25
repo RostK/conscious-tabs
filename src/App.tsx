@@ -138,7 +138,7 @@ function App() {
               />
             </Search>
           </Toolbar>
-        </AppBar>{" "}
+        </AppBar>
         <DndContext
           sensors={sensors}
           onDragEnd={handleDragStop}

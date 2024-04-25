@@ -14,7 +14,6 @@ import { FC, MouseEventHandler, useCallback } from "react";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
-import { promptUndo } from "../undo";
 
 export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
   tab,
@@ -46,7 +45,6 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
       if (tab.id) {
         try {
           await chrome.tabs.remove(tab.id);
-          promptUndo("Tab is closed");
         } catch (e) {
           /* empty */
         }

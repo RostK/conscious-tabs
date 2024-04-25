@@ -24,7 +24,6 @@ import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
 import { TabListItem } from "../Tab/TabListItem.tsx";
-import { promptUndo } from "../undo";
 import { GroupDisplay } from "./GroupDisplay.tsx";
 import { handleDrop } from "./handleDrop.ts";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
@@ -98,7 +97,6 @@ export const GroupListItem: FC<
       .filter((id) => id !== undefined) as number[];
     try {
       await chrome.tabs.remove(tabIds);
-      promptUndo(`${tabIds.length} tabs are closed`);
     } catch (e) {
       /* empty */
     }

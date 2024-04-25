@@ -18,7 +18,6 @@ import { ItemButton } from "../elements/ItemButton.tsx";
 import { SelectionContext } from "../selection";
 import { Tabs } from "../Tabs.tsx";
 import { TabItem, TabsStructure } from "../types.ts";
-import { promptUndo } from "../undo";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
 import { WindowDisplay } from "./WindowDisplay.tsx";
 
@@ -58,7 +57,6 @@ export const WindowListItem: FC<{
   const handleCloseWindow = useCallback<MouseEventHandler>(async () => {
     try {
       await chrome.windows.remove(window.id as number);
-      promptUndo("Window is closed");
     } catch (e) {
       /* empty */
     }

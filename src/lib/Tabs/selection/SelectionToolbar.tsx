@@ -18,7 +18,6 @@ import {
 
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
 import { TabItem } from "../types.ts";
-import { promptUndo } from "../undo";
 import { useTabsStructure } from "../useTabsStructure.ts";
 import { GroupForm } from "./GroupForm.tsx";
 import { SelectionContext } from "./SelectionContext.tsx";
@@ -68,7 +67,6 @@ export const SelectionToolbar: FC = () => {
   const handleClose = useCallback<MouseEventHandler>(async () => {
     try {
       await chrome.tabs.remove(selected);
-      promptUndo(`${selected.length} tabs are closed`);
       dispatch({ type: "clear" });
     } catch (e) {
       /* empty */
