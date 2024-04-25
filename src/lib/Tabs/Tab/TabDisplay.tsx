@@ -64,10 +64,12 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
   return (
     <ListItemButton
       dense
+      divider
       onClick={handleActivate}
       selected={tab.active}
       autoFocus={tab.active && focus}
       sx={[
+        { pt: 0.1, pb: 0.1 },
         {
           "&:hover .itemAction": {
             visibility: "visible",
@@ -91,7 +93,7 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>
       <ListItemAvatar style={{ minWidth: "32px" }}>
-        <img src={tab.favIconUrl} width={24} />
+        <img src={tab.favIconUrl} width={26} />
       </ListItemAvatar>
       <ListItemSecondaryAction>
         <ItemButton

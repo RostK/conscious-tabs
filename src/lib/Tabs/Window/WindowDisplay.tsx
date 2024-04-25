@@ -32,7 +32,7 @@ export const WindowDisplay: FC<{
       onClick={handleOpenClick}
       sx={[
         {
-          minHeight: 54.5,
+          height: 48.46,
           pl: "1.8rem",
         },
         {

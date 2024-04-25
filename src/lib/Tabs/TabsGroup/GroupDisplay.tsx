@@ -34,9 +34,10 @@ export const GroupDisplay: FC<{
   return (
     <ListItemButton
       onClick={handleClick}
+      divider
       sx={[
+        { pt: 0.1, pb: 0.1, height: 48.46 },
         {
-          minHeight: 54.5,
           boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
         },
         {
