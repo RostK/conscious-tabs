@@ -42,10 +42,6 @@ export const WindowDisplay: FC<{
           [`& .itemAction`]: {
             visibility: "hidden",
           },
-          [`& .itemAction .close-button`]: {
-            bgcolor: `color-mix(in srgb, white 80%, transparent)`,
-            ["&: hover"]: { bgcolor: "rgb(199, 199, 199)" },
-          },
         },
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}

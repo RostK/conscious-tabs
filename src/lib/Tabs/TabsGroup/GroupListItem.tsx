@@ -19,6 +19,7 @@ import {
 } from "react";
 
 import { DropPlaceholder, useDropzone } from "../DnD";
+import { ItemButton } from "../elements/ItemButton.tsx";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
@@ -124,14 +125,14 @@ export const GroupListItem: FC<
         >
           <MoreVert />
         </IconButton>
-        <IconButton
+        <ItemButton
           className="close-button"
           onClick={handleDelete}
           edge="end"
           aria-label="delete"
         >
           <Close />
-        </IconButton>
+        </ItemButton>
       </>
     );
   }, [handleDelete]);
@@ -165,20 +166,16 @@ export const GroupListItem: FC<
             {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
         )}
-        <IconButton
+        <ItemButton
           onClick={handleSelectButton}
           className={!isSelected ? "itemAction" : undefined}
           sx={{
             position: "absolute",
             left: -8,
-            backgroundColor: "white",
-            ["&:hover"]: {
-              backgroundColor: "rgb(199,199,199)",
-            },
           }}
         >
           {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
-        </IconButton>
+        </ItemButton>
       </>
     );
   }, [expanded, group.collapsed, handleSelectButton, isSelected]);

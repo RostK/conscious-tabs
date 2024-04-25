@@ -50,7 +50,7 @@ export const ControlBar: FC = () => {
         sx={{
           top: "auto",
           bottom: 0,
-          backgroundColor: "white",
+          backgroundColor: "background.paper",
           maxWidth: "1024px",
           m: "0 auto",
           right: "initial",

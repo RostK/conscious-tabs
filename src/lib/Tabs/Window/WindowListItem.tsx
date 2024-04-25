@@ -3,7 +3,6 @@ import {
   CheckBoxOutlined,
   Close,
 } from "@mui/icons-material";
-import { IconButton } from "@mui/material";
 import {
   FC,
   MouseEventHandler,
@@ -15,6 +14,7 @@ import {
 } from "react";
 
 import { DropPlaceholder, useDropzone } from "../DnD";
+import { ItemButton } from "../elements/ItemButton.tsx";
 import { SelectionContext } from "../selection";
 import { Tabs } from "../Tabs.tsx";
 import { TabItem, TabsStructure } from "../types.ts";
@@ -65,14 +65,14 @@ export const WindowListItem: FC<{
   }, [window]);
   const itemAction = useMemo(() => {
     return (
-      <IconButton
+      <ItemButton
         className="close-button"
         onClick={handleCloseWindow}
         edge="end"
         aria-label="delete"
       >
         <Close />
-      </IconButton>
+      </ItemButton>
     );
   }, [handleCloseWindow]);
 
@@ -99,20 +99,16 @@ export const WindowListItem: FC<{
 
   const pre = useMemo(() => {
     return (
-      <IconButton
+      <ItemButton
         onClick={handleSelectButton}
         className={!isSelected ? "itemAction" : undefined}
         sx={{
           position: "absolute",
           left: -8,
-          backgroundColor: "white",
-          ["&:hover"]: {
-            backgroundColor: "rgb(199,199,199)",
-          },
         }}
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
-      </IconButton>
+      </ItemButton>
     );
   }, [handleSelectButton, isSelected]);
 

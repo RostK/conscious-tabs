@@ -108,11 +108,7 @@ export const SelectionToolbar: FC = () => {
   return selected.length ? (
     <>
       <Toolbar>
-        <Grid
-          spacing={0}
-          sx={{ width: "100%", bgcolor: "background.paper" }}
-          container
-        >
+        <Grid spacing={0} sx={{ width: "100%" }} container>
           <Grid xs={0} sm={3} md={4} sx={[{ width: "100%" }]}>
             <></>
           </Grid>

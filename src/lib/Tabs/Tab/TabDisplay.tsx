@@ -4,7 +4,6 @@ import {
   Close,
 } from "@mui/icons-material";
 import {
-  IconButton,
   ListItemAvatar,
   ListItemButton,
   ListItemSecondaryAction,
@@ -12,6 +11,7 @@ import {
 } from "@mui/material";
 import { FC, MouseEventHandler, useCallback } from "react";
 
+import { ItemButton } from "../elements/ItemButton.tsx";
 import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
 import { promptUndo } from "../undo";
@@ -71,45 +71,39 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
       autoFocus={tab.active && focus}
       sx={[
         {
-          [`&:hover .itemAction`]: {
+          "&:hover .itemAction": {
             visibility: "visible",
           },
-          [`& .itemAction`]: {
+          "& .itemAction": {
             visibility: "hidden",
-            backgroundColor: "white",
-          },
-          [`& .itemAction:hover`]: {
-            backgroundColor: "rgb(199,199,199)",
           },
         },
       ]}
     >
-      <IconButton
+      <ItemButton
         onClick={handleHighlight}
         className={!isSelected ? "itemAction" : undefined}
-        sx={{
-          position: "absolute",
-          left: -8,
-          backgroundColor: "white",
-          ["&:hover"]: {
-            backgroundColor: "rgb(199,199,199)",
+        sx={[
+          {
+            position: "absolute",
+            left: -8,
           },
-        }}
+        ]}
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
-      </IconButton>
+      </ItemButton>
       <ListItemAvatar style={{ minWidth: "32px" }}>
         <img src={tab.favIconUrl} width={24} />
       </ListItemAvatar>
       <ListItemSecondaryAction>
-        <IconButton
+        <ItemButton
           onClick={handleDelete}
           edge="end"
           aria-label="delete"
           className="itemAction"
         >
           <Close />
-        </IconButton>
+        </ItemButton>
       </ListItemSecondaryAction>
       <ListItemText
         primaryTypographyProps={{ noWrap: true }}

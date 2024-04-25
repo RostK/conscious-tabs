@@ -1,18 +1,32 @@
 import "./App.css";
 
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  MouseSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
 import {
   alpha,
   AppBar,
   IconButton,
   InputBase,
+  ListItemButton,
+  Paper,
   styled,
   Toolbar,
 } from "@mui/material";
-import { useState } from "react";
+import { ComponentProps, useCallback, useContext, useState } from "react";
 
 import { ControlBar } from "./lib/ControlBar";
-import { SelectionProvider } from "./lib/Tabs/selection";
+import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
+import { TabAvatarsDisplay } from "./lib/Tabs/elements/TabAvatarsDisplay.tsx";
+import { SelectionContext, SelectionProvider } from "./lib/Tabs/selection";
+import { TabDisplay } from "./lib/Tabs/Tab/TabDisplay.tsx";
+import { GroupDisplay } from "./lib/Tabs/TabsGroup/GroupDisplay.tsx";
 import { PromptProvider } from "./lib/Tabs/undo";
 import { SearchView } from "./views/SearchView";
 import { TabsView } from "./views/TabsView";
@@ -49,16 +63,50 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
     paddingLeft: `calc(1em + ${theme.spacing(4)})`,
     transition: theme.transitions.create("width"),
     [theme.breakpoints.up("sm")]: {
-      width: "12ch",
+      width: "20ch",
       "&:focus": {
-        width: "20ch",
+        width: "22ch",
       },
     },
   },
 }));
 
 function App() {
+  const { dispatch: dispatchSelected } = useContext(SelectionContext);
+
+  const [dragging, setDragging] = useState<DefaultDrag | null>(null);
+
   const [search, setSearch] = useState("");
+  const mouseSensor = useSensor(MouseSensor, {
+    // Require the mouse to move by 10 pixels before activating
+    activationConstraint: {
+      distance: 10,
+    },
+  });
+  const keyboardSensor = useSensor(KeyboardSensor);
+  const sensors = useSensors(mouseSensor, keyboardSensor);
+
+  const handleDragStart = useCallback<
+    Required<ComponentProps<typeof DndContext>>["onDragStart"]
+  >(({ active }) => {
+    setDragging(active.data.current as unknown as DefaultDrag);
+  }, []);
+
+  const handleDragStop = useCallback<
+    Required<ComponentProps<typeof DndContext>>["onDragEnd"]
+  >(
+    async ({ over }) => {
+      const overData = over?.data.current as DZCurrentData | undefined;
+      if (overData?.dropHandler && dragging) {
+        await overData.dropHandler(dragging, overData);
+        if (Array.isArray(dragging)) {
+          dispatchSelected({ type: "clear" });
+        }
+      }
+      setDragging(null);
+    },
+    [dispatchSelected, dragging],
+  );
 
   return (
     <PromptProvider>
@@ -90,10 +138,36 @@ function App() {
               />
             </Search>
           </Toolbar>
-        </AppBar>
-        {!search && <TabsView />}
-        {search && <SearchView search={search} />}
-        <ControlBar />
+        </AppBar>{" "}
+        <DndContext
+          sensors={sensors}
+          onDragEnd={handleDragStop}
+          onDragStart={handleDragStart}
+        >
+          {!search && <TabsView />}
+          {search && <SearchView search={search} />}
+          <ControlBar />
+          <DragOverlay
+            style={{ pointerEvents: "none", opacity: 0.85 }}
+            dropAnimation={null}
+          >
+            {dragging ? (
+              <Paper>
+                {Array.isArray(dragging) && (
+                  <ListItemButton dense sx={{ minHeight: 54.5 }}>
+                    <TabAvatarsDisplay tabsStructure={dragging} />
+                  </ListItemButton>
+                )}
+                {!Array.isArray(dragging) && dragging.type === "tab" && (
+                  <TabDisplay key={`drag-${dragging.id}`} tab={dragging} />
+                )}
+                {!Array.isArray(dragging) && dragging.type === "group" && (
+                  <GroupDisplay key={`drag-${dragging.id}`} group={dragging} />
+                )}
+              </Paper>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </SelectionProvider>
     </PromptProvider>
   );
