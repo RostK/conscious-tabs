@@ -4,7 +4,6 @@ import { FC, PropsWithChildren, useMemo } from "react";
 
 export const Theme: FC<PropsWithChildren> = ({ children }) => {
   const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
-  console.log(prefersDarkMode);
 
   const theme = useMemo(
     () =>
