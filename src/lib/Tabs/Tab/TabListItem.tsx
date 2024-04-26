@@ -18,7 +18,6 @@ export const TabListItem: FC<
     onDrop: handleDrop,
   });
   const {
-    over,
     isDragging,
     attributes,
     listeners,
