@@ -39,7 +39,7 @@ export const TabListItem: FC<
           ]}
         />
       ) : null}
-      {(!isDragging || !over) && (
+      {!isDragging && (
         <TabGrid
           sx={[
             group
