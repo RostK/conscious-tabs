@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Conscious Tabs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Manage your tabs in a conscious way",
   "permissions": ["sidePanel", "tabs", "tabGroups", "sessions"],
   "side_panel": {
