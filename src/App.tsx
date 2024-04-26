@@ -154,7 +154,7 @@ function App() {
             {dragging ? (
               <Paper>
                 {Array.isArray(dragging) && (
-                  <ListItemButton dense sx={{ height: 48.46 }}>
+                  <ListItemButton dense sx={{ height: 49.5 }}>
                     <TabAvatarsDisplay tabsStructure={dragging} />
                   </ListItemButton>
                 )}
