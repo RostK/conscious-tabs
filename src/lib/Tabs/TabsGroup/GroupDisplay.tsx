@@ -23,7 +23,7 @@ export const GroupDisplay: FC<{
 }> = ({ group, onCtrlClick, itemAction, pre, sx }) => {
   const handleClick = useCallback<MouseEventHandler>(
     async (e) => {
-      if (e.ctrlKey) {
+      if (e.ctrlKey || e.metaKey) {
         onCtrlClick && onCtrlClick(e);
       }
       await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });

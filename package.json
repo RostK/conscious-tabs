@@ -24,13 +24,13 @@
     "use-debounce": "^10.0.0"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.0.0-beta.23",
+    "@crxjs/vite-plugin": "^2.2.1",
     "@types/chrome": "^0.0.263",
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
     "@typescript-eslint/eslint-plugin": "^7.0.2",
     "@typescript-eslint/parser": "^7.0.2",
-    "@vitejs/plugin-react": "^4.2.1",
+    "@vitejs/plugin-react": "^5.1.0",
     "eslint": "^8.56.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-react-hooks": "^4.6.0",
@@ -38,6 +38,6 @@
     "eslint-plugin-simple-import-sort": "^12.0.0",
     "prettier": "3.2.5",
     "typescript": "^5.2.2",
-    "vite": "^5.1.4"
+    "vite": "7.1.11"
   }
 }

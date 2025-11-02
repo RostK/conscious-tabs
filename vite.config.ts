@@ -15,4 +15,7 @@ export default defineConfig({
       port: 5199,
     },
   },
+  legacy: {
+    skipWebSocketTokenCheck: true,
+  }
 });

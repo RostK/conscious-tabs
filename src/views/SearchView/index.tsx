@@ -7,7 +7,7 @@ import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 export const SearchView: FC<{ search: string }> = ({ search }) => {
   const filterTabs = useCallback(
     ({ title, url }: chrome.tabs.Tab): boolean =>
-      Boolean(title?.includes(search) || url?.includes(search)),
+      Boolean(title?.toLowerCase().includes(search.toLowerCase()) || url?.toLowerCase().includes(search.toLowerCase())),
     [search],
   );
 
