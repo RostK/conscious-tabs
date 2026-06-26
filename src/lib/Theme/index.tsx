@@ -25,6 +25,19 @@ export const Theme: FC<PropsWithChildren> = ({ children }) => {
               },
             },
           },
+          // Don't lock body scroll / compensate the scrollbar when a menu or
+          // popover opens — in the narrow side panel that shifts the content
+          // and leaves a gap by the scrollbar.
+          MuiMenu: {
+            defaultProps: {
+              disableScrollLock: true,
+            },
+          },
+          MuiPopover: {
+            defaultProps: {
+              disableScrollLock: true,
+            },
+          },
         },
       }),
     [prefersDarkMode],
