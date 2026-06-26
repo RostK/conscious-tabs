@@ -11,6 +11,11 @@ export default defineConfig({
   server: {
     port: 5199,
     strictPort: true,
+    // Vite 6/7 tightened dev-server CORS; allow the extension's
+    // chrome-extension:// origin to fetch the CRXJS HMR client worker.
+    cors: {
+      origin: [/^chrome-extension:\/\//],
+    },
     hmr: {
       port: 5199,
     },

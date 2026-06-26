@@ -1,3 +1,4 @@
+import { Box, Typography } from "@mui/material";
 import { FC, useCallback } from "react";
 
 import { Tabs } from "../../lib/Tabs";
@@ -7,12 +8,25 @@ import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 export const SearchView: FC<{ search: string }> = ({ search }) => {
   const filterTabs = useCallback(
     ({ title, url }: chrome.tabs.Tab): boolean =>
-      Boolean(title?.toLowerCase().includes(search.toLowerCase()) || url?.toLowerCase().includes(search.toLowerCase())),
+      Boolean(
+        title?.toLowerCase().includes(search.toLowerCase()) ||
+          url?.toLowerCase().includes(search.toLowerCase()),
+      ),
     [search],
   );
 
   const tabsStructure = useTabsStructure({ filter: filterTabs });
   const windows = useWindowsStructure();
+
+  if (windows.length > 0 && tabsStructure.length === 0) {
+    return (
+      <Box sx={{ p: 3, textAlign: "center" }}>
+        <Typography variant="body2" color="text.secondary">
+          No tabs match “{search}”.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <>

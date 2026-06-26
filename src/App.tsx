@@ -12,6 +12,7 @@ import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
 import {
   alpha,
   AppBar,
+  Box,
   IconButton,
   InputBase,
   ListItemButton,
@@ -22,6 +23,8 @@ import {
 import { ComponentProps, useCallback, useContext, useState } from "react";
 
 import { ControlBar } from "./lib/ControlBar";
+import { AudioTabs } from "./lib/Tabs/AudioTabs";
+import { CurrentTab } from "./lib/Tabs/CurrentTab";
 import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
 import { TabAvatarsDisplay } from "./lib/Tabs/elements/TabAvatarsDisplay.tsx";
 import { SelectionContext, SelectionProvider } from "./lib/Tabs/selection";
@@ -111,39 +114,43 @@ function App() {
   return (
     <PromptProvider>
       <SelectionProvider>
-        <AppBar position="sticky">
-          <Toolbar>
-            <Search>
-              <SearchIconWrapper>
-                <SearchOutlined />
-              </SearchIconWrapper>
-              <StyledInputBase
-                placeholder="Search…"
-                inputProps={{ "aria-label": "search" }}
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                }}
-                endAdornment={
-                  search && (
-                    <IconButton
-                      onClick={() => {
-                        setSearch("");
-                      }}
-                    >
-                      <SearchOffOutlined />
-                    </IconButton>
-                  )
-                }
-              />
-            </Search>
-          </Toolbar>
-        </AppBar>
         <DndContext
           sensors={sensors}
           onDragEnd={handleDragStop}
           onDragStart={handleDragStart}
         >
+          <AppBar position="sticky">
+            <Toolbar sx={{ gap: 1 }}>
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Search>
+                  <SearchIconWrapper>
+                    <SearchOutlined />
+                  </SearchIconWrapper>
+                  <StyledInputBase
+                    placeholder="Search…"
+                    inputProps={{ "aria-label": "search" }}
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                    }}
+                    endAdornment={
+                      search && (
+                        <IconButton
+                          onClick={() => {
+                            setSearch("");
+                          }}
+                        >
+                          <SearchOffOutlined />
+                        </IconButton>
+                      )
+                    }
+                  />
+                </Search>
+              </Box>
+              <AudioTabs />
+            </Toolbar>
+            <CurrentTab />
+          </AppBar>
           {!search && <TabsView />}
           {search && <SearchView search={search} />}
           <ControlBar />

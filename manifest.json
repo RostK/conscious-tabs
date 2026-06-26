@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Conscious Tabs",
   "version": "0.0.3",
-  "description": "Manage your tabs in a conscious way",
+  "description": "A quieter way to handle tab overload — every open tab, searchable and closable from one tidy panel.",
   "permissions": ["sidePanel", "tabs", "tabGroups", "sessions"],
   "side_panel": {
     "default_path": "index.html"
