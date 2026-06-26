@@ -1,30 +1,47 @@
-# React + TypeScript + Vite
+# Conscious Tabs
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A quieter way to handle tab overload — every open tab, searchable and closable from one tidy panel.
 
-Currently, two official plugins are available:
+Conscious Tabs is a Chrome extension that lives in the browser **side panel** and mirrors your open
+tabs — grouped by window and by Chrome tab group — so you can find, switch, tidy, and close them
+without hunting through a crowded tab strip.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- **Current-tab panel** pinned at the top: close, mute/unmute, pin/unpin, duplicate, hard reload, or
+  move the tab you're looking at to a new window — without scrolling.
+- **Search** every open tab by title or URL across all windows.
+- **Multi-select** with `Ctrl`/`Cmd`-click (or the checkbox), then close, group, or move the
+  selection to a new window in one action.
+- **Drag and drop** to reorder tabs and groups, or move them between windows.
+- **Undo** closed tabs from a snackbar (restores via the browser's session history).
+- Follows your system **light / dark** theme.
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+## Install (load unpacked)
 
-- Configure the top-level `parserOptions` property like this:
+This extension isn't packaged for the Web Store; run it as an unpacked build:
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: "latest",
-    sourceType: "module",
-    project: ["./tsconfig.json", "./tsconfig.node.json"],
-    tsconfigRootDir: __dirname,
-  },
-};
-```
+1. `npm install`
+2. `npm run build` (or `npm run dev` for a hot-reloading dev build)
+3. Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the
+   generated `dist/` folder.
+4. Click the Conscious Tabs toolbar icon to open the side panel.
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+## Development
+
+| Script             | Description                                            |
+| ------------------ | ------------------------------------------------------ |
+| `npm run dev`      | Vite dev server with HMR (writes the build to `dist/`) |
+| `npm run build`    | Type-check (`tsc`) and bundle to `dist/`               |
+| `npm run lint`     | ESLint (`--max-warnings 0`)                            |
+| `npm run lint:fix` | ESLint with autofix                                    |
+| `npm run prettier` | Format the project with Prettier                       |
+
+After editing React components the side panel hot-reloads; after changing `manifest.json` or the
+background service worker, click the reload icon on the extension's card in `chrome://extensions`.
+
+## Built with
+
+React 18 · TypeScript · Vite · [@crxjs/vite-plugin](https://crxjs.dev/) · MUI · @dnd-kit · notistack
+
+Requested permissions: `sidePanel`, `tabs`, `tabGroups`, `sessions`.
