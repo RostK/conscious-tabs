@@ -65,28 +65,23 @@ export const CurrentTab: FC = () => {
     <Box sx={{ bgcolor: "background.paper", color: "text.primary" }}>
       <Divider />
       <Box
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
         sx={{
           display: "flex",
           alignItems: "center",
           gap: 0.5,
           px: 1,
           py: 0.5,
+          cursor: "grab",
+          touchAction: "none",
         }}
       >
-        <Box
-          ref={setNodeRef}
-          {...listeners}
-          {...attributes}
-          sx={{
-            display: "flex",
-            flexShrink: 0,
-            cursor: "grab",
-            touchAction: "none",
-            color: "text.disabled",
-          }}
-        >
-          <DragIndicator fontSize="small" />
-        </Box>
+        <DragIndicator
+          fontSize="small"
+          sx={{ color: "text.disabled", flexShrink: 0 }}
+        />
         <Box sx={{ display: "flex", flexShrink: 0 }}>
           <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} />
         </Box>
