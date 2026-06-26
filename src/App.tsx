@@ -112,40 +112,40 @@ function App() {
   return (
     <PromptProvider>
       <SelectionProvider>
-        <AppBar position="sticky">
-          <Toolbar>
-            <Search>
-              <SearchIconWrapper>
-                <SearchOutlined />
-              </SearchIconWrapper>
-              <StyledInputBase
-                placeholder="Search…"
-                inputProps={{ "aria-label": "search" }}
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                }}
-                endAdornment={
-                  search && (
-                    <IconButton
-                      onClick={() => {
-                        setSearch("");
-                      }}
-                    >
-                      <SearchOffOutlined />
-                    </IconButton>
-                  )
-                }
-              />
-            </Search>
-          </Toolbar>
-          <CurrentTab />
-        </AppBar>
         <DndContext
           sensors={sensors}
           onDragEnd={handleDragStop}
           onDragStart={handleDragStart}
         >
+          <AppBar position="sticky">
+            <Toolbar>
+              <Search>
+                <SearchIconWrapper>
+                  <SearchOutlined />
+                </SearchIconWrapper>
+                <StyledInputBase
+                  placeholder="Search…"
+                  inputProps={{ "aria-label": "search" }}
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                  }}
+                  endAdornment={
+                    search && (
+                      <IconButton
+                        onClick={() => {
+                          setSearch("");
+                        }}
+                      >
+                        <SearchOffOutlined />
+                      </IconButton>
+                    )
+                  }
+                />
+              </Search>
+            </Toolbar>
+            <CurrentTab />
+          </AppBar>
           {!search && <TabsView />}
           {search && <SearchView search={search} />}
           <ControlBar />
