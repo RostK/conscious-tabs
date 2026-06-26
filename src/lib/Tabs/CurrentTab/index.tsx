@@ -1,6 +1,8 @@
+import { useDraggable } from "@dnd-kit/core";
 import {
   Close,
   ContentCopy,
+  DragIndicator,
   MoreVert,
   OpenInNew,
   PushPin,
@@ -41,6 +43,10 @@ import { useActiveTab } from "../useActiveTab.ts";
 export const CurrentTab: FC = () => {
   const tab = useActiveTab();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: `current-tab-${tab?.id ?? "none"}`,
+    data: tab,
+  });
   const closeMenu = () => setMenuAnchor(null);
 
   if (!tab?.id) {
@@ -63,10 +69,24 @@ export const CurrentTab: FC = () => {
           display: "flex",
           alignItems: "center",
           gap: 0.5,
-          px: 2,
+          px: 1,
           py: 0.5,
         }}
       >
+        <Box
+          ref={setNodeRef}
+          {...listeners}
+          {...attributes}
+          sx={{
+            display: "flex",
+            flexShrink: 0,
+            cursor: "grab",
+            touchAction: "none",
+            color: "text.disabled",
+          }}
+        >
+          <DragIndicator fontSize="small" />
+        </Box>
         <Box sx={{ display: "flex", flexShrink: 0 }}>
           <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} />
         </Box>
