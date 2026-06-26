@@ -15,6 +15,12 @@ const run = async (label: string, fn: () => Promise<unknown>) => {
 export const closeTab = (id: number) =>
   run("close tab", () => chrome.tabs.remove(id));
 
+export const closeTabs = (ids: number[]) =>
+  run("close tabs", () => chrome.tabs.remove(ids));
+
+export const closeWindow = (id: number) =>
+  run("close window", () => chrome.windows.remove(id));
+
 export const setPinned = (id: number, pinned: boolean) =>
   run(pinned ? "pin tab" : "unpin tab", () =>
     chrome.tabs.update(id, { pinned }),

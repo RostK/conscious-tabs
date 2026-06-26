@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import { FC, MouseEventHandler, useCallback } from "react";
 
+import { closeTab } from "../actions.ts";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useSelected } from "../selection";
@@ -40,18 +41,14 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
     [switchSelection, tab.id, tab.windowId],
   );
   const handleDelete = useCallback<MouseEventHandler>(
-    async (e) => {
+    (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (tab.id) {
-        try {
-          await chrome.tabs.remove(tab.id);
-        } catch (e) {
-          /* empty */
-        }
+        void closeTab(tab.id);
       }
     },
-    [tab],
+    [tab.id],
   );
   const handleHighlight = useCallback<MouseEventHandler>(
     async (e) => {
