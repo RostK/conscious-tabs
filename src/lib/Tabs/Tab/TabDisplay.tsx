@@ -23,7 +23,7 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
   const handleActivate = useCallback<MouseEventHandler>(
     async (e) => {
       if (tab.id) {
-        if (e.ctrlKey) {
+        if (e.ctrlKey || e.metaKey) {
           switchSelection();
         } else {
           try {
