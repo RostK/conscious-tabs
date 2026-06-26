@@ -12,6 +12,7 @@ import {
 import { FC, MouseEventHandler, useCallback } from "react";
 
 import { ItemButton } from "../elements/ItemButton.tsx";
+import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
 
@@ -92,7 +93,7 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>
       <ListItemAvatar sx={{ minWidth: "36px", pt: "5px" }}>
-        <img src={tab.favIconUrl} width={26} />
+        <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
       </ListItemAvatar>
       <ListItemSecondaryAction>
         <ItemButton

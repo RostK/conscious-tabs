@@ -3,7 +3,6 @@ import {
   ContentCopy,
   MoreVert,
   OpenInNew,
-  PublicOutlined,
   PushPin,
   PushPinOutlined,
   Refresh,
@@ -31,23 +30,8 @@ import {
   setMuted,
   setPinned,
 } from "../actions.ts";
+import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useActiveTab } from "../useActiveTab.ts";
-
-const TabFavicon: FC<{ src?: string }> = ({ src }) => {
-  const [broken, setBroken] = useState(false);
-  if (!src || broken) {
-    return <PublicOutlined fontSize="small" sx={{ color: "text.disabled" }} />;
-  }
-  return (
-    <img
-      src={src}
-      alt=""
-      width={20}
-      height={20}
-      onError={() => setBroken(true)}
-    />
-  );
-};
 
 /**
  * A persistent "you are here" card for the active tab of this side panel's
