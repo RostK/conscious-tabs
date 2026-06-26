@@ -31,6 +31,14 @@ export const setMuted = (id: number, muted: boolean) =>
     chrome.tabs.update(id, { muted }),
   );
 
+export const activateTab = (id: number, windowId: number) =>
+  run("switch to tab", async () => {
+    // Opening the side panel may need a user gesture / already be open.
+    await chrome.sidePanel.open({ windowId }).catch(() => undefined);
+    await chrome.tabs.update(id, { active: true });
+    await chrome.windows.update(windowId, { focused: true });
+  });
+
 export const duplicateTab = (id: number) =>
   run("duplicate tab", () => chrome.tabs.duplicate(id));
 
