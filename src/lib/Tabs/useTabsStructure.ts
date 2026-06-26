@@ -15,8 +15,8 @@ const getTabsTree = (
   tabs
     .filter((tab) => (filter ? filter(tab) : true))
     .sort((a, b) => a.index - b.index)
-    .forEach(
-      ({
+    .forEach((tab) => {
+      const {
         id,
         title,
         url,
@@ -26,86 +26,54 @@ const getTabsTree = (
         favIconUrl,
         active,
         highlighted,
-      }) => {
-        if (groupId === TAB_GROUP_ID_NONE) {
-          // Tab not in a group
-          structure.set(`tab:${id}`, {
-            type: "tab",
-            id,
-            title,
-            url,
-            index,
-            windowId,
-            groupId,
-            favIconUrl,
-            active,
-            highlighted,
-          });
-          return;
-        }
-        const groupItem = structure.get(`group:${groupId}`) as GroupItem;
-        // Tab in a group
-        if (groupItem) {
-          //Group already structured
-          structure.set(`group:${groupId}`, {
-            ...groupItem,
-            tabs: [
-              ...groupItem.tabs,
-              {
-                type: "tab",
-                id,
-                title,
-                url,
-                index,
-                windowId,
-                groupId,
-                favIconUrl,
-                active,
-                highlighted,
-              },
-            ],
-          });
-          return;
-        }
-        // First tab in a group
-        const groupData = groups.find(({ id }) => id === groupId);
-        if (!groupData) {
-          // Tab is absent somehow
-          structure.set(`tab:${id}`, {
-            type: "tab",
-            id,
-            title,
-            url,
-            index,
-            windowId,
-            groupId,
-            favIconUrl,
-            active,
-            highlighted,
-          });
-          return;
-        }
-        //Create new group in structure
+        pinned,
+        audible,
+        mutedInfo,
+      } = tab;
+      const tabItem: TabItem = {
+        type: "tab",
+        id,
+        title,
+        url,
+        index,
+        windowId,
+        groupId,
+        favIconUrl,
+        active,
+        highlighted,
+        pinned,
+        audible,
+        mutedInfo,
+      };
+      if (groupId === TAB_GROUP_ID_NONE) {
+        // Tab not in a group
+        structure.set(`tab:${id}`, tabItem);
+        return;
+      }
+      // Tab in a group
+      const groupItem = structure.get(`group:${groupId}`) as GroupItem;
+      if (groupItem) {
+        // Group already structured
         structure.set(`group:${groupId}`, {
-          ...groupData,
-          type: "group",
-          tabs: [
-            {
-              type: "tab",
-              id,
-              title,
-              url,
-              index,
-              windowId,
-              groupId,
-              favIconUrl,
-              active,
-              highlighted,
-            },
-          ],
+          ...groupItem,
+          tabs: [...groupItem.tabs, tabItem],
         });
-      },
-    );
+        return;
+      }
+      // First tab in a group
+      const groupData = groups.find(({ id }) => id === groupId);
+      if (!groupData) {
+        // Tab is absent somehow
+        structure.set(`tab:${id}`, tabItem);
+        return;
+      }
+      // Create new group in structure
+      structure.set(`group:${groupId}`, {
+        ...groupData,
+        type: "group",
+        tabs: [tabItem],
+      });
+    });
   return [...structure.values()];
 };
 

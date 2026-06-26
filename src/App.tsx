@@ -22,6 +22,7 @@ import {
 import { ComponentProps, useCallback, useContext, useState } from "react";
 
 import { ControlBar } from "./lib/ControlBar";
+import { CurrentTab } from "./lib/Tabs/CurrentTab";
 import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
 import { TabAvatarsDisplay } from "./lib/Tabs/elements/TabAvatarsDisplay.tsx";
 import { SelectionContext, SelectionProvider } from "./lib/Tabs/selection";
@@ -138,6 +139,7 @@ function App() {
               />
             </Search>
           </Toolbar>
+          <CurrentTab />
         </AppBar>
         <DndContext
           sensors={sensors}

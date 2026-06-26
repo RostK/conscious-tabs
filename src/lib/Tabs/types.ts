@@ -11,6 +11,9 @@ export type TabItem = {
   favIconUrl?: string | undefined;
   active: boolean;
   highlighted: boolean;
+  pinned?: boolean;
+  audible?: boolean;
+  mutedInfo?: chrome.tabs.MutedInfo;
 };
 export type GroupItem = {
   type: "group";
