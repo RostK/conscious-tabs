@@ -1,10 +1,13 @@
 :root {
+  /* Dense UI stays sans for scannability; Spectral is reserved for brand
+     moments and applied via the MUI theme (see src/lib/Theme). */
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
+  /* Let color-scheme + MUI's CssBaseline own the text/background colors so
+     light mode isn't forced to the old hardcoded near-white. */
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -18,11 +21,19 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: #1f1a14; /* ink — matches the app's interactive accent */
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: #423a30;
+}
+@media (prefers-color-scheme: dark) {
+  a {
+    color: #f0ebe1; /* ink inverts to paper on dark */
+  }
+  a:hover {
+    color: #d8d0c2;
+  }
 }
 
 body {
@@ -40,12 +51,20 @@ h1 {
   height: 10px; /* Mostly for horizontal scrollbars */
 }
 &::-webkit-scrollbar-thumb {
-  /* Foreground */
-  background: #aaa;
+  /* Foreground — warm taupe (brand muted) instead of cool grey */
+  background: #c6b9a6;
   border-radius: 4px;
 }
 &::-webkit-scrollbar-track {
-  /* Background */
-  background: #ddd;
+  /* Background — brand rule */
+  background: #e6dfd2;
   margin: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  &::-webkit-scrollbar-thumb {
+    background: #5c5147;
+  }
+  &::-webkit-scrollbar-track {
+    background: #2a241e;
+  }
 }

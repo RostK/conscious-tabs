@@ -10,8 +10,8 @@ import {
 } from "@dnd-kit/core";
 import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
 import {
-  alpha,
   AppBar,
+  Box,
   IconButton,
   InputBase,
   ListItemButton,
@@ -22,6 +22,8 @@ import {
 import { ComponentProps, useCallback, useContext, useState } from "react";
 
 import { ControlBar } from "./lib/ControlBar";
+import { AudioTabs } from "./lib/Tabs/AudioTabs";
+import { CurrentTab } from "./lib/Tabs/CurrentTab";
 import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
 import { TabAvatarsDisplay } from "./lib/Tabs/elements/TabAvatarsDisplay.tsx";
 import { SelectionContext, SelectionProvider } from "./lib/Tabs/selection";
@@ -31,12 +33,19 @@ import { PromptProvider } from "./lib/Tabs/undo";
 import { SearchView } from "./views/SearchView";
 import { TabsView } from "./views/TabsView";
 
+// A quiet paper pill with a hairline border, like the app's input fields —
+// not a colour-filled field on a coloured bar.
 const Search = styled("div")(({ theme }) => ({
   position: "relative",
   borderRadius: theme.shape.borderRadius,
-  backgroundColor: alpha(theme.palette.common.white, 0.15),
+  backgroundColor: theme.palette.background.default,
+  border: `1px solid ${theme.palette.divider}`,
+  transition: theme.transitions.create("border-color"),
   "&:hover": {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
+    borderColor: theme.palette.text.secondary,
+  },
+  "&:focus-within": {
+    borderColor: theme.palette.text.primary,
   },
   width: "100%",
   [theme.breakpoints.up("sm")]: {
@@ -52,6 +61,7 @@ const SearchIconWrapper = styled("div")(({ theme }) => ({
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+  color: theme.palette.text.secondary,
 }));
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
@@ -111,39 +121,52 @@ function App() {
   return (
     <PromptProvider>
       <SelectionProvider>
-        <AppBar position="sticky">
-          <Toolbar>
-            <Search>
-              <SearchIconWrapper>
-                <SearchOutlined />
-              </SearchIconWrapper>
-              <StyledInputBase
-                placeholder="Search…"
-                inputProps={{ "aria-label": "search" }}
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                }}
-                endAdornment={
-                  search && (
-                    <IconButton
-                      onClick={() => {
-                        setSearch("");
-                      }}
-                    >
-                      <SearchOffOutlined />
-                    </IconButton>
-                  )
-                }
-              />
-            </Search>
-          </Toolbar>
-        </AppBar>
         <DndContext
           sensors={sensors}
           onDragEnd={handleDragStop}
           onDragStart={handleDragStart}
         >
+          <AppBar
+            position="sticky"
+            elevation={0}
+            sx={{
+              bgcolor: "background.paper",
+              color: "text.primary",
+              borderBottom: 1,
+              borderColor: "divider",
+            }}
+          >
+            <Toolbar sx={{ gap: 1 }}>
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Search>
+                  <SearchIconWrapper>
+                    <SearchOutlined />
+                  </SearchIconWrapper>
+                  <StyledInputBase
+                    placeholder="Search…"
+                    inputProps={{ "aria-label": "search" }}
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                    }}
+                    endAdornment={
+                      search && (
+                        <IconButton
+                          onClick={() => {
+                            setSearch("");
+                          }}
+                        >
+                          <SearchOffOutlined />
+                        </IconButton>
+                      )
+                    }
+                  />
+                </Search>
+              </Box>
+              <AudioTabs />
+            </Toolbar>
+            <CurrentTab />
+          </AppBar>
           {!search && <TabsView />}
           {search && <SearchView search={search} />}
           <ControlBar />

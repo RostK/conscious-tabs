@@ -43,7 +43,10 @@ export const TabListItem: FC<
           sx={[
             group
               ? {
-                  backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
+                  // Faint tint + a solid group-colour left edge, matching the
+                  // group header — reads as a quiet container, not a colour block.
+                  backgroundColor: `color-mix(in srgb, ${group.color} 8%, transparent)`,
+                  boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
                 }
               : {},
           ]}

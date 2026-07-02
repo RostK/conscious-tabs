@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 
+import { closeTabs } from "../actions.ts";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
 import { TabItem } from "../types.ts";
 import { useTabsStructure } from "../useTabsStructure.ts";
@@ -65,12 +66,8 @@ export const SelectionToolbar: FC = () => {
   }, [dispatch]);
 
   const handleClose = useCallback<MouseEventHandler>(async () => {
-    try {
-      await chrome.tabs.remove(selected);
-      dispatch({ type: "clear" });
-    } catch (e) {
-      /* empty */
-    }
+    await closeTabs(selected);
+    dispatch({ type: "clear" });
   }, [dispatch, selected]);
   const handleNewGroup = useCallback(
     async ({ title, color }: { title?: string; color: string }) => {

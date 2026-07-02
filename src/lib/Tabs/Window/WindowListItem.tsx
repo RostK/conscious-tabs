@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 
+import { closeWindow } from "../actions.ts";
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import { SelectionContext } from "../selection";
@@ -54,13 +55,11 @@ export const WindowListItem: FC<{
     [window.id],
   );
 
-  const handleCloseWindow = useCallback<MouseEventHandler>(async () => {
-    try {
-      await chrome.windows.remove(window.id as number);
-    } catch (e) {
-      /* empty */
+  const handleCloseWindow = useCallback<MouseEventHandler>(() => {
+    if (window.id !== undefined) {
+      void closeWindow(window.id);
     }
-  }, [window]);
+  }, [window.id]);
   const itemAction = useMemo(() => {
     return (
       <ItemButton
