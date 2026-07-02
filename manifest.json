@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Conscious Tabs",
   "version": "0.0.3",
-  "description": "A quieter way to handle tab overload — every open tab, searchable and closable from one tidy panel.",
+  "description": "A quieter way to handle tab overload. Find, tidy, group, and close every open tab from one calm side panel.",
   "permissions": ["sidePanel", "tabs", "tabGroups", "sessions"],
   "side_panel": {
     "default_path": "index.html"
