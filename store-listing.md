@@ -89,6 +89,23 @@ Recommended set, in order:
 5. **Dark mode.** The same hero view in system dark theme. Caption:
    *"Follows your system light and dark theme."*
 
+### Ready-to-upload assets
+
+Promotional 1280×800 mockups matching the set above are generated in
+`store-assets/` — faithful to the real UI (exact brand tokens and layout),
+built with neutral demo tabs so no personal data is shown:
+
+| File | Scene |
+| --- | --- |
+| `store-assets/01-hero.png` | Hero — the whole panel |
+| `store-assets/02-search.png` | Search / filter |
+| `store-assets/03-multiselect.png` | Multi-select + bulk actions |
+| `store-assets/04-current-tab.png` | Current-tab quick-action menu |
+| `store-assets/05-dark-mode.png` | Dark mode |
+
+> These are illustrative mockups. If you'd prefer real captures, take them from
+> a clean demo profile per the guidance above and swap them in.
+
 Optional promo assets (dashboard only, not required):
 - Small promo tile **440×280**, marquee **1400×560** — use the paper background
   with the plum logo and the summary line.
