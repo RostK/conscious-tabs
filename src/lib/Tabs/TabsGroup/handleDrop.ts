@@ -3,7 +3,7 @@ import { GroupItem } from "../types.ts";
 
 export const handleDrop: DZonDrop<GroupItem> = async (drop, dropzone) => {
   if (Array.isArray(drop)) {
-    void moveTabsOnTab(drop, dropzone.data.tabs[0]);
+    void moveTabsOnTab(drop, dropzone.data.tabs[0], true);
   } else {
     switch (drop.type) {
       case "tab":

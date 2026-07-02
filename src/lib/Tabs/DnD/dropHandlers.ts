@@ -25,10 +25,17 @@ export const moveTabsOnTab = async (
     index: target.index - insertIndex,
     windowId: target.windowId,
   });
-  if (target.groupId >= 0 && !forceUngroup) {
-    await chrome.tabs.group({
-      tabIds: tabIds,
-      groupId: target.groupId,
-    });
+  if (target.groupId >= 0) {
+    if (forceUngroup) {
+      // Moving tabs onto a group's leading edge makes Chrome absorb them into
+      // that group, so the earlier ungroup is undone. Ungroup again after the
+      // final move to keep the tabs in the window, before the group.
+      await chrome.tabs.ungroup(tabIds);
+    } else {
+      await chrome.tabs.group({
+        tabIds: tabIds,
+        groupId: target.groupId,
+      });
+    }
   }
 };
