@@ -185,7 +185,7 @@ export const GroupListItem: FC<
           <TabGrid
             sx={[
               {
-                backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
+                backgroundColor: `color-mix(in srgb, ${group.color} 8%, transparent)`,
                 position: "relative",
               },
             ]}

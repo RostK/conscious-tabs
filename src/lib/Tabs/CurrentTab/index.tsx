@@ -72,7 +72,14 @@ export const CurrentTab: FC = () => {
           display: "flex",
           alignItems: "center",
           gap: 0.5,
-          px: 1,
+          // A restrained plum "you are here" cue: brand accent bar + faint
+          // tint, keeping the row itself dense and unchanged otherwise.
+          borderLeft: 3,
+          borderColor: "primary.main",
+          bgcolor: (theme) =>
+            `color-mix(in srgb, ${theme.palette.primary.main} 6%, transparent)`,
+          pl: 0.75,
+          pr: 1,
           py: 0.5,
           cursor: "grab",
           touchAction: "none",
@@ -86,7 +93,7 @@ export const CurrentTab: FC = () => {
           <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} />
         </Box>
         <Box sx={{ flexGrow: 1, minWidth: 0, mx: 0.5 }}>
-          <Typography variant="body2" noWrap>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
             {tab.title || "Current tab"}
           </Typography>
           <Typography
