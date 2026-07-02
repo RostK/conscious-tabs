@@ -91,9 +91,12 @@ Recommended set, in order:
 
 ### Ready-to-upload assets
 
-Promotional 1280×800 mockups matching the set above are generated in
-`store-assets/` — faithful to the real UI (exact brand tokens and layout),
-built with neutral demo tabs so no personal data is shown:
+Ready 1280×800 screenshots are in `store-assets/`. These are **real captures of
+the actual extension** — the production build running with a `chrome.*`
+demo-data shim (curated neutral tabs across one focused + two collapsed
+windows) so no personal data appears — driven through its real interactions
+(search typed, tabs selected, the current-tab menu opened, dark theme
+emulated) and composited onto the branded frame:
 
 | File | Scene |
 | --- | --- |
@@ -102,9 +105,6 @@ built with neutral demo tabs so no personal data is shown:
 | `store-assets/03-multiselect.png` | Multi-select + bulk actions |
 | `store-assets/04-current-tab.png` | Current-tab quick-action menu |
 | `store-assets/05-dark-mode.png` | Dark mode |
-
-> These are illustrative mockups. If you'd prefer real captures, take them from
-> a clean demo profile per the guidance above and swap them in.
 
 Optional promo assets (dashboard only, not required):
 - Small promo tile **440×280**, marquee **1400×560** — use the paper background
