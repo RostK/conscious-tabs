@@ -1,6 +1,6 @@
 # Privacy Policy — Conscious Tabs
 
-**Effective date:** 2 July 2026
+**Effective date:** 30 July 2026
 
 Conscious Tabs is a browser extension that helps you find, organise, and close
 your open tabs from the browser side panel. This policy explains what the
@@ -22,6 +22,12 @@ information is used **only** to render the side-panel interface and to carry out
 the actions you ask for. It is held in memory while the panel is open and is not
 written to any storage or sent anywhere.
 
+One clarification on "nothing leaves your browser": the panel shows each tab's
+favicon by pointing an image element at the icon URL your browser already
+reports for that tab. Loading it may reach that site's own server, though it is
+usually served from your browser's cache. Nothing about you or your other tabs
+is sent with the request.
+
 ## Permissions and why they are needed
 
 - **sidePanel** — Renders the extension's interface in the browser side panel.
@@ -37,7 +43,7 @@ written to any storage or sent anywhere.
 
 - We do not collect or transmit any personal or browsing data.
 - We do not use analytics, advertising, tracking, or fingerprinting.
-- We do not use cookies or external servers.
+- We do not use cookies, and the extension has no backend server of its own.
 - We do not sell or share your data with anyone.
 
 ## Data retention
