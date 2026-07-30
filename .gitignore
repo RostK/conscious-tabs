@@ -14,6 +14,17 @@ release
 *.zip
 *.local
 
+# Secrets — match `.env` itself, not just `.env*.local`
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+
+# Agent tooling exhaust (local state and telemetry, not project content)
+retros
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

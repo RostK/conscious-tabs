@@ -17,9 +17,10 @@ without hunting through a crowded tab strip.
 - **Undo** closed tabs from a snackbar (restores via the browser's session history).
 - Follows your system **light / dark** theme.
 
-## Install (load unpacked)
+## Install
 
-This extension isn't packaged for the Web Store; run it as an unpacked build:
+**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/conscious-tabs/gipghehefjijomemklmaknpfmcccgnel)**
+— or run an unpacked build from source:
 
 1. `npm install`
 2. `npm run build` (or `npm run dev` for a hot-reloading dev build)
