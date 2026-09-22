@@ -33,7 +33,7 @@ export const SearchView: FC<{ search: string }> = ({ search }) => {
       {windows.map((window) => (
         <Tabs
           expandedGroups
-          key={"w" + window.id + window.focused}
+          key={"w" + window.id}
           focus={false}
           tabsStructure={tabsStructure.filter(
             ({ windowId }) => window.id === windowId,

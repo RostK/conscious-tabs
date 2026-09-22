@@ -38,7 +38,13 @@ export const TabsView: FC = () => {
     <>
       {windows.map((window) => (
         <WindowListItem
-          key={"w" + window.id + window.focused}
+          // Stable across focus changes on purpose. Keying on window.focused
+          // remounted the whole subtree every time the user switched windows —
+          // and in the float every tab click does exactly that, so the rows
+          // were destroyed and rebuilt under the pointer, taking the
+          // hover-revealed close and select controls with them. Syncing isOpen
+          // from window.focused is WindowListItem's own useEffect's job.
+          key={"w" + window.id}
           window={window}
           tabsStructure={tabsStructure.filter(
             ({ windowId }) => window.id === windowId,

@@ -79,7 +79,10 @@ export const CurrentTab: FC = () => {
           borderColor: "primary.main",
           bgcolor: (theme) =>
             `color-mix(in srgb, ${theme.palette.primary.main} 6%, transparent)`,
-          pl: 0.75,
+          // No left padding: with the 3px accent bar this lands the favicon
+          // and title on the same x as the list rows below. At 0.75 the card
+          // sat 6px to their right, which reads as a wobble in a 400px window.
+          pl: 0,
           pr: 1,
           py: 0.5,
           cursor: "grab",
