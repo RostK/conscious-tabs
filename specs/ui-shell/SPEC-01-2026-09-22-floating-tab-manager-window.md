@@ -5,7 +5,7 @@
 | **Spec ID**    | SPEC-01                                                                                           |
 | **Date**       | 2026-09-22                                                                                        |
 | **Module**     | `ui-shell` (app hosting surfaces: `src/lib/host.ts`, `src/lib/float.ts`, `src/lib/ControlBar/`)   |
-| **Status**     | approved                                                                                          |
+| **Status**     | approved · **revised 2026-09-22** (see §14)                                                       |
 | **Supersedes** | —                                                                                                 |
 
 ---
@@ -60,12 +60,15 @@ as a **constraint with its evidence** rather than quietly designed around.
 | C-4  | Synthetic clicks cannot substitute: a handler fired by `.click()` or a dispatched `MouseEvent` sees `isTrusted: false` and `navigator.userActivation.isActive: false`.                                                                                   | Probe extension, 2026-09-22                                                                         |
 | C-5  | Chrome allows **one** Document PiP window per browser, globally, across all tabs **and** all extensions. Opening ours evicts the user's video PiP and vice versa.                                                                                        | Probe extension + chromium-extensions thread, 2026-09-22                                            |
 | C-6  | The float never outlives its opener. Closing **or navigating** the opener destroys the float.                                                                                                                                                           | Probe extension, 2026-09-22                                                                         |
-| C-7  | The float cannot be positioned by the page; `width` / `height` are hints Chrome may clamp; resizing needs a user gesture. `disallowReturnToOpener` (Chrome 124+) and `preferInitialWindowPlacement` (130+) are available.                                 | Probe extension, 2026-09-22                                                                         |
+| C-7  | The float cannot be positioned by the page; `width` / `height` are hints Chrome may clamp; resizing needs a user gesture. `disallowReturnToOpener` (Chrome 124+) and `preferInitialWindowPlacement` (130+) are available. **Revised:** at the size this feature asks for, clamping does not bite — `requestWindow({400, 640})` produced a 414x681 window with a **401x641 content area**. Budget the layout for 400x640 and it is budgeted correctly. | Probe extension, 2026-09-22; measured against the built feature, 2026-09-22 |
 | C-8  | The opener is **not** timer-throttled while it holds a float: 360 ticks measured over exactly 90.0 s with 0.0 s drift while the opener was backgrounded, versus Chrome's normal budget throttling starting ~10 s after hide. The opener is exempt.        | Probe extension, 2026-09-22 (measured with a popup-window opener — see A-7)                         |
-| C-9  | There is no `chrome.sidePanel.close()`. A side-panel page **can** close itself via `window.close()`.                                                                                                                                                     | w3c/webextensions#521, still open                                                                   |
+| C-9  | ~~There is no `chrome.sidePanel.close()`.~~ **Revised — too strong.** Literally true, practically misleading: a **global** `chrome.sidePanel.setOptions({ enabled: false })` evicts an already-open side panel, and unlike `window.close()` it can be fired from **any** document in the extension, not only the panel itself. A side-panel page can also still close itself via `window.close()`. | w3c/webextensions#521, still open; probe extension, 2026-09-22, step 6 |
+| C-13 | **The global disable of C-9 is a one-way door.** `setOptions({ enabled: true })` afterwards restores *availability*, not the panel — it stays shut until something calls `open()` with a live user gesture. While disabled the toolbar icon cannot reopen it either, so a document that disables the panel and then dies leaves the user with no way back. | Probe extension, 2026-09-22, step 7 |
+| C-14 | **Per-tab `setOptions({ tabId, enabled: false }) does NOT hide a side panel already open on that tab.** The flag governs *availability* — whether the panel can be opened there — not eviction. Every "per-tab side panel" recipe is describing availability; reading one as "the panel follows the active tab" is wrong. | Probe extension, 2026-09-22, step 2 |
+| C-15 | **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`, and `type` will not distinguish it.** Measured: the user's window came back `{type: "normal", alwaysOnTop: false}`; the float came back `{type: "normal", alwaysOnTop: true, 414x681, tabs: ["about:blank"]}`. Left unfiltered it appears in the mirrored list as a focused window holding one `about:blank` tab, with a close control that destroys the float, and any "which window is the user in" resolution lands on it. **`alwaysOnTop` separates them exactly, not heuristically**: `chrome.windows.create()` is forbidden from setting it (the same anti-phishing rule behind NG-6), so no window a user or extension opens can have it, while a float has it by definition. | Measured against the built feature, 2026-09-22 |
 | C-10 | `chrome.sidePanel.open()` requires a user gesture.                                                                                                                                                                                                      | Chrome extensions API                                                                               |
 | C-11 | The float's window title is taken from its **opener**, so an extension-origin opener labels the float with the extension name.                                                                                                                           | Probe extension, 2026-09-22, confirmed visually                                                     |
-| C-12 | **Derived from C-9 + C-10.** "Hide the side panel while the float is visible" can only be built as "the panel closes itself on the click that opens the anchor tab". The panel therefore disappears **one step earlier** than the user's phrasing implies, and cannot be brought back without a fresh user gesture. | C-9, C-10                                                                                           |
+| C-12 | **Derived from C-9 + C-10.** "Hide the side panel while the float is visible" can only be built as "the panel closes itself on the click that opens the anchor tab". The panel therefore disappears **one step earlier** than the user's phrasing implies, and cannot be brought back without a fresh user gesture. **Revised — the conclusion stands, the reasoning did not rule out `setOptions`.** It has now been ruled out explicitly: C-14 means no tab activation can hide an open panel, and C-13 means nothing can restore one without a gesture. A `tabs.onActivated` listener carries no user activation, so there is no path from "the user left the anchor tab" to "the panel is back". Recorded so this is not re-derived. | C-9, C-10, C-13, C-14 |
 
 C-1 + C-3 + C-4 together form a hard floor: **a click in the side panel can never open a float
 anywhere, by any indirection.** The minimum viable shape is therefore a two-step hand-off — side
@@ -88,6 +91,11 @@ stateDiagram-v2
 ```
 
 ### 1.3 Current state in the working tree, and the delta
+
+> **Historical as of 2026-09-22.** This section described the spike
+> (commit `fe82082`) and the delta from it. That delta has been built. The section is kept
+> because the *reasoning* for each change is still the reasoning behind the shipped design — but
+> it is no longer a description of the working tree, and §14 is where the revisions live.
 
 An uncommitted partial implementation exists; it builds, lints clean, and works. Part of it is
 **superseded by this spec** — the planner must expect code to *change*, not only to be added.
@@ -138,8 +146,11 @@ Stated explicitly so the scope stays plannable:
   "stores no data of its own" line stays true and unedited.
 - **NG-10** A keyboard shortcut / `chrome.commands` entry point to the anchor tab or float.
   Considered and declined.
-- **NG-11** Automatically restoring the side panel after the float closes. Not possible without a
-  fresh user gesture (C-10, C-12), and not wanted: the anchor tab is the landing surface.
+- **NG-11** Automatically restoring the side panel after the float closes. **Revised: it is not
+  merely unwanted, it is impossible.** C-14 shows no tab activation can hide or restore an open
+  panel, and C-13 shows re-enabling does not bring one back — only `open()` does, and that demands
+  a live user gesture (C-10) which no event listener carries. The anchor tab remains the landing
+  surface. A *manual* route back is not covered by this non-goal and is now required — see AC-41.
 - **NG-12** A dismissible first-run hint, coach mark, or onboarding overlay. Considered and
   dropped: remembering a dismissal means persisting state, which would contradict NG-9 and make
   `PRIVACY.md`'s "stores no data of its own" line false. Discoverability is carried by the
@@ -239,6 +250,18 @@ Priority uses MoSCoW.
 - **AC-35** _(Must)_ WHEN the user activates the float while another Picture-in-Picture window is
   already open, the system SHALL open the float without warning or confirming first.
   **Verify:** manual — with a video PiP running, click float; assert no dialog and no prompt.
+- **AC-41** _(Must)_ _(added 2026-09-22)_ WHILE the app is running in the anchor tab AND no float
+  is open, the system SHALL present a control that returns the manager to the side panel, opening
+  the panel and closing the anchor tab so that exactly one copy remains. WHILE a float is open the
+  system SHALL NOT present that control, because closing the anchor tab would destroy the float
+  (C-6).
+  **Why it was added.** NG-11 rules out *automatic* restoration, and C-13/C-14 now show it is
+  impossible rather than merely unwanted — but the spec then left the anchor tab with **no route
+  back at all** except knowing that the toolbar icon opens the panel, which nothing advertises. A
+  manual control is the only gesture-bearing route that exists (C-10), and it is not what NG-11
+  forbids.
+  **Verify:** unit on the control's presence per host and float state, plus manual — activate it
+  and assert the panel opens and the anchor tab closes.
 
 ### 5.3 Interaction with the existing per-window side-panel model
 
@@ -251,12 +274,20 @@ particular browser window, so those flows change meaning.
   system SHALL focus that window and SHALL NOT open the side panel in it.
   **Verify:** unit on the action helpers (host-aware branch), plus manual — click a tab from the
   float and assert no side panel appears.
-- **AC-16** _(Must)_ The system SHALL present the anchor tab in the mirrored tab list as a
-  distinct, visually marked row that cannot be closed from within the tab manager, so that the user
-  can find and focus the tab that is holding the float but cannot destroy it by using the manager
-  normally.
-  **Verify:** unit on the window/tab structure and the row's controls, plus manual — open the
-  float, locate the marked row, assert no close affordance.
+- **AC-16** _(Must)_ ~~The system SHALL present the anchor tab in the mirrored tab list as a
+  distinct, visually marked row that cannot be closed from within the tab manager.~~
+  **Superseded 2026-09-22 by user decision.** The system SHALL NOT present any of this extension's
+  own pages in the mirrored tab list, and SHALL NOT present the floating window's own window
+  (C-15) as a window in that list.
+  **Why it changed.** The marked-row form was argued from honesty: Chrome shows the anchor tab in
+  its own strip either way, so a manager that omits it is telling a small lie, and the marked row
+  let the user find and focus the tab holding their float. Filtering won on cost: a row that
+  cannot be closed, cannot be selected and cannot be caught by a bulk action is three special
+  cases in the list rendering, and each one is a place for the self-destruct path of E-4 to
+  return. Filtering **dissolves** E-4 rather than guarding it. What is traded away is named
+  plainly — the manager can no longer find or focus the anchor tab.
+  **Verify:** unit on the filtering predicate, plus manual — open the float and confirm neither
+  the anchor tab nor an `about:blank` window appears in the list.
 - **AC-17** _(Must)_ WHILE the app is running in the anchor tab or the float, the current-tab panel
   SHALL show the active tab of the **last-focused normal browser window**, SHALL update as the user
   focuses a different browser window, and SHALL never show the extension's own anchor tab as the
@@ -271,6 +302,18 @@ particular browser window, so those flows change meaning.
   reopened the panel from the toolbar icon), both copies SHALL converge on the same browser state
   after any action taken in either, with no duplicated and no lost operation.
   **Verify:** manual — act in one surface, observe the other.
+- **AC-42** _(Must)_ _(added 2026-09-22)_ WHEN a tab is closed while more than one surface is
+  live, the system SHALL raise its undo prompt in at most one surface — the one the user is
+  looking at — and a repeated undo of the same closure SHALL NOT restore it twice.
+  **Why it was added.** AC-19 states the principle; this is the case that actually occurs. The
+  undo prompt subscribes to `chrome.tabs.onRemoved` in **every** live document, so with the anchor
+  tab and the float both mounted — the normal state of this feature, not an edge case — one closed
+  tab raised two prompts, and pressing undo in both restored twice. That is a duplicated
+  *operation*, which AC-19 forbids outright, not merely a duplicated notification. Note the
+  behaviour predates this feature (two browser windows with two side panels reproduce it); the
+  float makes it routine.
+  **Verify:** unit on the should-prompt predicate per host and float state, plus manual — with the
+  anchor tab and float both open, close a tab and assert exactly one prompt.
 
 ### 5.4 Responsiveness and resource use
 
@@ -365,15 +408,21 @@ The affordance must advertise the *payoff*, not the mechanism: today's working-t
 second-step control — which the user cannot see until after step one. That leaves the feature
 effectively invisible.
 
-- **AC-39** _(Must)_ WHILE the app is running in the side panel, the pop-out affordance SHALL
-  convey — without the user activating any control — that the tab manager can be floated on top of
-  other applications.
+- **AC-39** _(Must)_ WHILE the app is running in the side panel, the system SHALL convey — in
+  text, without the user activating any control beyond opening the affordance's own menu — that
+  the tab manager can be floated on top of other applications.
+  **Revised 2026-09-22.** The original wording assumed a visible labelled button in the side
+  panel's bottom bar. Two things killed that: the bar cannot fit a third label at ~320px (three
+  of them wrapped onto two lines each), and a label promising "Float on top" in the *panel* is a
+  promise the click does not keep — floating cannot be started from the side panel at all (C-1),
+  so that control only opens the anchor tab. The payoff now rides on a menu item's secondary line
+  ("Open in a tab · Where it can float on top of other apps"), which is real text rather than a
+  hover-only tooltip and costs no width.
   **Verify:** unit on the affordance's user-visible and accessible text (assert it names the
-  floating payoff, not only "separate window"), plus manual — a first-time user reading the panel
-  can state what the control leads to.
+  floating payoff, and does not claim the click itself floats anything), plus manual.
 - **AC-40** _(Must)_ The information required by AC-39 SHALL be reachable without hovering — it
-  SHALL be present in the control's accessible name, or in a visible label, so that keyboard,
-  screen-reader, and touch users receive it too.
+  SHALL be present in visible text or in an accessible name, so that keyboard, screen-reader and
+  touch users receive it too. A tooltip alone SHALL NOT satisfy this.
   **Verify:** unit (accessible-name query) plus a manual keyboard and screen-reader pass with no
   pointer hover.
 
@@ -401,9 +450,11 @@ AC-40, that discovery does not depend solely on hover.
 - **E-3** The user closes the anchor tab, or the browser window containing it, while the float is
   up → the float dies (C-6, AC-12).
 - **E-4** The user tries to close the anchor tab _from inside the float_ by treating it as an
-  ordinary row in the list → prevented by AC-16. Note that `chrome.tabs.query({})` is called
-  unfiltered today, so the anchor tab appears in the mirrored list by default: this self-destruct
-  path exists unless it is handled, and the tab framing does not dissolve it.
+  ordinary row in the list → **dissolved** by the revised AC-16: the row is no longer there to
+  close, select, or catch in a bulk action. `chrome.tabs.query({})` is unfiltered by default, so
+  this path existed until it was filtered; the tab framing alone never dissolved it. The float's
+  own window (C-15) carried the same hazard one level up — a whole window row, with a close
+  control — and is filtered by the same criterion.
 - **E-5** The user reopens the side panel from the toolbar icon while the float is up → two live
   copies of the UI (AC-19). The side panel is not restored automatically (NG-11); this is the
   user's own deliberate action.
@@ -457,17 +508,16 @@ AC-40, that discovery does not depend solely on hover.
   `dev`, `build`, `lint`, `preview`, `prettier`). Criteria marked `Verify: unit` therefore imply
   either introducing a test runner or, as a fallback, a documented manual check — that choice
   belongs to the plan, not to this spec.
-- **A-7** C-8's throttling exemption (360 ticks / 90.0 s / 0.0 s drift) was measured with a
-  **popup-window** opener. The exemption is understood to attach to the document that holds the
-  float, so it is assumed to hold equally for a backgrounded **anchor tab**. This is the one
-  measurement the surface change invalidates, and AC-20 is the requirement it underwrites —
-  **verify it first**, before building on the assumption. A re-run of the probe against a tab
-  opener is in flight; until a result comes back this stays an assumption, not a constraint.
-- **A-8** Keyboard focus and text entry reach a text field inside the float. Chrome's own Document
-  Picture-in-Picture documentation names text editing and note-taking among the API's target
-  productivity use cases, so this is treated as given rather than as an open question. Confirm it
-  at implementation time (AC-31); if it does not hold, the float's value proposition changes
-  materially and this spec needs revisiting.
+- **A-7** ~~Assumption.~~ **CLOSED 2026-09-22 — verified, now a constraint.** Re-measured with a
+  real **tab** opener: the opener reported `visibilityState: "hidden"` for 102.1 s with −0.1 s
+  hidden-only drift over 413 ticks, and the float's own iframe realm — where the shipped React and
+  its timers actually live — reported `visible` at 0.0 s drift. The opener therefore only has to
+  stay *alive*, not stay *responsive*, which makes a tab anchor materially safer than it looked.
+  AC-20 rests on solid ground.
+- **A-8** ~~Assumption.~~ **CLOSED 2026-09-22 — verified by hand.** Keyboard focus and text entry
+  do reach the search field inside the float: typing filters the list normally. This was the one
+  assumption that could have ended the feature — a float you cannot search is a read-only poster
+  of your tabs — and it was checked before any of the surrounding code was rewritten.
 
 ---
 
@@ -504,7 +554,10 @@ AC-40, that discovery does not depend solely on hover.
 | `src/lib/ControlBar/index.tsx`                                                                                                                                                                                                                    | Hosts both affordances and the anchor-tab hand-off (AC-1 to AC-3, AC-13, AC-39). `handlePopOut` must change from popup-window to find-or-create tab; `handleCRXWindow` already has the semantics to reuse. Its "New window" flow also calls `chrome.sidePanel.open` (AC-15). |
 | Six `chrome.sidePanel.open({ windowId })` call sites — `src/lib/Tabs/actions.ts` (x2), `src/lib/Tabs/Tab/TabDisplay.tsx`, `src/lib/Tabs/selection/SelectionToolbar.tsx`, `src/lib/Tabs/Window/WindowListItem.tsx`, `src/lib/ControlBar/index.tsx` | These encode "focus that window and bring the panel along". From the float or the anchor tab that would reopen the very panel the user just dismissed. Each needs a host-aware branch (AC-15). This is the real cost of a second surface — not the rendering.            |
 | `src/lib/Tabs/useActiveTab.ts`                                                                                                                                                                                                                    | Resolves the host window via `chrome.windows.getCurrent()`, which returns the extension's own tab/window in the anchor and float cases. Must instead follow the last-focused normal browser window (AC-17).                                                             |
-| `src/lib/Tabs/useWindowsStructure.ts`, `src/lib/Tabs/useTabsStructure.ts`                                                                                                                                                                         | `chrome.tabs.query({})` is unfiltered, so the anchor tab appears in the mirrored list as an ordinary closable row. Must become a marked, non-closable row (AC-16, E-4).                                                                                                 |
+| `src/lib/Tabs/useWindowsStructure.ts`, `src/lib/Tabs/useTabsStructure.ts`                                                                                                                                                                         | `chrome.tabs.query({})` is unfiltered, so the anchor tab appears in the mirrored list as an ordinary closable row — and so does the float's own window (C-15). Both must be filtered out (revised AC-16, E-4).                                                          |
+| `src/lib/Tabs/useAudioTabs.ts` **(missed by this table until 2026-09-22)**                                                                                                                                                                        | Same `chrome.windows.getCurrent()` defect as `useActiveTab`. It excludes "this window's active tab" because the current-tab panel already covers it — so outside the panel it excluded the active tab of the *extension's* window, leaving the user's own noisy tab in the list while the exclusion did nothing (AC-17). |
+| `src/lib/Tabs/undo/SyncPrompt.tsx` **(missed by this table until 2026-09-22)**                                                                                                                                                                    | Two defects. `restore()` resolves "put the user back where they were" through `chrome.windows.getLastFocused()`, which from the float is the extension's own tab — so undo returned the tab *and* threw the user onto the tab manager. And it subscribes per document, so one closed tab raised a prompt in every live surface and undoing twice restored twice (AC-42). |
+| `src/views/TabsView/index.tsx`, `src/views/SearchView/index.tsx` **(missed by this table until 2026-09-22)**                                                                                                                                      | Window rows were keyed on `window.focused`, so every focus change remounted the whole subtree. Harmless in the panel; in the float **every tab click** focuses a window, so rows were destroyed under the pointer and the hover-revealed close and select controls went with them. Presents as an input bug, not a rendering one. |
 | `src/lib/Theme/index.tsx`                                                                                                                                                                                                                         | The float is a separate document; theme and style delivery must reach it (AC-32).                                                                                                                                                                                      |
 | `src/lib/Tabs/undo/`, notistack                                                                                                                                                                                                                   | Snackbars (undo, action failures per AC-7) must appear in the surface the user is looking at, never in a hidden opener.                                                                                                                                                |
 | `src/lib/Tabs/DnD/`                                                                                                                                                                                                                               | Drag affordances must be present-and-working or absent at float width, never present-and-dead (AC-37).                                                                                                                                                                 |
@@ -583,7 +636,35 @@ No open clarifications remain. Kept for traceability — each decision and where
 | "The current tab" outside the side panel | The active tab of the last-focused **normal** browser window, ignoring the extension's own anchor tab. | AC-17 |
 | Keyboard focus / typing inside the float | Not a user decision. Resolved as a grounded assumption from Chrome's own Document PiP use cases, with an implementation-time verification step. | A-8, AC-31 |
 
-**Still pending verification (not a blocker):** **A-7** — C-8's throttling measurement was taken
-with a popup-window opener, and the surface change to a tab has not been re-measured. A probe is
-in flight. AC-20 is the requirement that rests on it; verify before building on it. If the
-exemption does not extend to a backgrounded tab, this spec needs revisiting.
+**Nothing is pending verification any more.** A-7 was re-measured against a tab opener and A-8 was
+confirmed by hand; both are closed in §7.
+
+---
+
+## 14. Revision log — 2026-09-22
+
+Everything below was learned by building the feature and measuring the result, after this spec was
+marked `approved`. Each entry says what changed and what the evidence was, because several of
+these were things the spec asserted confidently and got wrong.
+
+| # | Changed | Why |
+| --- | --- | --- |
+| 1 | **C-9** weakened | "There is no `chrome.sidePanel.close()`" is literally true but misleading. A *global* `setOptions({ enabled: false })` evicts an open panel, from any document. Probe, step 6. |
+| 2 | **C-13, C-14** added | The global disable is one-way (re-enabling restores availability, not the panel), and per-tab disable does not hide a panel already open. Probe, steps 7 and 2. Together they close off the "hide the panel when the anchor tab is active, restore it when the user leaves" design, which looked buildable from the documentation. |
+| 3 | **C-15** added | A Document Picture-in-Picture window **is** a window to `chrome.windows.getAll()` and reports `type: "normal"`. `alwaysOnTop` is the exact discriminator. This one cost two wrong fixes before it was measured. |
+| 4 | **C-7** narrowed | Clamping does not bite at this size: 400x640 requested, 401x641 content area delivered. |
+| 5 | **C-12** reasoning completed | Conclusion unchanged; it had never ruled out `setOptions`, which is now done explicitly so it is not re-derived. |
+| 6 | **AC-16** superseded | The anchor tab is filtered out of the list rather than shown as a marked, non-closable row. User decision. E-4 is dissolved rather than guarded. |
+| 7 | **AC-39, AC-40** revised | The labelled bottom-bar control they assumed does not fit at ~320px, and promised floating from a surface that cannot float (C-1). Discovery now rides on a menu item's secondary text. |
+| 8 | **NG-11** re-reasoned | Automatic restoration is impossible, not merely unwanted (C-10, C-13, C-14). |
+| 9 | **AC-41** added | With NG-11 impossible, the anchor tab had no route back to the panel at all. A manual one is not what NG-11 forbids. |
+| 10 | **AC-42** added | AC-19 states the principle; the undo prompt firing in every live surface, and restoring twice, is the case that actually occurs. |
+| 11 | **§9** extended | Three more files carried the per-window host model than the table listed: `useAudioTabs`, `SyncPrompt`, and the view keys. The table said seven sites; it was ten. |
+| 12 | **A-7, A-8** closed | Both verified. A-8 was checked before any surrounding code was rewritten, because a float you cannot type in would have ended the feature. |
+
+**The pattern worth carrying forward.** Five of these twelve are corrections to things this spec
+asserted rather than measured — C-9, C-12, C-15, C-7 and the §9 table. Every one was settled by a
+throwaway probe or a measurement against the running build, usually in minutes. The constraints
+that were measured in the first place (C-1 to C-6, C-8, C-10, C-11) have all held without
+amendment.
+

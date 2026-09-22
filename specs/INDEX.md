@@ -9,7 +9,7 @@ in plans, not here.
 
 | Spec ID | Date       | Feature                       | Module     | Status | Supersedes | File                                                                                               |
 | ------- | ---------- | ----------------------------- | ---------- | ------ | ---------- | -------------------------------------------------------------------------------------------------- |
-| SPEC-01 | 2026-09-22 | Floating tab manager window   | `ui-shell` | approved | —        | [ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md](ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md) |
+| SPEC-01 | 2026-09-22 | Floating tab manager window   | `ui-shell` | approved (revised 2026-09-22) | —        | [ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md](ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md) |
 
 ## Status values
 
@@ -22,5 +22,8 @@ in plans, not here.
 ## Modules
 
 - **`ui-shell`** — where the app is hosted and how the user moves between surfaces: the side panel,
-  the pop-out extension window, and the floating (Document Picture-in-Picture) window.
-  Code: `src/lib/host.ts`, `src/lib/float.ts`, `src/lib/ControlBar/`.
+  the **anchor tab** (the extension page in a normal browser tab), and the floating (Document
+  Picture-in-Picture) window. The pop-out *extension window* named here originally was superseded
+  before any of it shipped.
+  Code: `src/lib/host.ts`, `src/lib/anchor.ts`, `src/lib/float.ts`, `src/lib/surfaces.ts`,
+  `src/lib/ControlBar/`.
