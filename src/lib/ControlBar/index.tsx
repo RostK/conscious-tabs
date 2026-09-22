@@ -1,21 +1,38 @@
 import {
   OpenInNew,
   PictureInPictureAlt,
+  PictureInPictureAltOutlined,
   TabUnselected,
+  VerticalSplit,
   WebAsset,
 } from "@mui/icons-material";
 import {
   AppBar,
   Box,
-  Button,
   Divider,
   IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Toolbar,
   Tooltip,
 } from "@mui/material";
-import { FC, useContext } from "react";
+import { FC, useContext, useState, useSyncExternalStore } from "react";
 
-import { canFloat, openFloat } from "../float";
+import {
+  backToSidePanel,
+  closeIfSidePanel,
+  openAnchorTab,
+  useSelfTab,
+} from "../anchor";
+import {
+  canFloat,
+  closeFloat,
+  getFloatState,
+  openFloat,
+  subscribeFloat,
+} from "../float";
 import { getHost } from "../host";
 import { SelectionContext, SelectionToolbar } from "../Tabs/selection";
 import logo from "./logo.svg";
@@ -27,39 +44,40 @@ const handleNewWindow = async () => {
   }
 };
 
-const handleCRXWindow = async () => {
-  const crxTabs = await chrome.tabs.query({ url: chrome.runtime.getURL("*") });
-  const crxTab = crxTabs[0];
-  if (crxTab && crxTab.id) {
-    await chrome.tabs.update(crxTab.id, { active: true });
-    void chrome.windows.update(crxTab.windowId, { focused: true });
-  } else {
-    await chrome.windows.create({
-      url: chrome.runtime.getURL("index.html"),
-    });
-  }
-};
-
 const handleNewTab = async () => {
   await chrome.tabs.create({ active: true });
 };
 
-const handlePopOut = async () => {
-  await chrome.windows.create({
-    url: chrome.runtime.getURL("index.html?host=window"),
-    type: "popup",
-    width: 420,
-    height: 720,
-  });
-  // There is no chrome.sidePanel.close() (w3c/webextensions#521); a panel page
-  // closing itself is the supported way, and it turns this into a hand-off
-  // rather than leaving a second copy of the UI open behind the window.
-  window.close();
+/**
+ * Hand off to the anchor tab. From the side panel this is a move, not a copy:
+ * the panel closes itself behind us so the user is never looking at two live
+ * copies of the same list.
+ */
+const handleAnchor = async () => {
+  await openAnchorTab();
+  await closeIfSidePanel();
 };
 
+/**
+ * Every "which surface am I on" action lives behind the logo.
+ *
+ * The bar cannot fit a third labelled button at side-panel width — three of
+ * them wrapped onto two lines each — and a tooltip is no substitute: it needs
+ * a hover, so it never reaches keyboard or touch users at all. Menu items are
+ * real text, read by screen readers and reachable by keyboard, and the logo
+ * was already sitting there, so this costs no width.
+ */
 export const ControlBar: FC = () => {
   const { selected } = useContext(SelectionContext);
   const host = getHost();
+  const self = useSelfTab();
+  const floating =
+    useSyncExternalStore(subscribeFloat, getFloatState) === "open";
+
+  const [menu, setMenu] = useState<HTMLElement | null>(null);
+  const closeMenu = () => {
+    setMenu(null);
+  };
 
   return (
     <>
@@ -82,42 +100,120 @@ export const ControlBar: FC = () => {
         <SelectionToolbar />
         <Divider />
         <Toolbar>
-          <IconButton onClick={handleCRXWindow}>
-            <img src={logo} />
-          </IconButton>
+          <Tooltip title="Where to show Conscious Tabs">
+            <IconButton
+              aria-label="Where to show Conscious Tabs"
+              aria-haspopup="menu"
+              onClick={(e) => {
+                setMenu(e.currentTarget);
+              }}
+            >
+              <img src={logo} alt="" />
+            </IconButton>
+          </Tooltip>
           <Box
             sx={{
               flexGrow: 1,
               display: "flex",
-              gap: 1,
-              justifyContent: "center",
+              gap: 0.5,
+              alignItems: "center",
+              justifyContent: "flex-end",
             }}
           >
-            <Button startIcon={<TabUnselected />} onClick={handleNewTab}>
-              New tab
-            </Button>
-            <Button startIcon={<WebAsset />} onClick={handleNewWindow}>
-              New window
-            </Button>
+            <Tooltip title="New tab">
+              <IconButton aria-label="New tab" onClick={handleNewTab}>
+                <TabUnselected />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="New window">
+              <IconButton aria-label="New window" onClick={handleNewWindow}>
+                <WebAsset />
+              </IconButton>
+            </Tooltip>
           </Box>
-          {host === "panel" && (
-            <Tooltip title="Open in a separate window">
-              <IconButton onClick={handlePopOut}>
-                <OpenInNew />
-              </IconButton>
-            </Tooltip>
-          )}
-          {host === "window" && canFloat() && (
-            <Tooltip title="Float on top of other apps">
-              {/* Must stay a direct click handler — openFloat() needs the
-                  click's transient activation, so nothing may await first. */}
-              <IconButton onClick={openFloat}>
-                <PictureInPictureAlt />
-              </IconButton>
-            </Tooltip>
-          )}
         </Toolbar>
       </AppBar>
+
+      <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
+        {host === "panel" && (
+          <MenuItem
+            onClick={() => {
+              void handleAnchor();
+              closeMenu();
+            }}
+          >
+            <ListItemIcon>
+              <OpenInNew fontSize="small" />
+            </ListItemIcon>
+            {/* The secondary line is the whole discovery mechanism. Floating
+                cannot be started from the side panel at all — Chrome refuses
+                Picture-in-Picture outside a real tab — so naming it on a
+                control that only opens the tab would be a promise this click
+                does not keep. */}
+            <ListItemText
+              primary="Open in a tab"
+              secondary="Where it can float on top of other apps"
+            />
+          </MenuItem>
+        )}
+
+        {host === "anchor" && floating && (
+          <MenuItem
+            onClick={() => {
+              closeFloat();
+              closeMenu();
+            }}
+          >
+            <ListItemIcon>
+              <PictureInPictureAltOutlined fontSize="small" />
+            </ListItemIcon>
+            {/* Names what it destroys, not where it lands. */}
+            <ListItemText primary="Stop floating" />
+          </MenuItem>
+        )}
+
+        {host === "anchor" && !floating && canFloat() && (
+          <MenuItem
+            onClick={() => {
+              // Called before anything else in the handler: requestWindow()
+              // needs this click's transient activation, and closing the menu
+              // first would be one step too many.
+              openFloat();
+              closeMenu();
+            }}
+          >
+            <ListItemIcon>
+              <PictureInPictureAlt fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Float on top" />
+          </MenuItem>
+        )}
+
+        {host === "anchor" && !floating && self && (
+          <MenuItem
+            onClick={() => {
+              // sidePanel.open() needs the gesture too, so this also goes
+              // first. The windowId was captured at mount for the same reason.
+              backToSidePanel(self);
+              closeMenu();
+            }}
+          >
+            <ListItemIcon>
+              <VerticalSplit fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Back to panel"
+              secondary="Closes this tab"
+            />
+          </MenuItem>
+        )}
+
+        {host === "float" && (
+          <MenuItem disabled>
+            <ListItemText primary="Floating" secondary="Use the tab behind" />
+          </MenuItem>
+        )}
+      </Menu>
     </>
   );
 };

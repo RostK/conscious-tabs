@@ -1,3 +1,5 @@
+import { enqueueSnackbar } from "notistack";
+
 import { getHost } from "./host";
 
 /**
@@ -8,13 +10,12 @@ import { getHost } from "./host";
  * 1. `requestWindow()` only works from a *top-level traversable*. The side
  *    panel is not one — it returns no API at all (WICG
  *    document-picture-in-picture#88, still open) — so the float can only be
- *    opened from the pop-out window. A `type: "popup"` extension window does
- *    qualify; that is verified behaviour, not documented anywhere.
+ *    opened from the anchor tab.
  * 2. It must be called synchronously from the click handler. Any `await`
  *    between the user's click and the call burns the transient-activation
  *    token and the request rejects.
- * 3. The float never outlives its opener, so the pop-out window has to stay
- *    open. It becomes a placard rather than a second copy of the UI.
+ * 3. The float never outlives its opener, so the anchor tab has to stay open.
+ *    It keeps showing the full tab manager while the float is up.
  *
  * The app is rendered into the float through an extension-origin iframe
  * rather than by moving DOM across documents. Re-parenting would break three
@@ -49,15 +50,50 @@ const pictureInPicture = (): DocumentPictureInPictureApi | undefined =>
 
 const FLOAT_WIDTH = 400;
 const FLOAT_HEIGHT = 640;
-const PLACARD_ID = "conscious-tabs-float-placard";
 
-/** Only the pop-out window can open a float — see constraint 1 above. */
+/**
+ * `wasClosed` means the float went away without us asking — evicted by another
+ * Picture-in-Picture request, or closed from its own title bar. It is a state
+ * rather than a snackbar because it happens while the user is in another
+ * application by definition, and a toast that expires in three seconds is a
+ * toast nobody sees.
+ */
+export type FloatState = "closed" | "open" | "wasClosed";
+
+let state: FloatState = "closed";
+/** Set while *we* are the ones closing it, so the notice stays quiet. */
+let closingOurselves = false;
+
+const listeners = new Set<() => void>();
+
+const setState = (next: FloatState) => {
+  if (next === state) return;
+  state = next;
+  listeners.forEach((notify) => {
+    notify();
+  });
+};
+
+export const subscribeFloat = (notify: () => void) => {
+  listeners.add(notify);
+  return () => {
+    listeners.delete(notify);
+  };
+};
+
+export const getFloatState = (): FloatState => state;
+
+/** Only the anchor tab can open a float — see constraint 1 above. */
 export const canFloat = (): boolean =>
-  getHost() === "window" && Boolean(pictureInPicture());
+  getHost() === "anchor" && Boolean(pictureInPicture());
 
 export const openFloat = (): void => {
   const pip = pictureInPicture();
   if (!pip) return;
+
+  // Rapid double activation must yield exactly one float and no visible error.
+  // Reading `.window` is synchronous, so the activation token survives it.
+  if (pip.window) return;
 
   // Deliberately not async: see constraint 2.
   pip
@@ -65,7 +101,24 @@ export const openFloat = (): void => {
     .then(fillFloat)
     .catch((error: unknown) => {
       console.error("Could not open the floating window", error);
+      // The user asked for a window and did not get one; saying so in the
+      // console only would leave them staring at a button that did nothing.
+      enqueueSnackbar("Couldn't open the floating window", {
+        variant: "error",
+      });
     });
+};
+
+export const closeFloat = (): void => {
+  const float = pictureInPicture()?.window;
+  if (!float) return;
+  closingOurselves = true;
+  float.close();
+};
+
+/** Dismiss the "it closed on its own" notice without reopening anything. */
+export const acknowledgeFloatClosed = (): void => {
+  if (state === "wasClosed") setState("closed");
 };
 
 const fillFloat = (float: Window) => {
@@ -80,60 +133,32 @@ const fillFloat = (float: Window) => {
   frame.style.cssText = "display:block;border:0;width:100%;height:100%";
   doc.body.append(frame);
 
-  showPlacard(float);
-  float.addEventListener("pagehide", hidePlacard);
+  setState("open");
+  float.addEventListener("pagehide", handleFloatGone);
 };
 
 /**
- * Turn the opener into a placard while the float is up. The app stays mounted
- * behind it rather than being unmounted: reaching the React root from here
- * would mean importing it, and the root already imports this file by way of
- * App → ControlBar. A hidden subtree lays out and paints nothing, so the cost
- * is a few wasted renders on tab events.
+ * Chrome reports no reason for a float closing: eviction, the window's own
+ * close button and our "Stop floating" all arrive as the same `pagehide`.
+ *
+ * We know when *we* asked. For everything else, focus is the discriminator —
+ * Chrome's built-in "Back to tab" button focuses this document on its way out,
+ * while an eviction raised from some other tab does not. Without that check,
+ * the blessed return path would be greeted with a "your float closed" notice
+ * about a thing the user just deliberately chose.
+ *
+ * Its one blind spot is harmless: an eviction that happens while the user is
+ * already looking at the anchor tab stays silent, which is fine — they watched
+ * it disappear.
  */
-const showPlacard = (float: Window) => {
-  const root = document.getElementById("root");
-  if (root) root.style.display = "none";
-
-  const placard = document.createElement("div");
-  placard.id = PLACARD_ID;
-  placard.style.cssText = [
-    "display:flex",
-    "flex-direction:column",
-    "gap:12px",
-    "align-items:center",
-    "justify-content:center",
-    "text-align:center",
-    "min-height:calc(100vh - 2rem)",
-    "font:14px/1.6 Inter,system-ui,sans-serif",
-  ].join(";");
-
-  const message = document.createElement("p");
-  message.textContent =
-    "Conscious Tabs is floating on top. Keep this window open — closing it closes the float.";
-  message.style.cssText = "margin:0;opacity:0.7;max-width:26em";
-
-  const back = document.createElement("button");
-  back.textContent = "Bring it back here";
-  back.style.cssText = [
-    "font:inherit",
-    "cursor:pointer",
-    "padding:8px 16px",
-    "border-radius:8px",
-    "border:1px solid currentColor",
-    "background:transparent",
-    "color:inherit",
-  ].join(";");
-  back.addEventListener("click", () => {
-    float.close();
-  });
-
-  placard.append(message, back);
-  document.body.append(placard);
-};
-
-const hidePlacard = () => {
-  document.getElementById(PLACARD_ID)?.remove();
-  const root = document.getElementById("root");
-  if (root) root.style.display = "";
+const handleFloatGone = () => {
+  if (closingOurselves) {
+    closingOurselves = false;
+    setState("closed");
+    return;
+  }
+  // Focus lands after the current task, so the check has to wait a tick.
+  setTimeout(() => {
+    setState(document.hasFocus() ? "closed" : "wasClosed");
+  }, 0);
 };
