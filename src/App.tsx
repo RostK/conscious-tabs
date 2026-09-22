@@ -103,6 +103,10 @@ function App() {
     setDragging(active.data.current as unknown as DefaultDrag);
   }, []);
 
+  const handleDragCancel = useCallback(() => {
+    setDragging(null);
+  }, []);
+
   const handleDragStop = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragEnd"]
   >(
@@ -126,6 +130,11 @@ function App() {
           sensors={sensors}
           onDragEnd={handleDragStop}
           onDragStart={handleDragStart}
+          // E-11: a drag released outside the float's window never reaches a
+          // dropzone, and without this the overlay stayed on screen following
+          // a pointer that had left the building. The float makes this easy to
+          // hit — it is a 400px window with a lot of desktop around it.
+          onDragCancel={handleDragCancel}
         >
           <AppBar
             position="sticky"
