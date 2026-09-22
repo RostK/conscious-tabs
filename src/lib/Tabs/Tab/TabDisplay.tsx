@@ -12,6 +12,7 @@ import {
 import { FC, MouseEventHandler, useCallback } from "react";
 
 import { closeTab } from "../actions.ts";
+import { AudioBadge } from "../elements/AudioBadge.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useSelected } from "../selection";
@@ -90,7 +91,9 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>
       <ListItemAvatar sx={{ minWidth: "36px", pt: "5px" }}>
-        <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
+        <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
+          <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
+        </AudioBadge>
       </ListItemAvatar>
       <ListItemSecondaryAction>
         <ItemButton

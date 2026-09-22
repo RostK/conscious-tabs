@@ -32,6 +32,7 @@ import {
   setMuted,
   setPinned,
 } from "../actions.ts";
+import { AudioBadge } from "../elements/AudioBadge.tsx";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useActiveTab } from "../useActiveTab.ts";
 
@@ -90,7 +91,9 @@ export const CurrentTab: FC = () => {
           sx={{ color: "text.disabled", flexShrink: 0 }}
         />
         <Box sx={{ display: "flex", flexShrink: 0 }}>
-          <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} />
+          <AudioBadge audible={tab.audible} muted={muted}>
+            <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} />
+          </AudioBadge>
         </Box>
         <Box sx={{ flexGrow: 1, minWidth: 0, mx: 0.5 }}>
           <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
@@ -107,7 +110,11 @@ export const CurrentTab: FC = () => {
         </Box>
         {showMute && (
           <Tooltip title={muted ? "Unmute" : "Mute"}>
-            <IconButton size="small" onClick={() => setMuted(id, !muted)}>
+            <IconButton
+              size="small"
+              color={muted ? "default" : "error"}
+              onClick={() => setMuted(id, !muted)}
+            >
               {muted ? (
                 <VolumeOff fontSize="small" />
               ) : (
