@@ -1,6 +1,7 @@
 import { enqueueSnackbar } from "notistack";
 
 import { getHost } from "./host";
+import { dark, light } from "./Theme/brand";
 
 /**
  * The floating, always-on-top window (Document Picture-in-Picture).
@@ -129,16 +130,38 @@ export const acknowledgeFloatClosed = (): void => {
   if (state === "wasClosed") setState("closed");
 };
 
+/**
+ * The theme's canvas for the scheme the system is currently in.
+ *
+ * Optional-called on purpose. This is a cosmetic nicety — it stops the float
+ * flashing white on open — and it runs inside fillFloat, so if it threw, the
+ * float would be left an empty window. A wrong background is a far better
+ * failure than no content.
+ */
+const canvas = (): string =>
+  window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? dark.canvas
+    : light.canvas;
+
 const fillFloat = (float: Window) => {
   const doc = float.document;
   doc.documentElement.style.height = "100%";
   doc.body.style.margin = "0";
   doc.body.style.height = "100%";
 
+  // The float's own document starts as a blank page with no color-scheme, so
+  // it paints white — in both themes — for as long as the iframe inside it
+  // takes to load and mount React. Dressing it first means the window opens
+  // already the right colour, and the iframe fades in over the same tone
+  // instead of over a white rectangle.
+  doc.documentElement.style.colorScheme = "light dark";
+  doc.documentElement.style.background = canvas();
+  doc.body.style.background = canvas();
+
   const frame = doc.createElement("iframe");
   frame.src = chrome.runtime.getURL("index.html?host=float");
   frame.title = "Conscious Tabs";
-  frame.style.cssText = "display:block;border:0;width:100%;height:100%";
+  frame.style.cssText = `display:block;border:0;width:100%;height:100%;background:${canvas()}`;
   doc.body.append(frame);
 
   current = float;

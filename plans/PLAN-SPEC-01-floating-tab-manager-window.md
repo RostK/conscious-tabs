@@ -30,7 +30,8 @@
 | T-9a | **done** | `restore` extracted to `undo/restore.ts` and routed through `resolveUserWindow()`. |
 | T-9b | **done** | `shouldPrompt()`: the anchor defers to its own float (exact), everything else gates on visibility (heuristic). A duplicate UNDO now reports instead of rejecting unhandled. |
 | T-10 | **done** | `onDragCancel` (E-11) + AC-18 empty state. AC-29 / 36 / 38 **measured** at 400x640 in a layout harness — all pass. AC-37, clamping and AC-30/31 still need Chrome. |
-| T-11 … T-16 | not started | |
+| T-11 | **done, bar one manual check** | Brand canvas painted from the first frame in both schemes — measured exact in the harness. AC-27 (float window title) still wants eyes on a real float. |
+| T-12 … T-16 | not started | |
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
 the running build, 2026-09-22, contradicting an assertion I had made confidently in the opposite
@@ -538,8 +539,20 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   document is default white — a visible flash in dark mode. Set the canvas background on `html` via
   a `prefers-color-scheme` rule, and set the float document's own background in `fillFloat` before
   the iframe is appended.
+- **Found on building it: the plan named the wrong flash.** `:root` already sets
+  `color-scheme: light dark`, so the iframe never flashed *white* in dark mode — it flashed the
+  UA's own default until CssBaseline mounted, a smaller two-step. The bad one is the **float's own
+  document**: created blank with no `color-scheme` at all, so the PiP window paints white in
+  **both** themes until the iframe inside it loads. It is dressed before the frame is appended.
+- **Measured in the harness at 401x641:** `html` and `body` both resolve to exactly
+  `rgb(245, 241, 233)` under light and `rgb(26, 22, 19)` under dark — the brand canvas in each
+  case, from the first frame.
+- **The tests caught a robustness bug, not just a jsdom gap.** `canvas()` calls `matchMedia`,
+  which jsdom lacks — and because it runs inside `fillFloat`, throwing there left the float an
+  **empty window**. It is optional-called now: a cosmetic colour lookup must never be able to cost
+  the user the content.
 - **DoD:** open the float in both themes; no white flash, and the float matches the side panel.
-- **ACs:** **AC-32** *(manual)*, **AC-27** *(manual — inherited from C-11, guard against regression)*
+- **ACs:** **AC-32** *(measured + manual)*, **AC-27** *(manual — inherited from C-11, guard against regression)*
 
 #### T-12 · Snackbars land in the surface the user is looking at
 

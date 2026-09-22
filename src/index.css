@@ -36,6 +36,25 @@ a:hover {
   }
 }
 
+/* Paint the brand canvas from the very first frame.
+ *
+ * `color-scheme` above already stops a *white* flash in dark mode, but it
+ * leaves the UA's own default background showing until MUI's CssBaseline
+ * mounts and sets the real one — a visible two-step. It matters most in the
+ * float, whose document is created empty and paints before the iframe inside
+ * it has loaded anything at all.
+ *
+ * These two values are `canvas` from src/lib/Theme/brand.ts. CSS cannot import
+ * them, so they are duplicated here; change them together. */
+html {
+  background-color: #f5f1e9;
+}
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #1a1613;
+  }
+}
+
 body {
   margin: 1rem;
   background-color: transparent;

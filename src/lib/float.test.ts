@@ -115,6 +115,23 @@ describe("opening the float", () => {
     );
   });
 
+  // AC-32. The float's document is created blank, with no color-scheme, so it
+  // paints white in both themes for as long as the iframe takes to load. It
+  // has to be dressed before the frame is appended, not after.
+  it("dresses the float's own document before the iframe loads", async () => {
+    const pipWindow = makeFloatWindow();
+    installPiP(() => Promise.resolve(pipWindow));
+    const float = await loadFloat();
+
+    float.openFloat();
+    await settle();
+
+    const frame = pipWindow.document.body.querySelector("iframe");
+    expect(pipWindow.document.documentElement.style.background).not.toBe("");
+    expect(pipWindow.document.body.style.background).not.toBe("");
+    expect(frame?.style.background).not.toBe("");
+  });
+
   // E-12: rapid double activation yields one float and no visible error.
   it("ignores a second activation while one is already open", async () => {
     const api = installPiP(() => Promise.resolve(makeFloatWindow()));

@@ -9,6 +9,22 @@ import { installChrome } from "./chromeStub.ts";
 // chrome.* at module scope and throw on import without it. See chromeStub.ts.
 installChrome();
 
+// jsdom has no matchMedia. Both the theme (via MUI's useMediaQuery) and the
+// float's canvas colour ask for the system colour scheme, so without this they
+// throw rather than simply reading as light.
+if (!window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
+}
+
 beforeEach(() => {
   // A clean baseline per test, so a fixture set by one never leaks into the
   // next. Tests that need data call installChrome() again with fixtures.
