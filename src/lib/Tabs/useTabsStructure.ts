@@ -85,7 +85,9 @@ export const useTabsStructure: (options?: {
   const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
   const [groups, setGroups] = useState<chrome.tabGroups.TabGroup[]>([]);
   const getTabsFunc = useCallback(async () => {
-    const tabs = await chrome.tabs.query({});
+    // See useWindowsStructure: a Picture-in-Picture window is not a browsing
+    // window, and its about:blank document is not a tab the user owns.
+    const tabs = await chrome.tabs.query({ windowType: "normal" });
     const groups = await chrome.tabGroups.query({});
     setTabs(tabs);
     setGroups(groups);

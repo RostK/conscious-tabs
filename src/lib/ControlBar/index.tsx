@@ -35,13 +35,14 @@ import {
   subscribeFloat,
 } from "../float";
 import { getHost } from "../host";
+import { bringPanelAlong } from "../surfaces";
 import { SelectionContext, SelectionToolbar } from "../Tabs/selection";
 import logo from "./logo.svg";
 
 const handleNewWindow = async () => {
   const { id } = await chrome.windows.create({ focused: true });
   if (id) {
-    await chrome.sidePanel.open({ windowId: id });
+    await bringPanelAlong(id);
   }
 };
 

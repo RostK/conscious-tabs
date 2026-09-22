@@ -24,7 +24,19 @@
 | T-5 | partial | Matrix and copy built, including "Stop floating". **`ControlBar` render tests still to write.** |
 | T-5a | **done** | "Back to panel" — new scope, see D-7. |
 | T-6 | **done** | `FloatClosedNotice`, mounted in the sticky AppBar so it cannot be scrolled away. 13 tests over the state machine. |
-| T-7 … T-16 | not started | |
+| T-7 | **done** | `surfaces.ts` / `bringPanelAlong`, all six call sites. Fixed the live "tab can't be activated from the float" bug. |
+| T-8 | partial | The **PiP window** is filtered out of the list (see below). The **anchor tab** row is still unmarked and still closable. |
+| T-9 … T-16 | not started | |
+
+**A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
+the running build, 2026-09-22, contradicting an assertion I had made confidently in the opposite
+direction. It appears as a window holding a single `about:blank` tab, and it reports itself as
+**focused**, so `WindowListItem` auto-expanded it, `useActiveTab` resolved to it (the float's
+"current tab" card read `about:blank`), and it carried a close control that would have destroyed
+the float. Fixed by querying `windowType: "normal"` in both structure hooks: this manager mirrors
+*browsing* windows, and a Picture-in-Picture widget is not one. Needs the same treatment in the
+spec as the other probe findings — nothing in SPEC-01 anticipates the float appearing in its own
+list.
 
 ### Pending amendments to SPEC-01
 

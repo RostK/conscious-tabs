@@ -4,6 +4,7 @@ import {
   Close,
 } from "@mui/icons-material";
 import {
+  Box,
   ListItemAvatar,
   ListItemButton,
   ListItemSecondaryAction,
@@ -11,7 +12,7 @@ import {
 } from "@mui/material";
 import { FC, MouseEventHandler, useCallback } from "react";
 
-import { closeTab } from "../actions.ts";
+import { activateTab, closeTab } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
@@ -24,20 +25,17 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
 }) => {
   const { isSelected, switchSelection } = useSelected(tab.id as number);
   const handleActivate = useCallback<MouseEventHandler>(
-    async (e) => {
-      if (tab.id) {
-        if (e.ctrlKey || e.metaKey) {
-          switchSelection();
-        } else {
-          try {
-            await chrome.sidePanel.open({ windowId: tab.windowId });
-            await chrome.tabs.update(tab.id, { active: true });
-            await chrome.windows.update(tab.windowId, { focused: true });
-          } catch (e) {
-            /* empty */
-          }
-        }
+    (e) => {
+      if (!tab.id) return;
+      if (e.ctrlKey || e.metaKey) {
+        switchSelection();
+        return;
       }
+      // Was an inline copy of activateTab wrapped in an empty catch, which is
+      // how "clicking a tab in the float does nothing" stayed silent: the
+      // sidePanel.open() it opened with rejects there, so the activation two
+      // lines below never ran and the reason went nowhere.
+      void activateTab(tab.id, tab.windowId);
     },
     [switchSelection, tab.id, tab.windowId],
   );
@@ -75,25 +73,43 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
           "& .itemAction": {
             visibility: "hidden",
           },
+          // The checkbox takes the favicon's square rather than sitting on top
+          // of it. It used to be absolutely positioned at left:-8, which put it
+          // over the avatar — survivable in a wide window, plainly broken at
+          // the float's 400px, where there is no margin to hang it in.
+          "&:hover .tabIcon": {
+            visibility: "hidden",
+          },
+          "&:hover .tabSelect": {
+            visibility: "visible",
+          },
         },
       ]}
     >
-      <ItemButton
-        onClick={handleHighlight}
-        className={!isSelected ? "itemAction" : undefined}
-        sx={[
-          {
-            position: "absolute",
-            left: -8,
-          },
-        ]}
+      <ListItemAvatar
+        sx={{ minWidth: "36px", pt: "5px", position: "relative" }}
       >
-        {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
-      </ItemButton>
-      <ListItemAvatar sx={{ minWidth: "36px", pt: "5px" }}>
-        <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
-          <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
-        </AudioBadge>
+        <Box
+          className="tabIcon"
+          sx={{ visibility: isSelected ? "hidden" : "visible" }}
+        >
+          <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
+            <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
+          </AudioBadge>
+        </Box>
+        <ItemButton
+          className="tabSelect"
+          onClick={handleHighlight}
+          aria-label={isSelected ? "Deselect tab" : "Select tab"}
+          sx={{
+            position: "absolute",
+            top: -3,
+            left: -7,
+            visibility: isSelected ? "visible" : "hidden",
+          }}
+        >
+          {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
+        </ItemButton>
       </ListItemAvatar>
       <ListItemSecondaryAction>
         <ItemButton

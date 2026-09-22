@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 
+import { bringPanelAlong } from "../../surfaces.ts";
 import { closeWindow } from "../actions.ts";
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { ItemButton } from "../elements/ItemButton.tsx";
@@ -48,7 +49,7 @@ export const WindowListItem: FC<{
       e.preventDefault();
       e.stopPropagation();
       if (window.id) {
-        await chrome.sidePanel.open({ windowId: window.id });
+        await bringPanelAlong(window.id);
         void chrome.windows.update(window.id, { focused: true });
       }
     },
