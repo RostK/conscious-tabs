@@ -26,7 +26,8 @@
 | T-6 | **done** | `FloatClosedNotice`, mounted in the sticky AppBar so it cannot be scrolled away. 13 tests over the state machine. |
 | T-7 | **done** | `surfaces.ts` / `bringPanelAlong`, all six call sites. Fixed the live "tab can't be activated from the float" bug. |
 | T-8 | **done — by filtering, not marking** | Both the PiP window and this extension's own pages are dropped from the mirrored list. **Contradicts AC-16**; user decision, see below. |
-| T-9 … T-16 | not started | |
+| T-9 | **done** | `resolveUserWindow()` + `useUserWindow()`. Fixed **three** call sites, not one: `useActiveTab`, `useAudioTabs` (same defect, not in the spec's table) and the export T-9a needs. |
+| T-9a … T-16 | not started | |
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
 the running build, 2026-09-22, contradicting an assertion I had made confidently in the opposite
@@ -56,7 +57,7 @@ The plan has outrun the spec in four places. These are WHAT changes and belong i
 be used to find or focus the anchor tab — that was AC-16's stated reason for keeping it visible,
 and it is the thing traded away. And in the anchor tab itself, `useActiveTab` now resolves to
 nothing, because the active tab of its own window is the one just filtered out, so the current-tab
-card disappears there. **T-9 is what fixes that properly**, by following the last-focused *normal*
+card disappears there. **T-9 fixes that**, by following the last-focused *normal*
 browser window instead of `chrome.windows.getCurrent()`.
 
 **Menu only where width is scarce (user feedback, 2026-09-22).** D-8 put every surface action

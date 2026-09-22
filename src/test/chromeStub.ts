@@ -59,9 +59,13 @@ export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
     },
     tabs: {
       query: vi.fn(async (info: chrome.tabs.QueryInfo = {}) =>
-        typeof info.url === "string"
-          ? tabs.filter((tab) => matchesPattern(info.url as string, tab.url))
-          : tabs,
+        tabs.filter(
+          (tab) =>
+            (typeof info.url !== "string" ||
+              matchesPattern(info.url, tab.url)) &&
+            (info.windowId === undefined || tab.windowId === info.windowId) &&
+            (info.active === undefined || Boolean(tab.active) === info.active),
+        ),
       ),
       getCurrent: vi.fn(async () => fixtures.currentTab),
       update: vi.fn(async () => undefined),

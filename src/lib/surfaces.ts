@@ -40,3 +40,47 @@ export const bringPanelAlong = async (windowId: number): Promise<void> => {
   // not control. Neither is worth failing the surrounding action over.
   await chrome.sidePanel.open({ windowId }).catch(() => undefined);
 };
+
+/**
+ * Which browser window the user is actually working in.
+ *
+ * The side panel belongs to exactly one window, so there the answer is simply
+ * that window. The anchor tab and the float belong to none — and
+ * `chrome.windows.getCurrent()` in either of them returns the *extension's*
+ * window, which is how the float's current-tab card came to describe the float
+ * rather than whatever the user was reading.
+ *
+ * A window qualifies when its active tab is not one of our own pages. That is
+ * AC-17's requirement stated directly: never present the extension's own tab
+ * as the user's current tab.
+ *
+ * Picture-in-Picture windows are excluded by `windowTypes: ["normal"]`, the
+ * same assumption the mirrored list relies on.
+ */
+export const resolveUserWindow = async (): Promise<number | undefined> => {
+  if (getHost() === "panel") {
+    const { id } = await chrome.windows.getCurrent();
+    return id;
+  }
+
+  const recent = await chrome.windows.getLastFocused({
+    windowTypes: ["normal"],
+  });
+  if (await isUserWindow(recent.id)) return recent.id;
+
+  // getAll() carries no recency order, so this is a deliberate approximation
+  // rather than an oversight: the first normal window the user is plausibly
+  // in. It only applies before any focus change has been observed, or when
+  // the last-focused window is the anchor's own.
+  const all = await chrome.windows.getAll({ windowTypes: ["normal"] });
+  for (const candidate of all) {
+    if (await isUserWindow(candidate.id)) return candidate.id;
+  }
+  return undefined;
+};
+
+const isUserWindow = async (windowId?: number): Promise<boolean> => {
+  if (windowId === undefined) return false;
+  const [active] = await chrome.tabs.query({ active: true, windowId });
+  return Boolean(active?.url) && !isOwnPage(active.url);
+};

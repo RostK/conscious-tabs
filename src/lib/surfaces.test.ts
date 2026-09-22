@@ -5,7 +5,11 @@ import {
   extensionUrl,
   installChrome,
 } from "../test/chromeStub.ts";
-import { bringPanelAlong, isOwnPage } from "./surfaces.ts";
+import {
+  bringPanelAlong,
+  isOwnPage,
+  resolveUserWindow,
+} from "./surfaces.ts";
 
 let chrome: ChromeStub;
 
@@ -78,5 +82,91 @@ describe("isOwnPage", () => {
   it("is false for a tab with no url", () => {
     expect(isOwnPage(undefined)).toBe(false);
     expect(isOwnPage("")).toBe(false);
+  });
+});
+
+/**
+ * AC-17. The defect this replaces was `chrome.windows.getCurrent()`, which is
+ * right for a side panel and wrong for every surface that belongs to no
+ * window: in the float it returned the extension's own window, so the
+ * current-tab card described our page instead of the user's.
+ */
+describe("resolveUserWindow", () => {
+  const userWindows = [{ id: 1 }, { id: 2 }];
+  const browsing = [
+    { id: 10, windowId: 1, active: true, url: "https://example.com/" },
+    { id: 11, windowId: 2, active: true, url: "https://other.test/" },
+  ];
+
+  it("uses the panel's own window in the side panel", async () => {
+    atHost("/");
+    installChrome({ windows: [{ id: 5 }], tabs: browsing });
+    expect(await resolveUserWindow()).toBe(5);
+  });
+
+  it("follows the last-focused window from the anchor tab", async () => {
+    atHost("/?host=anchor");
+    const stub = installChrome({ windows: userWindows, tabs: browsing });
+    stub.windows.getLastFocused.mockResolvedValue({
+      id: 2,
+    } as chrome.windows.Window);
+    expect(await resolveUserWindow()).toBe(2);
+  });
+
+  it("follows the last-focused window from the float", async () => {
+    atHost("/?host=float");
+    const stub = installChrome({ windows: userWindows, tabs: browsing });
+    stub.windows.getLastFocused.mockResolvedValue({
+      id: 1,
+    } as chrome.windows.Window);
+    expect(await resolveUserWindow()).toBe(1);
+  });
+
+  // The heart of AC-17: never present the extension's own tab as the user's.
+  it("skips a window whose active tab is one of ours", async () => {
+    atHost("/?host=float");
+    const stub = installChrome({
+      windows: [{ id: 3 }, { id: 1 }],
+      tabs: [
+        { id: 30, windowId: 3, active: true, url: extensionUrl("index.html?host=anchor") },
+        ...browsing,
+      ],
+    });
+    // The anchor's window was focused most recently — it is where the user
+    // clicked "Float on top".
+    stub.windows.getLastFocused.mockResolvedValue({
+      id: 3,
+    } as chrome.windows.Window);
+
+    expect(await resolveUserWindow()).toBe(1);
+  });
+
+  it("gives up rather than guessing when every window is ours", async () => {
+    atHost("/?host=float");
+    const stub = installChrome({
+      windows: [{ id: 3 }],
+      tabs: [
+        { id: 30, windowId: 3, active: true, url: extensionUrl("index.html?host=anchor") },
+      ],
+    });
+    stub.windows.getLastFocused.mockResolvedValue({
+      id: 3,
+    } as chrome.windows.Window);
+
+    expect(await resolveUserWindow()).toBeUndefined();
+  });
+
+  it("asks only for normal windows, so a picture-in-picture is never a candidate", async () => {
+    atHost("/?host=float");
+    const stub = installChrome({ windows: userWindows, tabs: browsing });
+    stub.windows.getLastFocused.mockResolvedValue({
+      id: 1,
+    } as chrome.windows.Window);
+
+    await resolveUserWindow();
+
+    expect(stub.windows.getLastFocused).toHaveBeenCalledWith({
+      windowTypes: ["normal"],
+    });
   });
 });
