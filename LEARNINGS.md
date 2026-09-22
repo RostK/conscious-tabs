@@ -30,6 +30,13 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   from **any** document in the extension. Measured with a probe extension, step 6.
   **It is a one-way door though** — see What Doesn't Work — so do not reach for it without a
   guaranteed re-enable path.
+- 2026-09-22 (closes assumption A-8) — **Keyboard focus and text entry do reach a text field
+  inside the Document PiP window.** Clicking the search box in the float and typing filters
+  the list normally. This was the last unverified assumption in
+  `specs/ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md`, and the one that would
+  have sunk the feature: a float you cannot search is a read-only poster of your tabs. The app
+  runs in an extension-origin iframe inside the PiP window, so this also confirms that frame
+  keeps working normally — it is not a degraded or inert context.
 
 ## What Doesn't Work
 
@@ -184,4 +191,6 @@ _Nothing recorded yet._
   target use cases, so it is assumed to work and is tracked as assumption A-8 in
   `specs/ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md`. Verify during
   implementation before relying on the float's search field.
+- 2026-09-22 (closes the note above) — Verified by hand: search works inside the float. Nothing
+  from the 2026-09-22 research session is open any more. See What Works.
 

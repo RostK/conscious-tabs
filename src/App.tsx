@@ -22,6 +22,7 @@ import {
 import { ComponentProps, useCallback, useContext, useState } from "react";
 
 import { ControlBar } from "./lib/ControlBar";
+import { FloatClosedNotice } from "./lib/FloatClosedNotice.tsx";
 import { AudioTabs } from "./lib/Tabs/AudioTabs";
 import { CurrentTab } from "./lib/Tabs/CurrentTab";
 import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
@@ -166,6 +167,7 @@ function App() {
               <AudioTabs />
             </Toolbar>
             <CurrentTab />
+            <FloatClosedNotice />
           </AppBar>
           {!search && <TabsView />}
           {search && <SearchView search={search} />}

@@ -63,6 +63,15 @@ export type FloatState = "closed" | "open" | "wasClosed";
 let state: FloatState = "closed";
 /** Set while *we* are the ones closing it, so the notice stays quiet. */
 let closingOurselves = false;
+/**
+ * Our own handle on the float. Closing through this rather than through
+ * `documentPictureInPicture.window` matters: if that global were ever null
+ * when we asked, closeFloat() would silently do nothing *and* skip setting
+ * closingOurselves — so the pagehide that followed would be misread as an
+ * eviction and the user would be told their float "closed on its own"
+ * immediately after they clicked Stop floating.
+ */
+let current: Window | undefined;
 
 const listeners = new Set<() => void>();
 
@@ -110,10 +119,9 @@ export const openFloat = (): void => {
 };
 
 export const closeFloat = (): void => {
-  const float = pictureInPicture()?.window;
-  if (!float) return;
+  if (!current) return;
   closingOurselves = true;
-  float.close();
+  current.close();
 };
 
 /** Dismiss the "it closed on its own" notice without reopening anything. */
@@ -133,6 +141,7 @@ const fillFloat = (float: Window) => {
   frame.style.cssText = "display:block;border:0;width:100%;height:100%";
   doc.body.append(frame);
 
+  current = float;
   setState("open");
   float.addEventListener("pagehide", handleFloatGone);
 };
@@ -152,6 +161,7 @@ const fillFloat = (float: Window) => {
  * it disappear.
  */
 const handleFloatGone = () => {
+  current = undefined;
   if (closingOurselves) {
     closingOurselves = false;
     setState("closed");

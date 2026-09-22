@@ -16,14 +16,15 @@
 
 | Unit | State | Note |
 | --- | --- | --- |
-| T-0 | **awaiting the user** | Gate. Manual check of A-8 in a real float; cannot be automated (C-4). |
+| T-0 | **done — gate passed** | A-8 **confirmed**: search works inside the float. The spec's last unverified assumption, and the one that could have sunk the feature. Recorded in `LEARNINGS.md`. |
 | T-1 | **done** | Vitest + jsdom + Testing Library, `chrome.*` stub. 18 tests. |
 | T-2 | **done** | `host.ts` → `"panel" \| "anchor" \| "float"`, AC-28 covered. |
 | T-3 | **done** | `anchor.ts` + `ControlBar`; D-5a and D-5b both covered by tests. |
 | T-4 | **done** | Float state machine (`useSyncExternalStore`, not a context — `ControlBar` and the notice are the only consumers). Placard gone, E-12 guard, D-2a focus heuristic, AC-7 snackbar. |
-| T-5 | partial | Matrix and copy built, including "Stop floating". **Unit tests still to write.** |
+| T-5 | partial | Matrix and copy built, including "Stop floating". **`ControlBar` render tests still to write.** |
 | T-5a | **done** | "Back to panel" — new scope, see D-7. |
-| T-6 … T-16 | not started | |
+| T-6 | **done** | `FloatClosedNotice`, mounted in the sticky AppBar so it cannot be scrolled away. 13 tests over the state machine. |
+| T-7 … T-16 | not started | |
 
 ### Pending amendments to SPEC-01
 
@@ -37,12 +38,24 @@ The plan has outrun the spec in four places. These are WHAT changes and belong i
 | **AC-39, AC-40** | Both assume a visible labelled control in the side panel. D-8 replaced it with a menu item plus secondary text. | D-8 |
 | **NG-11** | Still correct, but for a better reason than "not wanted": automatic restoration is *impossible*, because a tab-activation listener carries no user activation and `open()` demands one. | Probe, step 2; C-10 |
 
+**Menu only where width is scarce (user feedback, 2026-09-22).** D-8 put every surface action
+behind the logo in all hosts; that is right for the ~320px side panel and wrong for the anchor
+tab, which has a whole browser window and two plainly-named actions. Hiding them there bought
+nothing and cost a click. The panel keeps the menu — it genuinely cannot fit a third label, and
+the menu item's secondary line is doing discovery work a tooltip cannot. The anchor tab shows
+"Float on top" / "Stop floating" and "Back to panel" as visible buttons.
+
 **Bar layout, resolved from a real screenshot (R-5 landed).** Three labelled buttons plus the logo
 wrapped onto two lines each in the side panel. Applied the fallback T-5 already named: **New tab**
-and **New window** drop to icon buttons with tooltips and `aria-label`s, and **Float on top** keeps
-its label — it is the only one AC-39/AC-40 bind, and the only one a user cannot guess. The logo
-also stopped being a button: it opened the extension page in a tab, which is now precisely what
-"Float on top" does, so it was a second control for one action in the bar with the least room.
+and **New window** drop to icon buttons with tooltips and `aria-label`s. The final shape of the
+surface control itself took two further passes — a labelled button, then a menu everywhere, then
+the split above — so the settled state is:
+
+| Host | Logo | Surface controls |
+| --- | --- | --- |
+| Side panel | menu button | **Open in a tab** + secondary line, in the menu |
+| Anchor tab | decorative | **Float on top** / **Stop floating**, **Back to panel** as buttons |
+| Float | decorative | none (AC-14) |
 
 **Sequencing deviation, deliberate:** T-2 and T-3 were built **before** T-0 rather than after. The
 plan assumed T-0 could be run against the spike, but the spike only reaches the float through a

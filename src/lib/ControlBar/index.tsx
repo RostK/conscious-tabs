@@ -9,6 +9,7 @@ import {
 import {
   AppBar,
   Box,
+  Button,
   Divider,
   IconButton,
   ListItemIcon,
@@ -59,13 +60,16 @@ const handleAnchor = async () => {
 };
 
 /**
- * Every "which surface am I on" action lives behind the logo.
+ * The surface controls are laid out differently per host, on purpose.
  *
- * The bar cannot fit a third labelled button at side-panel width — three of
- * them wrapped onto two lines each — and a tooltip is no substitute: it needs
- * a hover, so it never reaches keyboard or touch users at all. Menu items are
- * real text, read by screen readers and reachable by keyboard, and the logo
- * was already sitting there, so this costs no width.
+ * The side panel is ~320px wide and could not fit a third labelled button —
+ * three of them wrapped onto two lines each — so its one surface action hides
+ * behind the logo, where a menu item's secondary line can carry the
+ * explanation that a tooltip could not (a tooltip needs a hover, so keyboard
+ * and touch users never see it).
+ *
+ * The anchor tab has a whole browser window. Hiding two plainly-named actions
+ * in a menu there buys nothing and costs a click.
  */
 export const ControlBar: FC = () => {
   const { selected } = useContext(SelectionContext);
@@ -99,43 +103,83 @@ export const ControlBar: FC = () => {
       >
         <SelectionToolbar />
         <Divider />
-        <Toolbar>
-          <Tooltip title="Where to show Conscious Tabs">
-            <IconButton
-              aria-label="Where to show Conscious Tabs"
-              aria-haspopup="menu"
-              onClick={(e) => {
-                setMenu(e.currentTarget);
-              }}
+        <Toolbar sx={{ gap: 0.5 }}>
+          {host === "panel" ? (
+            <Tooltip title="Where to show Conscious Tabs">
+              <IconButton
+                aria-label="Where to show Conscious Tabs"
+                aria-haspopup="menu"
+                onClick={(e) => {
+                  setMenu(e.currentTarget);
+                }}
+              >
+                <img src={logo} alt="" />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <Box
+              component="img"
+              src={logo}
+              alt=""
+              sx={{ width: 32, height: 32, flexShrink: 0, mx: 0.5 }}
+            />
+          )}
+
+          {host === "anchor" && floating && (
+            <Button
+              startIcon={<PictureInPictureAltOutlined />}
+              onClick={closeFloat}
+              sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
             >
-              <img src={logo} alt="" />
+              {/* Names what it destroys, not where it lands. */}
+              Stop floating
+            </Button>
+          )}
+          {host === "anchor" && !floating && canFloat() && (
+            /* Direct handler: requestWindow() needs this click's transient
+               activation, so nothing may await before it. */
+            <Button
+              startIcon={<PictureInPictureAlt />}
+              onClick={openFloat}
+              sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+            >
+              Float on top
+            </Button>
+          )}
+          {host === "anchor" && !floating && self && (
+            /* Hidden while floating: this closes the anchor tab, and the float
+               cannot outlive it. sidePanel.open() needs the gesture too, which
+               is why windowId was captured at mount rather than looked up. */
+            <Tooltip title="Closes this tab">
+              <Button
+                startIcon={<VerticalSplit />}
+                onClick={() => {
+                  backToSidePanel(self);
+                }}
+                sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+              >
+                Back to panel
+              </Button>
+            </Tooltip>
+          )}
+
+          <Box sx={{ flexGrow: 1 }} />
+
+          <Tooltip title="New tab">
+            <IconButton aria-label="New tab" onClick={handleNewTab}>
+              <TabUnselected />
             </IconButton>
           </Tooltip>
-          <Box
-            sx={{
-              flexGrow: 1,
-              display: "flex",
-              gap: 0.5,
-              alignItems: "center",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Tooltip title="New tab">
-              <IconButton aria-label="New tab" onClick={handleNewTab}>
-                <TabUnselected />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="New window">
-              <IconButton aria-label="New window" onClick={handleNewWindow}>
-                <WebAsset />
-              </IconButton>
-            </Tooltip>
-          </Box>
+          <Tooltip title="New window">
+            <IconButton aria-label="New window" onClick={handleNewWindow}>
+              <WebAsset />
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
-      <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
-        {host === "panel" && (
+      {host === "panel" && (
+        <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
           <MenuItem
             onClick={() => {
               void handleAnchor();
@@ -148,72 +192,15 @@ export const ControlBar: FC = () => {
             {/* The secondary line is the whole discovery mechanism. Floating
                 cannot be started from the side panel at all — Chrome refuses
                 Picture-in-Picture outside a real tab — so naming it on a
-                control that only opens the tab would be a promise this click
-                does not keep. */}
+                control that only opens the tab would promise something this
+                click does not deliver. */}
             <ListItemText
               primary="Open in a tab"
               secondary="Where it can float on top of other apps"
             />
           </MenuItem>
-        )}
-
-        {host === "anchor" && floating && (
-          <MenuItem
-            onClick={() => {
-              closeFloat();
-              closeMenu();
-            }}
-          >
-            <ListItemIcon>
-              <PictureInPictureAltOutlined fontSize="small" />
-            </ListItemIcon>
-            {/* Names what it destroys, not where it lands. */}
-            <ListItemText primary="Stop floating" />
-          </MenuItem>
-        )}
-
-        {host === "anchor" && !floating && canFloat() && (
-          <MenuItem
-            onClick={() => {
-              // Called before anything else in the handler: requestWindow()
-              // needs this click's transient activation, and closing the menu
-              // first would be one step too many.
-              openFloat();
-              closeMenu();
-            }}
-          >
-            <ListItemIcon>
-              <PictureInPictureAlt fontSize="small" />
-            </ListItemIcon>
-            <ListItemText primary="Float on top" />
-          </MenuItem>
-        )}
-
-        {host === "anchor" && !floating && self && (
-          <MenuItem
-            onClick={() => {
-              // sidePanel.open() needs the gesture too, so this also goes
-              // first. The windowId was captured at mount for the same reason.
-              backToSidePanel(self);
-              closeMenu();
-            }}
-          >
-            <ListItemIcon>
-              <VerticalSplit fontSize="small" />
-            </ListItemIcon>
-            <ListItemText
-              primary="Back to panel"
-              secondary="Closes this tab"
-            />
-          </MenuItem>
-        )}
-
-        {host === "float" && (
-          <MenuItem disabled>
-            <ListItemText primary="Floating" secondary="Use the tab behind" />
-          </MenuItem>
-        )}
-      </Menu>
+        </Menu>
+      )}
     </>
   );
 };
