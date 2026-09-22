@@ -33,7 +33,9 @@
 | T-11 | **done, bar one manual check** | Brand canvas painted from the first frame in both schemes — measured exact in the harness. AC-27 (float window title) still wants eyes on a real float. |
 | T-12 | **confirmed, no code needed** | Each surface has its own React root and therefore its own notistack provider, in its own JS realm — so an imperative `enqueueSnackbar` can only reach the surface it was called from. Correct by construction. |
 | T-13 | **done** | `manifest.test.ts` guards AC-22 and the AC-23 posture; README and store-listing now describe both new surfaces. Neither policy file appears in the branch diff. |
-| T-14 … T-16 | not started | |
+| T-14 | **not started — needs a real float** | Freshness with the anchor backgrounded. |
+| T-15 | **not started — needs a real float** | Keyboard walkthrough and screen-reader pass. |
+| T-16 | **partly done** | AC-26 markup-safety tests written; PI-7 discharged by pointing `LEARNINGS.md` at SPEC-01 §1.2 rather than duplicating it. The E-1…E-16 sweep needs a real float. |
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
 the running build, 2026-09-22, contradicting an assertion I had made confidently in the opposite

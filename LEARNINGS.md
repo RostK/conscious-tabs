@@ -91,6 +91,17 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   and then dies leaves the user with no way back. If it is ever used, re-enable from the service
   worker on startup as a backstop.
 
+- 2026-09-22 — **Before probing anything about Chrome's side panel or Document
+  Picture-in-Picture, read `specs/ui-shell/SPEC-01-…-floating-tab-manager-window.md` §1.2.** It
+  holds fifteen constraints (C-1…C-15), each with the evidence that established it, and §14 logs
+  which of them were originally wrong and why. Between them they already answer: whether the side
+  panel can open a float (no), whether a `type: "popup"` window can (yes), how many floats Chrome
+  allows (one, per browser, across all extensions), whether the float survives its opener (no),
+  whether a backgrounded opener throttles it (no), whether the panel can be closed
+  programmatically (yes, one-way), whether it can be hidden per tab (no), and how to tell a
+  floating window apart from a real one (`alwaysOnTop`). Several of those cost a throwaway probe
+  extension each. Deliberately not duplicated here — one copy, with its evidence attached.
+
 ## Codebase Patterns
 
 - 2026-09-22 — **Never put a volatile flag in a React list key here.** The window rows were keyed
