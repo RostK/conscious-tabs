@@ -1,4 +1,9 @@
-import { TabUnselected, WebAsset } from "@mui/icons-material";
+import {
+  OpenInNew,
+  PictureInPictureAlt,
+  TabUnselected,
+  WebAsset,
+} from "@mui/icons-material";
 import {
   AppBar,
   Box,
@@ -6,9 +11,12 @@ import {
   Divider,
   IconButton,
   Toolbar,
+  Tooltip,
 } from "@mui/material";
 import { FC, useContext } from "react";
 
+import { canFloat, openFloat } from "../float";
+import { getHost } from "../host";
 import { SelectionContext, SelectionToolbar } from "../Tabs/selection";
 import logo from "./logo.svg";
 
@@ -36,8 +44,22 @@ const handleNewTab = async () => {
   await chrome.tabs.create({ active: true });
 };
 
+const handlePopOut = async () => {
+  await chrome.windows.create({
+    url: chrome.runtime.getURL("index.html?host=window"),
+    type: "popup",
+    width: 420,
+    height: 720,
+  });
+  // There is no chrome.sidePanel.close() (w3c/webextensions#521); a panel page
+  // closing itself is the supported way, and it turns this into a hand-off
+  // rather than leaving a second copy of the UI open behind the window.
+  window.close();
+};
+
 export const ControlBar: FC = () => {
   const { selected } = useContext(SelectionContext);
+  const host = getHost();
 
   return (
     <>
@@ -78,6 +100,22 @@ export const ControlBar: FC = () => {
               New window
             </Button>
           </Box>
+          {host === "panel" && (
+            <Tooltip title="Open in a separate window">
+              <IconButton onClick={handlePopOut}>
+                <OpenInNew />
+              </IconButton>
+            </Tooltip>
+          )}
+          {host === "window" && canFloat() && (
+            <Tooltip title="Float on top of other apps">
+              {/* Must stay a direct click handler — openFloat() needs the
+                  click's transient activation, so nothing may await first. */}
+              <IconButton onClick={openFloat}>
+                <PictureInPictureAlt />
+              </IconButton>
+            </Tooltip>
+          )}
         </Toolbar>
       </AppBar>
     </>
