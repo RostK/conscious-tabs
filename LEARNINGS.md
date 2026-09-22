@@ -22,6 +22,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   0.0s — and that is the number that actually matters, because the shipped app's React and
   timers live inside that iframe, not in the opener. The opener therefore only has to stay
   *alive*, not stay *responsive*, which makes a tab anchor materially safer than it looks.
+- 2026-09-22 — **There IS a way to close the side panel programmatically, and it is not
+  `close()`.** `chrome.sidePanel.setOptions({ enabled: false })` called *globally* (with no
+  `tabId`) evicts an already-open side panel. This matters because w3c/webextensions#521 and
+  every discussion around it say there is no `chrome.sidePanel.close()` — literally true,
+  practically misleading. Unlike a panel page calling `window.close()` on itself, this works
+  from **any** document in the extension. Measured with a probe extension, step 6.
+  **It is a one-way door though** — see What Doesn't Work — so do not reach for it without a
+  guaranteed re-enable path.
 
 ## What Doesn't Work
 
@@ -46,6 +54,21 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   Two rules for any future run: require the opener to report `hidden` before trusting the
   number, and measure drift across the hidden stretch only — total drift is diluted by the
   time the opener spent visible.
+- 2026-09-22 — **`chrome.sidePanel.setOptions({ tabId, enabled: false })` does NOT hide a side
+  panel that is already open on that tab.** The `enabled` flag controls *availability* — whether
+  the panel can be opened there, whether the entry appears — not eviction. Chrome's docs and every
+  blog post describing "per-tab side panels" are talking about availability, and reading them as
+  "the panel follows the active tab" is wrong. Measured with a probe extension, step 2. The
+  consequence is that **no tab activation can hide or restore the panel**: a `tabs.onActivated`
+  listener carries no user activation, and `sidePanel.open()` requires one, so the return trip
+  needs a real click somewhere in the UI.
+- 2026-09-22 — **Re-enabling a globally disabled side panel does not bring it back.**
+  `setOptions({ enabled: true })` after a global disable restores availability only; the panel
+  stays shut until something calls `open()` with a live user gesture. Measured with a probe
+  extension, step 7. So the global disable above is a *close*, not a *hide*, and while it is in
+  effect the toolbar icon cannot reopen the panel either — meaning a page that disables the panel
+  and then dies leaves the user with no way back. If it is ever used, re-enable from the service
+  worker on startup as a backstop.
 
 ## Codebase Patterns
 
