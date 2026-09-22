@@ -34,13 +34,28 @@
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
 the running build, 2026-09-22, contradicting an assertion I had made confidently in the opposite
-direction. It appears as a window holding a single `about:blank` tab, and it reports itself as
-**focused**, so `WindowListItem` auto-expanded it, `useActiveTab` resolved to it (the float's
-"current tab" card read `about:blank`), and it carried a close control that would have destroyed
-the float. Fixed by querying `windowType: "normal"` in both structure hooks: this manager mirrors
-*browsing* windows, and a Picture-in-Picture widget is not one. Needs the same treatment in the
-spec as the other probe findings — nothing in SPEC-01 anticipates the float appearing in its own
-list.
+direction. It appears as a window holding a single `about:blank` tab, reports itself as
+**focused** (so `WindowListItem` auto-expanded it), is what `useActiveTab` resolved to (the
+float's current-tab card read `about:blank`), and carried a close control that would have
+destroyed the float.
+
+**The first fix for this was wrong, and shipped for two commits.** I filtered on
+`windowType: "normal"`, reasoning that a floating widget would not be a normal window. Measured
+against a live float, it is:
+
+| | Real window | The float |
+| --- | --- | --- |
+| `type` | `normal` | `normal` |
+| `alwaysOnTop` | `false` | **`true`** |
+| size · tabs | 1622x1006 · 17 | 414x681 · 1 (`about:blank`) |
+
+`alwaysOnTop` is **exact rather than heuristic**: `chrome.windows.create()` is forbidden from
+setting it for anti-phishing reasons — NG-6, the very restriction that forces this feature's
+two-step shape — so no window a user or extension opens can have it, and a float has it by
+definition. The constraint that made the feature hard is what identifies it cleanly.
+
+**No clamping either.** `requestWindow({width: 400, height: 640})` produced a 401x641 content
+area, so the T-10 measurements taken at 400x640 stand as measured.
 
 ### Pending amendments to SPEC-01
 

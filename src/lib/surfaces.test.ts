@@ -7,6 +7,8 @@ import {
 } from "../test/chromeStub.ts";
 import {
   bringPanelAlong,
+  browsingWindowIds,
+  isBrowsingWindow,
   isOwnPage,
   resolveUserWindow,
 } from "./surfaces.ts";
@@ -156,17 +158,61 @@ describe("resolveUserWindow", () => {
     expect(await resolveUserWindow()).toBeUndefined();
   });
 
-  it("asks only for normal windows, so a picture-in-picture is never a candidate", async () => {
+  // Measured 2026-09-22 against a live float: Chrome reports a Document
+  // Picture-in-Picture window as `type: "normal"`, so an earlier version of
+  // this that filtered on windowTypes did nothing at all. Its active tab is
+  // about:blank, which is not one of our pages, so it sailed through the check
+  // above and the float's current-tab card described the float.
+  it("skips the floating window, which reports itself as a normal window", async () => {
     atHost("/?host=float");
-    const stub = installChrome({ windows: userWindows, tabs: browsing });
+    const stub = installChrome({
+      windows: [
+        { id: 9, type: "normal", alwaysOnTop: true },
+        { id: 1, type: "normal", alwaysOnTop: false },
+      ],
+      tabs: [
+        { id: 90, windowId: 9, active: true, url: "about:blank" },
+        ...browsing,
+      ],
+    });
     stub.windows.getLastFocused.mockResolvedValue({
-      id: 1,
+      id: 9,
+      type: "normal",
+      alwaysOnTop: true,
     } as chrome.windows.Window);
 
-    await resolveUserWindow();
+    expect(await resolveUserWindow()).toBe(1);
+  });
+});
 
-    expect(stub.windows.getLastFocused).toHaveBeenCalledWith({
-      windowTypes: ["normal"],
+/**
+ * `alwaysOnTop` is exact rather than a heuristic: chrome.windows.create() is
+ * forbidden from setting it (anti-phishing), so no window the user or any
+ * extension opens can have it, while a float has it by definition.
+ */
+describe("isBrowsingWindow", () => {
+  it("accepts an ordinary window", () => {
+    expect(
+      isBrowsingWindow({ id: 1, alwaysOnTop: false } as chrome.windows.Window),
+    ).toBe(true);
+  });
+
+  it("rejects an always-on-top window", () => {
+    expect(
+      isBrowsingWindow({ id: 9, alwaysOnTop: true } as chrome.windows.Window),
+    ).toBe(false);
+  });
+});
+
+describe("browsingWindowIds", () => {
+  it("leaves the float's window out", async () => {
+    installChrome({
+      windows: [
+        { id: 1, alwaysOnTop: false },
+        { id: 9, alwaysOnTop: true },
+        { id: 2, alwaysOnTop: false },
+      ],
     });
+    expect([...(await browsingWindowIds())]).toEqual([1, 2]);
   });
 });

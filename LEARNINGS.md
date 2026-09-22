@@ -30,6 +30,20 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   from **any** document in the extension. Measured with a probe extension, step 6.
   **It is a one-way door though** — see What Doesn't Work — so do not reach for it without a
   guaranteed re-enable path.
+- 2026-09-22 — **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`,
+  and `type` will not tell you it apart — `alwaysOnTop` will.** Measured against a live
+  float: the real browser window came back `{type: "normal", alwaysOnTop: false}` and the float
+  came back `{type: "normal", alwaysOnTop: true, 414x681, tabs: ["about:blank"]}`. So a float
+  appears in the mirrored tab list as a focused window holding one about:blank tab, complete with
+  a close button that destroys it, and any "which window is the user in" logic resolves to it
+  unless it is excluded. `alwaysOnTop` is **exact, not a heuristic**: `chrome.windows.create()`
+  is forbidden from setting it (anti-phishing — the same restriction that makes a floating
+  extension window impossible in the first place), so no window a user or extension opens can
+  ever have it. Evidence: `src/lib/surfaces.ts` `isBrowsingWindow`.
+- 2026-09-22 — **Chrome honoured the requested float size almost exactly**: `requestWindow({width:
+  400, height: 640})` gave an outer window of 414x681 and a content area of 401x641 at dpr 2. The
+  clamping warned about in the Document PiP docs did not bite at this size, so a layout budgeted
+  for 400x640 is budgeted correctly.
 - 2026-09-22 (closes assumption A-8) — **Keyboard focus and text entry do reach a text field
   inside the Document PiP window.** Clicking the search box in the float and typing filters
   the list normally. This was the last unverified assumption in

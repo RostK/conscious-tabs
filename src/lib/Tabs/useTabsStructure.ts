@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 
-import { isOwnPage } from "../surfaces.ts";
+import { browsingWindowIds, isOwnPage } from "../surfaces.ts";
 import { useUpdateEvents } from "../useUpdateEvents.ts";
 import { GroupItem, TabItem, TabsStructure } from "./types.ts";
 
@@ -86,15 +86,18 @@ export const useTabsStructure: (options?: {
   const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
   const [groups, setGroups] = useState<chrome.tabGroups.TabGroup[]>([]);
   const getTabsFunc = useCallback(async () => {
-    // See useWindowsStructure: a Picture-in-Picture window is not a browsing
-    // window, and its about:blank document is not a tab the user owns.
+    // Two exclusions, both learned the hard way.
     //
-    // Our own pages are dropped too. The anchor tab is the one holding the
-    // float, and chrome.tabs.query is unfiltered by default -- so without this
-    // the manager listed the tab whose closure kills the float, with a close
-    // button on it.
-    const tabs = (await chrome.tabs.query({ windowType: "normal" })).filter(
-      ({ url }) => !isOwnPage(url),
+    // The float's own window: chrome.tabs has no filter for it, and its
+    // `windowType` is "normal" like everything else, so the browsing windows
+    // have to be resolved first and the tabs matched against them.
+    //
+    // Our own pages: the anchor tab is the one holding the float, and
+    // chrome.tabs.query is unfiltered by default — so without this the manager
+    // listed the tab whose closure kills the float, with a close button on it.
+    const browsing = await browsingWindowIds();
+    const tabs = (await chrome.tabs.query({})).filter(
+      ({ url, windowId }) => browsing.has(windowId) && !isOwnPage(url),
     );
     const groups = await chrome.tabGroups.query({});
     setTabs(tabs);

@@ -42,6 +42,32 @@ export const bringPanelAlong = async (windowId: number): Promise<void> => {
 };
 
 /**
+ * A window the user actually browses in, as opposed to our floating one.
+ *
+ * Chrome reports a Document Picture-in-Picture window as an ordinary
+ * `type: "normal"` window — measured 2026-09-22 against a live float, after an
+ * earlier guess that `windowTypes: ["normal"]` would exclude it did not. The
+ * two are told apart by `alwaysOnTop`, and that is exact rather than a
+ * heuristic: `chrome.windows.create()` is not allowed to set it at all, for
+ * anti-phishing reasons (the same restriction that forced this feature's whole
+ * two-step shape), so no window the user or any extension opens can have it,
+ * while a floating window has it by definition.
+ */
+export const isBrowsingWindow = (window: chrome.windows.Window): boolean =>
+  !window.alwaysOnTop;
+
+/** Window ids the user browses in. `windowTypes` still keeps devtools out. */
+export const browsingWindowIds = async (): Promise<Set<number>> => {
+  const windows = await chrome.windows.getAll({ windowTypes: ["normal"] });
+  return new Set(
+    windows
+      .filter(isBrowsingWindow)
+      .map(({ id }) => id)
+      .filter((id): id is number => id !== undefined),
+  );
+};
+
+/**
  * Which browser window the user is actually working in.
  *
  * The side panel belongs to exactly one window, so there the answer is simply
@@ -54,8 +80,9 @@ export const bringPanelAlong = async (windowId: number): Promise<void> => {
  * AC-17's requirement stated directly: never present the extension's own tab
  * as the user's current tab.
  *
- * Picture-in-Picture windows are excluded by `windowTypes: ["normal"]`, the
- * same assumption the mirrored list relies on.
+ * The floating window is excluded by `isBrowsingWindow`. Its active tab is
+ * `about:blank`, which is not one of our pages — so without that check it
+ * passes the test below and the current-tab card describes the float.
  */
 export const resolveUserWindow = async (): Promise<number | undefined> => {
   if (getHost() === "panel") {
@@ -66,7 +93,9 @@ export const resolveUserWindow = async (): Promise<number | undefined> => {
   const recent = await chrome.windows.getLastFocused({
     windowTypes: ["normal"],
   });
-  if (await isUserWindow(recent.id)) return recent.id;
+  if (isBrowsingWindow(recent) && (await hasUserActiveTab(recent.id))) {
+    return recent.id;
+  }
 
   // getAll() carries no recency order, so this is a deliberate approximation
   // rather than an oversight: the first normal window the user is plausibly
@@ -74,12 +103,14 @@ export const resolveUserWindow = async (): Promise<number | undefined> => {
   // the last-focused window is the anchor's own.
   const all = await chrome.windows.getAll({ windowTypes: ["normal"] });
   for (const candidate of all) {
-    if (await isUserWindow(candidate.id)) return candidate.id;
+    if (isBrowsingWindow(candidate) && (await hasUserActiveTab(candidate.id))) {
+      return candidate.id;
+    }
   }
   return undefined;
 };
 
-const isUserWindow = async (windowId?: number): Promise<boolean> => {
+const hasUserActiveTab = async (windowId?: number): Promise<boolean> => {
   if (windowId === undefined) return false;
   const [active] = await chrome.tabs.query({ active: true, windowId });
   return Boolean(active?.url) && !isOwnPage(active.url);
