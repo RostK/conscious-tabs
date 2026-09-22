@@ -6,7 +6,22 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
 
 ## What Works
 
-_Nothing recorded yet._
+- 2026-09-22 — Verified first-hand on current Chrome with a throwaway probe extension: a
+  **`chrome.windows.create({ type: "popup" })` extension window can open a Document PiP
+  window**, exactly like a normal tab can. This is documented nowhere I could find, and it
+  is the fact that makes a floating mode viable — it means the PiP opener (which the float
+  cannot outlive) can be a window the user deliberately opened, instead of a stray tab
+  parked in their tab strip where this very extension invites them to close it. The same
+  probe re-confirmed the side panel is still blocked. Evidence: probe extension, three
+  surfaces (side panel / tab / popup window) each calling `requestWindow()` from a click
+  handler.
+- 2026-09-22 (closes the throttling half of the open question below) — A backgrounded
+  opener is **not** timer-throttled while it holds a Document PiP window. Measured with the
+  opener tab reporting `document.visibilityState === "hidden"` for 102.1s: hidden-only drift
+  −0.1s over 413 ticks. The float's own iframe realm separately reports `visible` and drifts
+  0.0s — and that is the number that actually matters, because the shipped app's React and
+  timers live inside that iframe, not in the opener. The opener therefore only has to stay
+  *alive*, not stay *responsive*, which makes a tab anchor materially safer than it looks.
 
 ## What Doesn't Work
 
@@ -14,6 +29,23 @@ _Nothing recorded yet._
   `.env`, so a `.env` written at the repo root by a CLI tool would be committed silently.
   The root ignore file now lists `.env`, `.env.*`, `*.pem`, `*.p12` explicitly — leave
   them in place, they are not redundant with `*.local`. Evidence: `.gitignore:17`.
+- 2026-09-22 — The Document Picture-in-Picture API **cannot be opened from the side
+  panel**, the action popup, or an offscreen document: `documentPictureInPicture` stays
+  null / `requestWindow()` rejects, because those contexts are not a "top-level
+  traversable". It works only from an extension page loaded in a real browser tab. So the
+  panel can never pop *itself* out — a float needs a separate opener surface. Chrome also
+  allows **one PiP window per browser, globally across all tabs and extensions**, so ours
+  would evict the user's video PiP and vice versa. Evidence: WICG
+  document-picture-in-picture issue #88 (still open, labelled `chrome-bug`) and the
+  chromium-extensions thread "Try using Document Picture-in-Picture API".
+- 2026-09-22 — Do **not** measure background throttling using a `type: "popup"` window as
+  the opener. An unfocused popup window still reports `visibilityState === "visible"`, so it
+  is never throttled and the result says nothing about a backgrounded *tab*, which genuinely
+  is `hidden`. A first probe run reported a clean 0.0s drift from a popup opener and was
+  wrongly read as a general green light; the tab case had to be re-measured from scratch.
+  Two rules for any future run: require the opener to report `hidden` before trusting the
+  number, and measure drift across the hidden stretch only — total drift is diluted by the
+  time the opener spent visible.
 
 ## Codebase Patterns
 
@@ -28,6 +60,14 @@ _Nothing recorded yet._
   of truth), `PRIVACY.md` "Permissions and why they are needed",
   `store-assets/privacy-policy.html` (same section), `README.md:48` ("Requested
   permissions" line), and `store-listing.md:61` ("Permission justifications").
+- 2026-09-22 — Six `chrome.sidePanel.open({ windowId })` call sites encode a **per-window
+  host model**: "focus that window, and bring the panel along." Any alternative surface
+  (Document PiP, a `windows.create` popup) is a **global singleton** that follows no
+  window, so each of these flows needs a host-aware branch — they are the real cost of a
+  second surface, not the rendering. Evidence: `src/lib/Tabs/Tab/TabDisplay.tsx:32`,
+  `src/lib/Tabs/actions.ts:37`, `src/lib/Tabs/actions.ts:55`,
+  `src/lib/Tabs/selection/SelectionToolbar.tsx:95`,
+  `src/lib/Tabs/Window/WindowListItem.tsx:51`, `src/lib/ControlBar/index.tsx:18`.
 
 ## Decisions
 
@@ -44,6 +84,19 @@ _Nothing recorded yet._
   Evidence: `src/lib/Tabs/elements/TabFavicon.tsx:19`, and three further call sites in
   `src/lib/Tabs/Tab/TabDisplay.tsx`, `src/lib/Tabs/AudioTabs/index.tsx`,
   `src/lib/Tabs/elements/TabAvatarsDisplay.tsx`.
+- 2026-09-22 — Researched replacing the side panel with a floating Document PiP window.
+  Decision: **keep the side panel as the primary home and treat a float as an opt-in
+  second surface**, opened from the extension page that `ControlBar` already puts in a tab
+  — that opener needs zero new permissions. Rejected the one-click alternative (content
+  script on the active tab as the opener, extension page iframed into the PiP window):
+  it needs host permissions, which breaks the zero-host-permission claim in `PRIVACY.md`,
+  labels the float with the *host page's* origin in the PiP title bar, and kills the float
+  whenever that page navigates or closes — fatal for an extension whose job is closing and
+  switching tabs. Also rejected `chrome.windows.create({ type: "popup" })`: it survives
+  everything but is not always-on-top, and `alwaysOnTop` is deliberately not settable from
+  `windows.create` (anti-phishing) — which is why TabFloater ships a native companion app.
+  Evidence: `src/lib/ControlBar/index.tsx:23` (existing open-in-tab surface, reuses the
+  tab if present).
 
 ## Tool & Library Notes
 
@@ -53,6 +106,17 @@ _Nothing recorded yet._
   permission is what unlocks `url` / `title` / `favIconUrl` on tab objects returned inside
   Window objects. Do not "fix" the apparent gap by adding a `windows` permission — no such
   permission exists and it would fail store review. Evidence: `manifest.json:6`.
+- 2026-09-22 — If a second window surface is ever built, **iframe the extension page into
+  it rather than re-parenting React DOM across documents**. Moving nodes into another
+  document breaks this stack in three places at once: Emotion injects `<style>` into the
+  *opener's* `<head>`, every MUI `Tooltip` (12), `Menu` (9) and `Dialog` (3) portals into
+  the opener's `document.body`, and notistack's `SnackbarProvider` does the same — so they
+  render invisibly in the wrong window. Fixable with an Emotion `CacheProvider` container
+  plus `container=` on every portal, but that is a tax on every future component; an
+  extension-origin iframe keeps full `chrome.*` access and costs none of it. Document PiP
+  additionally copies **no** stylesheets and requires `requestWindow()` to be called
+  synchronously in the click handler — any `await` before it burns the transient-activation
+  token. Evidence: `src/lib/Theme/index.tsx` (Emotion/MUI provider setup).
 
 ## Recurring Errors & Fixes
 
@@ -68,6 +132,12 @@ _Nothing recorded yet._
   versions. Added MIT `LICENSE`, fixed the stale "not on the Web Store" install section,
   and set repo description/topics/homepage. Default branch renamed `master` → `main`.
   README feature claims were re-verified against source and all hold.
+- 2026-09-22 — Research-only session (no code changed): can the tab UI live in a Document
+  PiP window instead of the side panel? Answer is "not as a swap" — see What Doesn't Work.
+  Surveyed three architectures (extension tab as opener / content script as opener /
+  non-PiP popup window) and weighed them for users: a float wins by surviving outside the
+  browser entirely (visible over Slack, an IDE, a full-screen call), and loses on size
+  clamping, no positioning, the global one-PiP limit, and dying with its anchor.
 
 ## Open Questions
 
@@ -75,3 +145,20 @@ _Nothing recorded yet._
   Web Store listing links to a hosted copy, but the deploy target is not recorded
   anywhere in this repo, so a policy edit here does not obviously propagate. Worth writing
   the URL and deploy step into the README once known.
+- 2026-09-22 — Two things to settle with a throwaway unpacked extension before writing any
+  float feature code: (a) does a backgrounded opener tab throttle timers/rAF for the PiP
+  window's content — probably not via an iframe, since the PiP window is its own visible
+  widget, but unverified and it is the one failure that would make the float feel broken;
+  (b) is WICG #88 still unfixed in current Chrome, i.e. does side-panel → PiP now work?
+  Also unverified: keyboard focus into the search field while the float has focus.
+- 2026-09-22 (resolves part of the note above) — Answered by the probe: WICG #88 is **not**
+  fixed, the side panel still cannot open PiP, and a `type: "popup"` window **can**. Still
+  open from that note: whether a backgrounded opener throttles the float's timers, and
+  whether keyboard focus reaches a text field inside the float.
+- 2026-09-22 (closes both 2026-09-22 notes above) — Throttling is answered: see What Works.
+  Still unverified is whether keyboard focus and text entry reach a text field *inside* the
+  float. Chrome's own Document PiP documentation names text editing and note-taking among the
+  target use cases, so it is assumed to work and is tracked as assumption A-8 in
+  `specs/ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md`. Verify during
+  implementation before relying on the float's search field.
+
