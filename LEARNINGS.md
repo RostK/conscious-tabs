@@ -93,6 +93,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
 
 ## Codebase Patterns
 
+- 2026-09-22 — **Never put a volatile flag in a React list key here.** The window rows were keyed
+  `"w" + window.id + window.focused`, so every focus change discarded and rebuilt that whole
+  subtree. The tab list reveals its close and select controls on `:hover`, so rows being recreated
+  under a stationary pointer makes those controls vanish mid-interaction — it presents as "buttons
+  need two clicks" and "clicking the title does nothing", not as a rendering bug. Rare enough to
+  ignore in the side panel; constant in the floating window, where activating a tab focuses its
+  window and so triggers the remount on *every* click. `WindowListItem` already syncs its open
+  state from `window.focused` in a `useEffect`, so the key was pure cost. Evidence:
+  `src/views/TabsView/index.tsx`, `src/lib/Tabs/Window/WindowListItem.tsx:42`.
+
 - 2026-07-30 — The privacy policy exists in **two copies that must be edited together**:
   [PRIVACY.md](PRIVACY.md) (repo-facing) and
   [store-assets/privacy-policy.html](store-assets/privacy-policy.html), which is the
