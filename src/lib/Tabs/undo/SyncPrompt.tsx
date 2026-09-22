@@ -3,6 +3,7 @@ import { closeSnackbar, enqueueSnackbar } from "notistack";
 import { FC, useEffect } from "react";
 
 import { restoreSessions } from "./restore.ts";
+import { shouldPrompt } from "./shouldPrompt.ts";
 
 // chrome.sessions only retains the most recently closed entries.
 const MAX_RESTORE = chrome.sessions.MAX_SESSION_RESULTS;
@@ -13,6 +14,10 @@ const tabCountOf = (session: chrome.sessions.Session): number =>
 
 const prompt = async (closedCount: number) => {
   if (closedCount === 0) return;
+  // Checked here rather than on the event: visibility can change during the
+  // 200ms burst window, and what matters is where the user is when the
+  // prompt would actually appear.
+  if (!shouldPrompt()) return;
   const recentSessions = await chrome.sessions.getRecentlyClosed({
     maxResults: MAX_RESTORE,
   });
@@ -42,7 +47,16 @@ const prompt = async (closedCount: number) => {
         variant="text"
         color="secondary"
         onClick={async () => {
-          await restoreSessions(toRestore);
+          try {
+            await restoreSessions(toRestore);
+          } catch {
+            // A session id is spent once restored, so a second surface's UNDO
+            // for the same burst will reject. Say so quietly rather than
+            // leaving an unhandled rejection in the console.
+            enqueueSnackbar("Couldn't restore those tabs", {
+              variant: "error",
+            });
+          }
           closeSnackbar(snackbarId);
         }}
       >

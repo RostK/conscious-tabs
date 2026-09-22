@@ -28,7 +28,8 @@
 | T-8 | **done — by filtering, not marking** | Both the PiP window and this extension's own pages are dropped from the mirrored list. **Contradicts AC-16**; user decision, see below. |
 | T-9 | **done** | `resolveUserWindow()` + `useUserWindow()`. Fixed **three** call sites, not one: `useActiveTab`, `useAudioTabs` (same defect, not in the spec's table) and the export T-9a needs. |
 | T-9a | **done** | `restore` extracted to `undo/restore.ts` and routed through `resolveUserWindow()`. |
-| T-9b … T-16 | not started | |
+| T-9b | **done** | `shouldPrompt()`: the anchor defers to its own float (exact), everything else gates on visibility (heuristic). A duplicate UNDO now reports instead of rejecting unhandled. |
+| T-10 … T-16 | not started | |
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
 the running build, 2026-09-22, contradicting an assertion I had made confidently in the opposite
@@ -457,6 +458,18 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   correct and well out of scope here.
 - **Recommendation:** (a). It is a two-line guard, it costs no storage, and "show the prompt in the
   surface the user is actually looking at" is what NFR-6 asks for anyway.
+- **Built as (a) plus an exact rule in front of it.** Visibility alone only shrinks the problem: the
+  float's own iframe always reports itself visible, and so does a side panel in an unfocused window.
+  But the *by-design* duplicate is anchor + float, and the anchor **knows** whether its float is up —
+  so it defers outright, no heuristic needed. Visibility then covers the rest. What survives is E-5:
+  a user who deliberately reopens the side panel while floating can still get two prompts. That is
+  rare, user-created, and closing it would need either `chrome.storage` (AC-23 forbids it) or
+  cross-document runtime messaging — a lot of machinery for a duplicate toast. The *operation*
+  duplication is defused separately: a spent session id makes the second UNDO reject, which is now
+  reported rather than left as an unhandled rejection.
+- **Rejected: `document.hasFocus()`.** Tempting, since exactly one document has focus — but when a
+  tab is closed from Chrome's own tab strip, none of ours does, and the prompt would disappear in
+  precisely the case it is most useful.
 - **ACs:** **AC-19** *(manual)*, E-5
 
 ### Phase 4 — The float at 400 x 640
