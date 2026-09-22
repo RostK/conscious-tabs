@@ -107,7 +107,11 @@ export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
     sessions: {
       MAX_SESSION_RESULTS: 25,
       getRecentlyClosed: vi.fn(async () => []),
-      restore: vi.fn(async () => undefined),
+      // The parameter is declared, and used, on purpose. Without it the
+      // mock's call tuple is `[]` and a test destructuring the sessionId out
+      // of it fails to compile; with it unused, eslint fails instead (there
+      // is no argsIgnorePattern in .eslintrc.cjs).
+      restore: vi.fn(async (sessionId?: string) => sessionId),
     },
   };
 };

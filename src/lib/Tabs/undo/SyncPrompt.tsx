@@ -2,36 +2,14 @@ import { Button, debounce } from "@mui/material";
 import { closeSnackbar, enqueueSnackbar } from "notistack";
 import { FC, useEffect } from "react";
 
+import { restoreSessions } from "./restore.ts";
+
 // chrome.sessions only retains the most recently closed entries.
 const MAX_RESTORE = chrome.sessions.MAX_SESSION_RESULTS;
 
 // A closed entry is either a single tab or a whole window of tabs.
 const tabCountOf = (session: chrome.sessions.Session): number =>
   session.window ? session.window.tabs?.length ?? 1 : 1;
-
-const restore = async (sessions: chrome.sessions.Session[]) => {
-  const focusedWindow = await chrome.windows.getLastFocused();
-  const [activeTab] = await chrome.tabs.query({
-    active: true,
-    windowId: focusedWindow.id,
-  });
-
-  // Oldest-first so restored tabs land back in roughly their original order.
-  for (const session of [...sessions].reverse()) {
-    const sessionId = session.tab?.sessionId ?? session.window?.sessionId;
-    if (sessionId) {
-      await chrome.sessions.restore(sessionId);
-    }
-  }
-
-  // Restoring steals focus/activation; put the user back where they were.
-  if (focusedWindow.id) {
-    void chrome.windows.update(focusedWindow.id, { focused: true });
-  }
-  if (activeTab?.id) {
-    void chrome.tabs.update(activeTab.id, { active: true });
-  }
-};
 
 const prompt = async (closedCount: number) => {
   if (closedCount === 0) return;
@@ -64,7 +42,7 @@ const prompt = async (closedCount: number) => {
         variant="text"
         color="secondary"
         onClick={async () => {
-          await restore(toRestore);
+          await restoreSessions(toRestore);
           closeSnackbar(snackbarId);
         }}
       >
