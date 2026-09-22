@@ -29,7 +29,7 @@
 | T-9 | **done** | `resolveUserWindow()` + `useUserWindow()`. Fixed **three** call sites, not one: `useActiveTab`, `useAudioTabs` (same defect, not in the spec's table) and the export T-9a needs. |
 | T-9a | **done** | `restore` extracted to `undo/restore.ts` and routed through `resolveUserWindow()`. |
 | T-9b | **done** | `shouldPrompt()`: the anchor defers to its own float (exact), everything else gates on visibility (heuristic). A duplicate UNDO now reports instead of rejecting unhandled. |
-| T-10 | **done, except AC-37/E-11** | `onDragCancel` (E-11) + AC-18 empty state. AC-29 / 36 / 38 **measured** at 400x640 in a layout harness — all pass. AC-37, clamping and AC-30/31 still need Chrome. |
+| T-10 | **done** | `onDragCancel` (E-11) + AC-18 empty state. AC-29 / 36 / 38 **measured** at 400x640 in a layout harness — all pass. AC-37, clamping and AC-30/31 still need Chrome. |
 | T-11 … T-16 | not started | |
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
@@ -534,8 +534,14 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   *text* doing nothing while its background worked. The harness reproduced only the misalignment
   (6px, now fixed). The other two were a volatile React list key — see `LEARNINGS.md` — and both
   went when it did.
-- **Still needs a real float:** AC-37 / E-11 (a drag released outside the window), AC-30 / AC-31
-  (focus), and AC-18's empty state, which the harness fixtures cannot reach.
+- **AC-37 / E-11 confirmed in the real float:** dragging works *inside* the float and reorders;
+  releasing outside the window cleanly does nothing, with no stranded overlay. **D-4 holds** —
+  keeping drag was right, and the "omit the affordances" branch of AC-37 is not needed. Note the
+  layout harness cannot test this: the browser pane only offers an instant A-to-B drag, with none
+  of the intermediate mouse-moves dnd-kit needs to clear its 10px activation threshold, so no drag
+  ever starts there regardless of whether the code works.
+- **Still needs a real float:** AC-30 / AC-31 (keyboard focus) and AC-18's empty state, which the
+  harness fixtures cannot reach.
 - **ACs:** **AC-18** *(manual)*, **AC-29** *(manual)*, **AC-36** *(manual)*, **AC-37** *(manual)*, **AC-38** *(manual)*, E-6, E-7, E-11
 
 #### T-11 · Theme delivery and no unstyled flash
