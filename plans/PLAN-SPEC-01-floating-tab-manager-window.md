@@ -29,7 +29,7 @@
 | T-9 | **done** | `resolveUserWindow()` + `useUserWindow()`. Fixed **three** call sites, not one: `useActiveTab`, `useAudioTabs` (same defect, not in the spec's table) and the export T-9a needs. |
 | T-9a | **done** | `restore` extracted to `undo/restore.ts` and routed through `resolveUserWindow()`. |
 | T-9b | **done** | `shouldPrompt()`: the anchor defers to its own float (exact), everything else gates on visibility (heuristic). A duplicate UNDO now reports instead of rejecting unhandled. |
-| T-10 | **code done, awaiting manual pass** | `onDragCancel` (E-11) and the AC-18 empty state built. AC-29 / 36 / 37 / 38 are observations at a real 400x640 float — nothing jsdom can answer. |
+| T-10 | **done, except what needs a real float** | `onDragCancel` (E-11) + AC-18 empty state. AC-29 / 36 / 38 **measured** at 400x640 in a layout harness — all pass. AC-37, clamping and AC-30/31 still need Chrome. |
 | T-11 … T-16 | not started | |
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
@@ -499,6 +499,23 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   not a layout tweak.
 - **DoD:** every listed action performed from a real float at 400 x 640, with a tab count large
   enough to scroll.
+- **Measured, 2026-09-22, in `harness/` at exactly 400x640** — the arithmetic above was close but
+  the real numbers are these:
+
+  | | Idle | Selection active |
+  | --- | --- | --- |
+  | Top bar (search + current tab) | 100px | 100px |
+  | Bottom bar | 57px | 125px |
+  | **List** | **483px ≈ 9.7 rows** | **415px ≈ 8.3 rows** |
+
+  `scrollWidth` stayed at 400 in every state — idle, selecting, dialog open, searching — so
+  **AC-29 passes**. **AC-36 passes**: Deselect / Group / Window / Close all fit on one line, and
+  eight rows remain visible beside them. **AC-38 passes outright** and its fallback is not needed:
+  the group dialog is 287x185 with all nine colours on a single unwrapped row. Search filters
+  correctly at this width.
+- **Still needs a real float:** AC-37 / E-11 (a drag released outside the window), Chrome's
+  clamping (C-7), AC-30 / AC-31 (focus), and AC-18's empty state, which the harness fixtures
+  cannot reach.
 - **ACs:** **AC-18** *(manual)*, **AC-29** *(manual)*, **AC-36** *(manual)*, **AC-37** *(manual)*, **AC-38** *(manual)*, E-6, E-7, E-11
 
 #### T-11 · Theme delivery and no unstyled flash

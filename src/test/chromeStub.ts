@@ -56,6 +56,10 @@ export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
         (path: string) => `${EXTENSION_ORIGIN}${path.replace(/^\//, "")}`,
       ),
       id: EXTENSION_ID,
+      // SelectionContext subscribes to this; without it, rendering anything
+      // inside SelectionProvider throws on "addListener of undefined".
+      onMessage: event(),
+      sendMessage: vi.fn(async () => undefined),
     },
     tabs: {
       query: vi.fn(async (info: chrome.tabs.QueryInfo = {}) =>
