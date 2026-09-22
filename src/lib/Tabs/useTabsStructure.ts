@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 
+import { isOwnPage } from "../surfaces.ts";
 import { useUpdateEvents } from "../useUpdateEvents.ts";
 import { GroupItem, TabItem, TabsStructure } from "./types.ts";
 
@@ -87,7 +88,14 @@ export const useTabsStructure: (options?: {
   const getTabsFunc = useCallback(async () => {
     // See useWindowsStructure: a Picture-in-Picture window is not a browsing
     // window, and its about:blank document is not a tab the user owns.
-    const tabs = await chrome.tabs.query({ windowType: "normal" });
+    //
+    // Our own pages are dropped too. The anchor tab is the one holding the
+    // float, and chrome.tabs.query is unfiltered by default -- so without this
+    // the manager listed the tab whose closure kills the float, with a close
+    // button on it.
+    const tabs = (await chrome.tabs.query({ windowType: "normal" })).filter(
+      ({ url }) => !isOwnPage(url),
+    );
     const groups = await chrome.tabGroups.query({});
     setTabs(tabs);
     setGroups(groups);

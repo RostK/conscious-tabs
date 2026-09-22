@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { ChromeStub, installChrome } from "../test/chromeStub.ts";
-import { bringPanelAlong } from "./surfaces.ts";
+import {
+  ChromeStub,
+  extensionUrl,
+  installChrome,
+} from "../test/chromeStub.ts";
+import { bringPanelAlong, isOwnPage } from "./surfaces.ts";
 
 let chrome: ChromeStub;
 
@@ -43,5 +47,36 @@ describe("bringPanelAlong", () => {
     atHost("/");
     chrome.sidePanel.open.mockRejectedValue(new Error("no user gesture"));
     await expect(bringPanelAlong(7)).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * The anchor tab is the one holding the float, and chrome.tabs.query is
+ * unfiltered by default — so without this the manager listed the tab whose
+ * closure kills the float, with a close button on it.
+ */
+describe("isOwnPage", () => {
+  it("recognises this extension's pages", () => {
+    expect(isOwnPage(extensionUrl("index.html"))).toBe(true);
+    expect(isOwnPage(extensionUrl("index.html?host=anchor"))).toBe(true);
+    expect(isOwnPage(extensionUrl("index.html?host=float"))).toBe(true);
+  });
+
+  it("leaves ordinary tabs alone", () => {
+    expect(isOwnPage("https://example.com/")).toBe(false);
+    expect(isOwnPage("chrome://extensions/")).toBe(false);
+    expect(isOwnPage("about:blank")).toBe(false);
+  });
+
+  // A different extension's page is not ours to hide.
+  it("does not match another extension's pages", () => {
+    expect(isOwnPage("chrome-extension://someotherextensionid/index.html")).toBe(
+      false,
+    );
+  });
+
+  it("is false for a tab with no url", () => {
+    expect(isOwnPage(undefined)).toBe(false);
+    expect(isOwnPage("")).toBe(false);
   });
 });

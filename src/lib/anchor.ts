@@ -14,18 +14,8 @@ import { getHost } from "./host";
 export const ANCHOR_URL = () =>
   chrome.runtime.getURL("index.html?host=anchor");
 
-/** Any page served by this extension, in tab-URL form. */
-const isExtensionPage = (url?: string): boolean =>
-  Boolean(url?.startsWith(chrome.runtime.getURL("")));
-
 const isAnchorTab = (tab: chrome.tabs.Tab): boolean =>
   new URLSearchParams(tab.url?.split("?")[1] ?? "").get("host") === "anchor";
-
-/**
- * True for the tab that is (or can be) holding the float. Used to mark it in
- * the mirrored list and keep the manager from offering to close it.
- */
-export const isAnchorUrl = isExtensionPage;
 
 /**
  * Focus the anchor tab, creating it only if there isn't one — never a second.

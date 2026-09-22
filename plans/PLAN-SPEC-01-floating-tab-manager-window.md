@@ -25,7 +25,7 @@
 | T-5a | **done** | "Back to panel" — new scope, see D-7. |
 | T-6 | **done** | `FloatClosedNotice`, mounted in the sticky AppBar so it cannot be scrolled away. 13 tests over the state machine. |
 | T-7 | **done** | `surfaces.ts` / `bringPanelAlong`, all six call sites. Fixed the live "tab can't be activated from the float" bug. |
-| T-8 | partial | The **PiP window** is filtered out of the list (see below). The **anchor tab** row is still unmarked and still closable. |
+| T-8 | **done — by filtering, not marking** | Both the PiP window and this extension's own pages are dropped from the mirrored list. **Contradicts AC-16**; user decision, see below. |
 | T-9 … T-16 | not started | |
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
@@ -49,6 +49,15 @@ The plan has outrun the spec in four places. These are WHAT changes and belong i
 | **C-12** | Conclusion still holds, but the reasoning is incomplete: it never ruled out `setOptions`. Per-tab `enabled: false` does **not** hide an open panel, and re-enabling after a global disable does **not** restore it — so the return trip really does need a click. Record this so nobody re-derives it. | Probe, steps 2 and 7 |
 | **AC-39, AC-40** | Both assume a visible labelled control in the side panel. D-8 replaced it with a menu item plus secondary text. | D-8 |
 | **NG-11** | Still correct, but for a better reason than "not wanted": automatic restoration is *impossible*, because a tab-activation listener carries no user activation and `open()` demands one. | Probe, step 2; C-10 |
+| **AC-16** | **Contradicted.** It mandates the anchor tab as "a distinct, visually marked row that cannot be closed". The user chose to filter this extension's pages out of the list entirely. The AC's own rationale — "so that the user can find and focus the tab that is holding the float" — is what we give up; what we gain is that a row you cannot close, cannot select and cannot bulk-act on stops being three special cases in the list rendering, each one a place for the self-destruct path to return. E-4 is dissolved rather than guarded. | User decision, 2026-09-22 |
+| **New** | Nothing in the spec anticipates the **float appearing in its own list**. It does: Chrome reports a Document PiP window as a focused window holding one `about:blank` tab. | Observed in the running build |
+
+**Two consequences of filtering, neither a bug, both worth knowing.** The manager can no longer
+be used to find or focus the anchor tab — that was AC-16's stated reason for keeping it visible,
+and it is the thing traded away. And in the anchor tab itself, `useActiveTab` now resolves to
+nothing, because the active tab of its own window is the one just filtered out, so the current-tab
+card disappears there. **T-9 is what fixes that properly**, by following the last-focused *normal*
+browser window instead of `chrome.windows.getCurrent()`.
 
 **Menu only where width is scarce (user feedback, 2026-09-22).** D-8 put every surface action
 behind the logo in all hosts; that is right for the ~320px side panel and wrong for the anchor

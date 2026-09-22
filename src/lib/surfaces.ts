@@ -1,6 +1,20 @@
 import { getHost } from "./host";
 
 /**
+ * True for any page served by this extension — the anchor tab, and the
+ * extension page in a plain tab.
+ *
+ * These are filtered out of the mirrored list entirely. The alternative was a
+ * marked, non-closable row, on the reasoning that Chrome shows the tab in its
+ * own strip either way and a manager that denies it exists is lying. Filtering
+ * won on a blunter argument: a row you cannot close, cannot select and cannot
+ * bulk-act on is three special cases in the list rendering, and every one of
+ * them is a place for the self-destruct path to come back.
+ */
+export const isOwnPage = (url?: string): boolean =>
+  Boolean(url?.startsWith(chrome.runtime.getURL("")));
+
+/**
  * Open the side panel in a window we are about to focus — but only when the
  * side panel is where the user actually is.
  *
