@@ -2,6 +2,7 @@ import { Button, debounce } from "@mui/material";
 import { closeSnackbar, enqueueSnackbar } from "notistack";
 import { FC, useEffect } from "react";
 
+import { wasListedTab } from "../useTabsStructure.ts";
 import { restoreSessions } from "./restore.ts";
 import { shouldPrompt } from "./shouldPrompt.ts";
 
@@ -73,7 +74,11 @@ const flush = debounce(() => {
   burstCount = 0;
   void prompt(count);
 }, 200);
-const handleRemove = () => {
+const handleRemove = (tabId: number) => {
+  // Only tabs the manager was showing. The float's own window carries an
+  // about:blank tab, so "Stop floating" otherwise announced a tab closure
+  // the user never made — and offered to undo it.
+  if (!wasListedTab(tabId)) return;
   burstCount += 1;
   flush();
 };

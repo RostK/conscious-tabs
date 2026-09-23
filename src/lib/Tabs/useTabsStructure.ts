@@ -177,6 +177,22 @@ const subscribe = (notify: () => void): (() => void) => {
 const getSnapshot = () => snapshot;
 
 /**
+ * Was this tab one the manager was mirroring?
+ *
+ * `chrome.tabs.onRemoved` fires for tabs this app never showed and never
+ * would: the float's own window holds an `about:blank` tab, so closing the
+ * float raised "Tab closed" with an UNDO that offered to restore it. The
+ * list already knows which tabs it mirrors — this is that knowledge, asked
+ * at the moment of the event, while the removed tab is still in the last
+ * snapshot and before the refresh it triggers has landed.
+ *
+ * Unknown before the first load, where the honest answer is yes: better a
+ * prompt for a tab we had not catalogued than a lost undo.
+ */
+export const wasListedTab = (id: number): boolean =>
+  snapshot ? snapshot.tabs.some((tab) => tab.id === id) : true;
+
+/**
  * `undefined` until the first query has resolved — not the same thing as an
  * empty browser, which is what an initial `[]` claimed. TabsView drew its
  * "No other tabs are open." from that claim, so the message appeared for as
