@@ -114,8 +114,13 @@ An uncommitted partial implementation exists; it builds, lints clean, and works.
 
 - **G-1** Give the user a tab manager that is visible over other applications and costs zero
   browser width while it is up.
-- **G-2** Keep exactly one copy of the tab manager visible at a time — the side panel gets out of
-  the way when the user moves out to the anchor tab.
+- **G-2** Keep one copy of the tab manager visible **per browser window** — the side panel gets
+  out of the way when the user moves out to the anchor tab. **Corrected 2026-09-22:** this said
+  "exactly one copy at a time", which it never achieved. Side panels are per-window, so closing
+  the one the user clicked from leaves any panels open in their other windows untouched. That is
+  a limit of the surface, not a defect to fix: there is no gesture-free way to reach another
+  window's panel (C-13, C-14), and reaching across windows to shut things the user did not touch
+  would be worse than the duplication.
 - **G-3** Preserve the extension's zero-host-permission, zero-content-script, nothing-persisted
   privacy posture, which is an explicit product promise in `PRIVACY.md` and `store-listing.md`.
 - **G-4** Keep the side panel the default, fully-featured home. The anchor tab and float are
@@ -197,7 +202,20 @@ Priority uses MoSCoW.
   the view is the complete manager.
 - **AC-3** _(Must)_ WHEN the anchor tab is opened from the side panel, the system SHALL close the
   side-panel document that opened it, leaving no second copy of the UI in that browser window.
-  Per C-12 this is the moment the panel disappears — one step before the float exists.
+  **Reaffirmed 2026-09-22 with better reasoning.** C-12 framed this as a compromise — the panel
+  disappearing "one step earlier than the user's phrasing implies", forced by the gesture rules.
+  It is not a compromise, and the timing is right for reasons that have nothing to do with
+  gestures:
+  1. A panel left open would narrow **the anchor tab the user just moved into** — the manager in a
+     tab, with the manager beside it, consuming the width of both. US-2 is "stop consuming browser
+     width"; leaving it open inverts the feature.
+  2. §1.1 makes the anchor tab a destination, not a corridor — a surface someone may prefer
+     without ever floating. Clicking through to it is *moving*, so the panel closes because the
+     user left, not because a float is coming.
+  The asymmetry this creates is real and permanent: Chrome lets an extension take its own panel
+  away without a gesture but never put it back (C-10, C-13). What makes it acceptable is that the
+  return is one labelled click (AC-41) rather than folklore about the toolbar icon. Were that
+  control absent, this criterion should be reconsidered.
   **Verify:** manual — after the click, the side panel is gone from the source window.
 - **AC-4** _(Must)_ WHILE the app is running in the anchor tab AND the Document Picture-in-Picture
   API is present, the system SHALL present a float affordance.
@@ -665,7 +683,8 @@ these were things the spec asserted confidently and got wrong.
 | 9 | **AC-41** added | With NG-11 impossible, the anchor tab had no route back to the panel at all. A manual one is not what NG-11 forbids. |
 | 10 | **AC-42** added | AC-19 states the principle; the undo prompt firing in every live surface, and restoring twice, is the case that actually occurs. |
 | 11 | **§9** extended | Three more files carried the per-window host model than the table listed: `useAudioTabs`, `SyncPrompt`, and the view keys. The table said seven sites; it was ten. |
-| 12 | **A-7, A-8** closed | Both verified. A-8 was checked before any surrounding code was rewritten, because a float you cannot type in would have ended the feature. |
+| 12 | **G-2** corrected, **AC-3** reaffirmed | G-2 claimed "exactly one copy at a time", which per-window side panels never delivered. AC-3's timing was re-argued from the width cost and from the anchor tab being a destination rather than a corridor — both better grounds than C-12's "forced by the gesture rules". |
+| 13 | **A-7, A-8** closed | Both verified. A-8 was checked before any surrounding code was rewritten, because a float you cannot type in would have ended the feature. |
 
 **The pattern worth carrying forward.** Five of these twelve are corrections to things this spec
 asserted rather than measured — C-9, C-12, C-15, C-7 and the §9 table. Every one was settled by a
