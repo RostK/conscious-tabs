@@ -90,43 +90,7 @@ export const TabDisplay: FC<{
       onKeyDown={handleRowKeys}
       selected={tab.active}
       autoFocus={tab.active && focus}
-      sx={[
-        { pt: 0.2, pb: 0.2 },
-        rowControlsSx,
-        {
-          // Hidden with opacity, not visibility.
-          //
-          // visibility: hidden also removes an element from the focus order —
-          // not just from Tab, but from focus() entirely — so the Left/Right
-          // roving below could not move onto a control that had not already
-          // been revealed some other way. It failed silently, which is the
-          // worst way for it to fail.
-          //
-          // opacity keeps them focusable while invisible; tabIndex -1 keeps
-          // them out of Tab; pointer-events stops the mouse hitting what it
-          // cannot see. Focusing one reveals it, so arrowing along a row
-          // lights up each control as it arrives.
-          //
-          // :focus-visible rather than :focus-within for the row itself,
-          // because the active tab's row carries autoFocus — any plain focus
-          // rule would leave that one row wearing its controls permanently.
-          "& .tabSelect": { opacity: 0, pointerEvents: "none" },
-          [[
-            "&:hover .tabSelect",
-            "&:focus-visible .tabSelect",
-            "&:has(:focus-visible) .tabSelect",
-            "& .tabSelect:focus",
-            // Checked is state, and state outlives the pointer. Needs the
-            // attribute selector to outrank the rule above; setting opacity on
-            // the button itself loses on specificity, which is why a selected
-            // tab's box used to vanish the moment the mouse left.
-            "& .tabSelect[data-selected]",
-          ].join(", ")]: {
-            opacity: 1,
-            pointerEvents: "auto",
-          },
-        },
-      ]}
+      sx={[{ pt: 0.2, pb: 0.2 }, rowControlsSx]}
     >
       {/* Beside the favicon, in the row's left padding — not in its slot.
           Selection persists, and a persistent checkbox that took the favicon's
@@ -135,9 +99,15 @@ export const TabDisplay: FC<{
           that replaced it only looked acceptable while hovering.
           The fill is what makes the overlap read as two adjacent controls
           rather than one on top of the other, so this control keeps it even
-          though the right-hand actions no longer need it. */}
+          though the right-hand actions no longer need it.
+
+          Hidden and revealed by `rowControlsSx` like every other control on
+          every other row. It used to carry a second class with its own copy
+          of those six selectors, which differed only by omitting
+          `:focus-within` — one behaviour with two definitions, in a file
+          that has already had to fix that behaviour twice. */}
       <ItemButton
-        className="tabSelect"
+        className="itemAction"
         {...rowControlProps}
         {...selectedProps(isSelected)}
         onClick={handleHighlight}
