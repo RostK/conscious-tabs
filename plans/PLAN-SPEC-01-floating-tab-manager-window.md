@@ -30,8 +30,8 @@
 | T-9a | **done** | `restore` extracted to `undo/restore.ts` and routed through `resolveUserWindow()`. |
 | T-9b | **done** | `shouldPrompt()`: the anchor defers to its own float (exact), everything else gates on visibility (heuristic). A duplicate UNDO now reports instead of rejecting unhandled. |
 | T-10 | **done** | `onDragCancel` (E-11) + AC-18 empty state. AC-29 / 36 / 38 **measured** at 400x640 in a layout harness — all pass. AC-37, clamping and AC-30/31 still need Chrome. |
-| T-11 | **done, bar one manual check** | Brand canvas painted from the first frame in both schemes — measured exact in the harness. AC-27 (float window title) still wants eyes on a real float. |
-| T-12 | **confirmed, no code needed** | Each surface has its own React root and therefore its own notistack provider, in its own JS realm — so an imperative `enqueueSnackbar` can only reach the surface it was called from. Correct by construction. |
+| T-11 | **done** | Brand canvas painted from the first frame in both schemes — measured exact in the harness. AC-27 (float window title) still wants eyes on a real float. |
+| T-12 | **done** | Snackbar surfacing is correct by construction — each surface has its own React root and notistack provider in its own JS realm. Separately, toasts were lifted 64px clear of the fixed control bar, which they had been covering for their full three seconds. Confirmed in the real extension by the user, 2026-09-23. |
 | T-13 | **done** | `manifest.test.ts` guards AC-22 and the AC-23 posture; README and store-listing now describe both new surfaces. Neither policy file appears in the branch diff. |
 | T-14 | **not started — needs a real float** | Freshness with the anchor backgrounded. |
 | T-15 | **not started — needs a real float** | Keyboard walkthrough and screen-reader pass. |
