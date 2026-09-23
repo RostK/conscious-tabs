@@ -151,7 +151,10 @@ export const TabDisplay: FC<{
               position: "absolute",
               top: "50%",
               left: "50%",
-              transform: "translate(-50%, -50%)",
+              // Offset up and left rather than dead centre, so the favicon
+              // stays readable past the box's lower-right corner. Centred, the
+              // box sits squarely on it and the two fight.
+              transform: "translate(calc(-50% - 4px), calc(-50% - 4px))",
             }}
           >
             {isSelected ? (
