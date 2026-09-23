@@ -35,7 +35,7 @@
 | T-13 | **done** | `manifest.test.ts` guards AC-22 and the AC-23 posture; README and store-listing now describe both new surfaces. Neither policy file appears in the branch diff. |
 | T-14 | **AC-21 done — AC-20 half done** | **AC-21 met, measured 2026-09-23:** 79 s idle in a document Chrome reported `hidden` — zero `chrome.tabs.query`, `chrome.tabGroups.query` and `chrome.windows.getAll`, with the list still rendered. Statically there is nothing that could poll: no `setInterval`, `requestAnimationFrame`, `requestIdleCallback` or `chrome.alarms` anywhere in `src/`, and the service worker only calls `setPanelBehavior` once. The only timers are the 10 ms query debounce and one `setTimeout(…, 0)` in `float.ts`, both edge-triggered. **AC-20:** the app half is measured — in the same hidden document, a fired event reached the DOM in 0 ms (title change) and 252 ms (tab close), well inside the 1 s budget. The browser half — a real float staying fresh while the anchor tab is backgrounded and occluded — still needs a real float. |
 | T-15 | **not started — needs a real float** | Keyboard walkthrough and screen-reader pass. |
-| T-16 | **partly done** | AC-26 markup-safety tests written; PI-7 discharged by pointing `LEARNINGS.md` at SPEC-01 §1.2 rather than duplicating it. The E-1…E-16 sweep needs a real float. |
+| T-16 | **mostly done — 9 of 16 edges need a real float** | AC-26 markup-safety tests written; PI-7 discharged by pointing `LEARNINGS.md` at SPEC-01 §1.2 rather than duplicating it. **2026-09-23:** E-4, E-9, E-10, E-12, E-13 and E-16 are now covered by tests rather than intention, E-7 is measured, and writing the E-4/E-9 tests found a real defect — the view announced an empty browser before its first query had resolved. See the sweep table below. |
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
 the running build, 2026-09-22, contradicting an assertion I had made confidently in the opposite
@@ -638,6 +638,36 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   `href=`, and no `window.open` anywhere in `src/`. React escapes by default and every title goes
   through `ListItemText primary=`. This is a regression guard, not a fix.
 - **ACs:** **AC-26** *(unit)*, **AC-12** *(manual, E-3 / E-8 / E-14 / E-15)*, **AC-19** *(manual, E-5)*
+
+**Sweep, 2026-09-23.** Where each edge actually stands. "Test" means it fails if the behaviour
+regresses; each new one below was falsified against a deliberately broken build before being kept.
+
+| Edge | State | Evidence |
+| --- | --- | --- |
+| E-1 · video PiP evicts ours | **needs a real float** | Requires a second PiP; `float.test.ts` covers the notice it should raise, not the eviction. |
+| E-2 · ours evicts video PiP | **needs a real float** | Same. |
+| E-3 · anchor or its window closed | **needs a real float** | Browser-owned lifetime. |
+| E-4 · anchor / float as a row | **test** | `TabsView.test.tsx` — the list leaves out our own pages, and the float's window (normal by every field but `alwaysOnTop`). |
+| E-5 · panel and float both open | **part test** | `shouldPrompt.test.ts` covers the undo half; two live copies still wants eyes. |
+| E-6 · Chrome clamps the size | **observed** | 400x640 requested, 401x641 given (T-0). |
+| E-7 · smaller monitor | **measured** | Harness at 280, 320, 401 and 1100 px wide: no horizontal scroll, search present (181 px at the narrowest), every selection button inside the edge, titles ellipsize. |
+| E-8 · extension reloaded | **needs a real float** | Invalidates the opener document. |
+| E-9 · nothing left to mirror | **test, and fixed** | `TabsView.test.tsx`. The message was also being shown before the first query resolved — see below. |
+| E-10 · hostile titles | **test** | `TabDisplay.test.tsx` — markup, control characters, RTL override, empty, 3000-word. |
+| E-11 · drag released outside | **needs a real float** | `onDragCancel` built at T-10, untested — dnd-kit in jsdom is not worth the fidelity it would buy. |
+| E-12 · double activation | **test** | `float.test.ts` — "ignores a second activation while one is already open". |
+| E-13 · another profile holds PiP | **test** | `float.test.ts` — the refusal path surfaces a message (AC-7). |
+| E-14 · anchor navigated away | **needs a real float** | Browser-owned lifetime. |
+| E-15 · anchor dragged to another window | **needs a real float** | Browser-owned lifetime. |
+| E-16 · pop-out from another window | **test** | `anchor.test.ts` — focuses the existing anchor and its window rather than creating a second. |
+
+**The defect the sweep found.** The E-9 test passed against a build with the list filter disabled,
+which it should not have — so it was passing for the wrong reason. It was: `TabsView` rendered
+"No other tabs are open." whenever the windows query had resolved and the tabs query had not, which
+is every open, because the windows query is one call and the tabs query is three plus a debounce.
+`SearchView` had the same gap and answered "No tabs match" to a search it had not run. Fixed by
+making `useTabsStructure` return `undefined` until its first query resolves — a different statement
+from `[]` — which the type checker then used to find a fifth consumer I had missed.
 
 ## 5. Sequencing
 
