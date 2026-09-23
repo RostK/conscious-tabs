@@ -9,7 +9,7 @@ in plans, not here.
 
 | Spec ID | Date       | Feature                       | Module     | Status | Supersedes | File                                                                                               |
 | ------- | ---------- | ----------------------------- | ---------- | ------ | ---------- | -------------------------------------------------------------------------------------------------- |
-| SPEC-01 | 2026-09-22 | Floating tab manager window   | `ui-shell` | approved (revised 2026-09-22) | —        | [ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md](ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md) |
+| SPEC-01 | 2026-09-22 | Floating tab manager window   | `ui-shell` | implemented (2026-09-23) | —        | [ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md](ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md) |
 | SPEC-02 | 2026-09-23 | Tab audio controls            | `tab-list` | implemented | —        | [tab-list/SPEC-02-2026-09-23-tab-audio-controls.md](tab-list/SPEC-02-2026-09-23-tab-audio-controls.md) |
 
 ## Status values

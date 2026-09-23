@@ -7,6 +7,21 @@ covers it: the items that destroy the float are last, and each says how to get b
 
 ---
 
+## Result — 2026-09-23
+
+Walked against a real float by RostK. **Everything passed** except two that were never run:
+
+- **E-1 and E-2 are deferred, not failed.** Both need a competing video Picture-in-Picture to
+  trigger, and none was set up. What rests on them is AC-34 (our float evicted → named state plus
+  one-click reopen) and AC-35 (our float evicting a video PiP silently). The state machine behind
+  AC-34 has 13 unit tests; it is the eviction that starts it that no one has witnessed.
+
+The checklist stays here rather than being deleted: it is what a future change to the float has to
+be walked through again, and the two open items are the first things to run when a video PiP is to
+hand.
+
+---
+
 ## A. Before opening the float
 
 - [ ] **E-2 · our float evicts a video PiP, silently**

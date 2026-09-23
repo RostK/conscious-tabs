@@ -5,7 +5,7 @@
 | **Spec ID**    | SPEC-01                                                                                           |
 | **Date**       | 2026-09-22                                                                                        |
 | **Module**     | `ui-shell` (app hosting surfaces: `src/lib/host.ts`, `src/lib/float.ts`, `src/lib/ControlBar/`)   |
-| **Status**     | approved · **revised 2026-09-22** (see §14)                                                       |
+| **Status**     | **implemented 2026-09-23** · revised 2026-09-22 (see §14) — every AC verified bar AC-34 / AC-35, whose *trigger* (a competing video Picture-in-Picture) was never set up; the state machine behind AC-34 has 13 unit tests, only the eviction that starts it is unwitnessed |
 | **Supersedes** | —                                                                                                 |
 
 ---
