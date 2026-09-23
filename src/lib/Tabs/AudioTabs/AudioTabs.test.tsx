@@ -86,3 +86,73 @@ describe("the toolbar speaker", () => {
     expect(await screen.findByText("Unmute all")).toBeInTheDocument();
   });
 });
+
+/**
+ * The menu behind the speaker. SPEC-02 AC-15, AC-16.
+ */
+describe("the speaker's menu", () => {
+  const openMenu = async () => {
+    await waitFor(() => expect(speaker()).not.toBeNull());
+    speaker()!.click();
+  };
+
+  it("lists each noisy tab, and switches to the one chosen", async () => {
+    installChrome({
+      windows: WINDOWS,
+      tabs: [
+        tab({ id: 7, audible: true, title: "Noisy one" }),
+        tab({ id: 8, audible: true, title: "Noisy two", active: true }),
+      ],
+    });
+
+    render(<AudioTabs />);
+    await openMenu();
+
+    expect(await screen.findByText("Noisy one")).toBeInTheDocument();
+    expect(screen.getByText("Noisy two")).toBeInTheDocument();
+
+    screen.getByText("Noisy one").click();
+
+    // activateTab awaits bringPanelAlong before it updates the tab, so the
+    // call lands a microtask later than the click.
+    await waitFor(() =>
+      expect(chrome.tabs.update).toHaveBeenCalledWith(7, { active: true }),
+    );
+  });
+
+  // The per-entry control acts on that tab only, and must not double as the
+  // "switch to it" the row itself is.
+  it("mutes one tab from its entry without switching to it", async () => {
+    installChrome({
+      windows: WINDOWS,
+      tabs: [tab({ id: 7, audible: true, title: "Noisy one" })],
+    });
+
+    render(<AudioTabs />);
+    await openMenu();
+
+    const entry = (await screen.findByText("Noisy one")).closest("li")!;
+    entry.querySelector("button")!.click();
+
+    expect(chrome.tabs.update).toHaveBeenCalledWith(7, { muted: true });
+    expect(chrome.tabs.update).not.toHaveBeenCalledWith(7, { active: true });
+  });
+
+  it("mutes every listed tab at once, the current one included", async () => {
+    installChrome({
+      windows: WINDOWS,
+      tabs: [
+        tab({ id: 7, audible: true }),
+        tab({ id: 8, audible: true, active: true }),
+      ],
+    });
+
+    render(<AudioTabs />);
+    await openMenu();
+
+    (await screen.findByText("Mute all")).click();
+
+    expect(chrome.tabs.update).toHaveBeenCalledWith(7, { muted: true });
+    expect(chrome.tabs.update).toHaveBeenCalledWith(8, { muted: true });
+  });
+});

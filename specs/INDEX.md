@@ -10,6 +10,7 @@ in plans, not here.
 | Spec ID | Date       | Feature                       | Module     | Status | Supersedes | File                                                                                               |
 | ------- | ---------- | ----------------------------- | ---------- | ------ | ---------- | -------------------------------------------------------------------------------------------------- |
 | SPEC-01 | 2026-09-22 | Floating tab manager window   | `ui-shell` | approved (revised 2026-09-22) | —        | [ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md](ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md) |
+| SPEC-02 | 2026-09-23 | Tab audio controls            | `tab-list` | implemented | —        | [tab-list/SPEC-02-2026-09-23-tab-audio-controls.md](tab-list/SPEC-02-2026-09-23-tab-audio-controls.md) |
 
 ## Status values
 
@@ -27,3 +28,6 @@ in plans, not here.
   before any of it shipped.
   Code: `src/lib/host.ts`, `src/lib/anchor.ts`, `src/lib/float.ts`, `src/lib/surfaces.ts`,
   `src/lib/ControlBar/`.
+- **`tab-list`** — what the manager shows for the tabs themselves and what can be done to one from
+  a row: the list, the current-tab card, selection, and the audio cues and controls.
+  Code: `src/lib/Tabs/`.
