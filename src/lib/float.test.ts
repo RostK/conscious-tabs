@@ -148,6 +148,74 @@ describe("opening the float", () => {
     expect(enqueueSnackbar).not.toHaveBeenCalled();
   });
 
+  /**
+   * The gap the old guard could not see.
+   *
+   * `documentPictureInPicture.window` stays null from the click until the
+   * request resolves, so it answers "is one here" and never "is one coming".
+   * A double-click lands inside that gap.
+   */
+  it("ignores a second activation while the first is still in flight", async () => {
+    let settleFirst: (win: unknown) => void = () => undefined;
+    const api = installPiP(
+      () =>
+        new Promise((resolve) => {
+          settleFirst = resolve;
+        }),
+    );
+    const float = await loadFloat();
+
+    float.openFloat();
+    float.openFloat(); // the second click, before Chrome has answered the first
+
+    expect(api.requestWindow).toHaveBeenCalledTimes(1);
+    expect(enqueueSnackbar).not.toHaveBeenCalled();
+
+    settleFirst(makeFloatWindow());
+    await settle();
+    expect(float.getFloatState()).toBe("open");
+  });
+
+  // Otherwise a refused request would leave the button dead for the session.
+  it("allows another attempt after a refusal", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const api = installPiP(() => Promise.reject(new Error("denied")));
+    const float = await loadFloat();
+
+    float.openFloat();
+    await settle();
+    float.openFloat();
+
+    expect(api.requestWindow).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * If two float windows ever overlap, the one going away must not speak for
+   * the one that is live: clearing `current` from a stale pagehide left a
+   * visible float that "Stop floating" could no longer close.
+   */
+  it("ignores a pagehide from a window it is no longer tracking", async () => {
+    const first = makeFloatWindow();
+    const second = makeFloatWindow();
+    const handed = [first, second];
+    installPiP(() => Promise.resolve(handed.shift()));
+    const float = await loadFloat();
+
+    // Two windows really tracked in turn, each with its own pagehide.
+    float.openFloat();
+    await settle();
+    float.openFloat();
+    await settle();
+
+    first.fire("pagehide");
+    await settle();
+
+    expect(float.getFloatState()).toBe("open");
+    float.closeFloat();
+    expect(second.close).toHaveBeenCalled();
+    expect(first.close).not.toHaveBeenCalled();
+  });
+
   // AC-7: a refusal must reach the user, not only the console.
   it("tells the user when the request is refused", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);

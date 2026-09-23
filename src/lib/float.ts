@@ -73,6 +73,17 @@ let closingOurselves = false;
  * immediately after they clicked Stop floating.
  */
 let current: Window | undefined;
+/**
+ * Set between asking for a float and getting one.
+ *
+ * `documentPictureInPicture.window` is null for the whole of that gap, so it
+ * cannot answer "is one already coming" — only "is one already here". Two
+ * clicks inside the gap therefore both passed the guard below and issued two
+ * requests, which E-12 forbids: the second either rejects and raises an error
+ * toast for a float the user can see, or replaces the first and leaves this
+ * module tracking a window that no longer exists.
+ */
+let requesting = false;
 
 const listeners = new Set<() => void>();
 
@@ -102,8 +113,11 @@ export const openFloat = (): void => {
   if (!pip) return;
 
   // Rapid double activation must yield exactly one float and no visible error.
-  // Reading `.window` is synchronous, so the activation token survives it.
-  if (pip.window) return;
+  // Reading `.window` is synchronous, so the activation token survives it —
+  // and `requesting` covers the gap before it is set. Both are needed: the
+  // flag alone would miss a float opened by something other than this code.
+  if (pip.window || requesting) return;
+  requesting = true;
 
   // Deliberately not async: see constraint 2.
   pip
@@ -116,6 +130,9 @@ export const openFloat = (): void => {
       enqueueSnackbar("Couldn't open the floating window", {
         variant: "error",
       });
+    })
+    .finally(() => {
+      requesting = false;
     });
 };
 
@@ -214,7 +231,9 @@ const fillFloat = (float: Window) => {
 
   current = float;
   setState("open");
-  float.addEventListener("pagehide", handleFloatGone);
+  float.addEventListener("pagehide", () => {
+    handleFloatGone(float);
+  });
 };
 
 /**
@@ -231,7 +250,12 @@ const fillFloat = (float: Window) => {
  * already looking at the anchor tab stays silent, which is fine — they watched
  * it disappear.
  */
-const handleFloatGone = () => {
+const handleFloatGone = (float: Window) => {
+  // A window that is no longer the one we track has nothing to say about the
+  // state: if two ever overlap, the loser's pagehide would otherwise discard
+  // the winner's handle and leave a visible float that "Stop floating" can no
+  // longer close.
+  if (float !== current) return;
   current = undefined;
   if (closingOurselves) {
     closingOurselves = false;

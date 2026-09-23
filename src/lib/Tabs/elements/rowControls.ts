@@ -60,13 +60,21 @@ export const selectedProps = (selected: boolean) =>
 /**
  * Left/Right move along a row's controls; Tab moves between rows.
  *
- * Safe to own the arrow keys: dnd-kit uses them during a keyboard drag, but
- * the row unmounts while it is being dragged, so this handler does not exist
- * at that moment.
+ * Except while a drag is live, when the arrows belong to dnd-kit. A tab row
+ * unmounts as soon as it is picked up, so this handler genuinely is not there
+ * — but a group row stays mounted until something is hovered, and for that
+ * stretch this handler would claim the first arrow press, move focus off the
+ * drag handle and stop the event before dnd-kit's KeyboardSensor saw it.
+ *
+ * `aria-pressed` on the activator is dnd-kit's own published signal for "this
+ * is being dragged", so it needs no plumbing through three row components.
  */
 export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
   useCallback((event) => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    if (document.activeElement?.getAttribute("aria-pressed") === "true") {
+      return;
+    }
     const row = event.currentTarget;
     const stops: HTMLElement[] = [
       row,

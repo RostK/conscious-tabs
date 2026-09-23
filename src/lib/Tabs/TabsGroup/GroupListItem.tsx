@@ -22,10 +22,7 @@ import {
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
-import {
-  rowControlProps,
-  selectedProps,
-} from "../elements/rowControls.ts";
+import { rowControlProps, selectedProps } from "../elements/rowControls.ts";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
@@ -232,9 +229,16 @@ export const GroupListItem: FC<
                   onCtrlClick={handleSelectButton}
                   group={group}
                   sx={[
+                    // Hold the controls open while this row's own menu is,
+                    // so the menu is not left anchored to something that has
+                    // faded out. It has to set the property the shared model
+                    // actually hides with: this said `visibility: visible`,
+                    // which stopped meaning anything when rows moved to
+                    // opacity, and had been quietly doing nothing since.
                     open && {
                       [`& .itemAction`]: {
-                        visibility: "visible",
+                        opacity: 1,
+                        pointerEvents: "auto",
                       },
                     },
                     Boolean(innerDZ.active?.data.current) && {
