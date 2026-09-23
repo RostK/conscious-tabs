@@ -42,11 +42,20 @@ export const rowControlsSx = {
     "&:has(:focus-visible) .itemAction",
     "& .itemAction:focus",
     "& .itemAction:focus-within",
+    // A checked box is state, not an affordance — it has to survive the
+    // pointer leaving. The attribute selector is what makes it stick: the
+    // row's own `& .itemAction` rule outranks anything the control sets on
+    // itself, so saying "opacity: 1" on the button never worked.
+    "& .itemAction[data-selected]",
   ].join(", ")]: {
     opacity: 1,
     pointerEvents: "auto",
   },
 };
+
+/** Spread onto a control that must stay visible while it is switched on. */
+export const selectedProps = (selected: boolean) =>
+  selected ? { "data-selected": true } : {};
 
 /**
  * Left/Right move along a row's controls; Tab moves between rows.

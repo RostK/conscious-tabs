@@ -17,7 +17,10 @@ import { bringPanelAlong } from "../../surfaces.ts";
 import { closeWindow } from "../actions.ts";
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { ItemButton } from "../elements/ItemButton.tsx";
-import { rowControlProps } from "../elements/rowControls.ts";
+import {
+  rowControlProps,
+  selectedProps,
+} from "../elements/rowControls.ts";
 import { SelectionContext } from "../selection";
 import { Tabs } from "../Tabs.tsx";
 import { TabItem, TabsStructure } from "../types.ts";
@@ -109,11 +112,8 @@ export const WindowListItem: FC<{
             : "Select every tab in this window"
         }
         onClick={handleSelectButton}
-        className={!isSelected ? "itemAction" : undefined}
-        sx={{
-          position: "absolute",
-          left: -8,
-        }}
+        className="itemAction"
+        {...selectedProps(isSelected)}
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>

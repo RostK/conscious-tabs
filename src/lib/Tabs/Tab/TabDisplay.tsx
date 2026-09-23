@@ -23,6 +23,7 @@ import { ItemButton } from "../elements/ItemButton.tsx";
 import {
   rowControlProps,
   rowControlsSx,
+  selectedProps,
   useRowKeys,
 } from "../elements/rowControls.ts";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
@@ -104,6 +105,11 @@ export const TabDisplay: FC<{
             "&:focus-visible .tabSelect",
             "&:has(:focus-visible) .tabSelect",
             "& .tabSelect:focus",
+            // Checked is state, and state outlives the pointer. Needs the
+            // attribute selector to outrank the rule above; setting opacity on
+            // the button itself loses on specificity, which is why a selected
+            // tab's box used to vanish the moment the mouse left.
+            "& .tabSelect[data-selected]",
           ].join(", ")]: {
             opacity: 1,
             pointerEvents: "auto",
@@ -139,12 +145,8 @@ export const TabDisplay: FC<{
             position: "absolute",
             top: -1,
             left: -5.5,
-            // opacity, not visibility — a hidden element cannot be focused,
-            // and the row's Left/Right roving has to be able to land here.
-            ...(isSelected
-              ? { opacity: 1, pointerEvents: "auto" }
-              : { opacity: 0 }),
           }}
+          {...selectedProps(isSelected)}
         >
           {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
         </ItemButton>

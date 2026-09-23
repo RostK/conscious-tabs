@@ -22,7 +22,10 @@ import {
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
-import { rowControlProps } from "../elements/rowControls.ts";
+import {
+  rowControlProps,
+  selectedProps,
+} from "../elements/rowControls.ts";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
@@ -192,11 +195,8 @@ export const GroupListItem: FC<
               : `Select every tab in group ${group.title || ""}`.trim()
           }
           onClick={handleSelectButton}
-          className={!isSelected ? "itemAction" : undefined}
-          sx={{
-            position: "absolute",
-            left: -8,
-          }}
+          className="itemAction"
+          {...selectedProps(isSelected)}
         >
           {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
         </ItemButton>
