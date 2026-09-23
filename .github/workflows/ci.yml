@@ -1,0 +1,46 @@
+name: CI
+
+# Every check in this file was, until now, something a human ran locally and
+# then reported. That is fine until the report and the repository disagree —
+# so the repository runs them itself, on every pull request and on main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to a branch makes the run already in flight pointless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # ci, not install: it installs exactly the lockfile and fails if
+      # package.json and the lock have drifted, which `npm install` would
+      # quietly repair on the runner and nowhere else.
+      - run: npm ci
+
+      # Includes jsx-a11y, and --report-unused-disable-directives, so a
+      # suppression that stops being needed fails the build rather than
+      # sitting there claiming an exception nobody checked.
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      # Last because it is the slowest, and because `npm run build` is
+      # `tsc && vite build` — the type check lives here. Vitest has passed a
+      # green suite over code tsc rejects more than once in this repository,
+      # so neither of these stands in for the other.
+      - name: Type-check and build
+        run: npm run build

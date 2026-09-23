@@ -90,6 +90,10 @@ export const GroupForm: FC<{
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
+          {/* A modal has to take focus, or the keyboard is left behind it
+              on the page it covers — which is what this autoFocus is for,
+              not a preference. */}
+          {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
           <Button type="submit" autoFocus color="primary" variant="contained">
             OK
           </Button>

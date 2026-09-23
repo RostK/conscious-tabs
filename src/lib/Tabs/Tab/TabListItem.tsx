@@ -69,6 +69,7 @@ export const TabListItem: FC<
               draggable by pointer. The keyboard half — and dnd-kit's
               tabIndex/role/aria — lives on the handle instead; see
               DragHandle for why the two had to be separated. */}
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div ref={setNodeRefDraggable} onMouseDown={onMouseDown}>
             <Dropzone>
               <TabDisplay
