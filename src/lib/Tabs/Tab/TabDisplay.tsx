@@ -12,7 +12,6 @@ import {
 } from "@mui/material";
 import {
   FC,
-  KeyboardEventHandler,
   MouseEventHandler,
   ReactNode,
   useCallback,
@@ -21,6 +20,11 @@ import {
 import { activateTab, closeTab } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
+import {
+  rowControlProps,
+  rowControlsSx,
+  useRowKeys,
+} from "../elements/rowControls.ts";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
@@ -56,36 +60,7 @@ export const TabDisplay: FC<{
     },
     [tab.id],
   );
-  /**
-   * Arrow keys move within a row; Tab moves between them.
-   *
-   * Making the row's controls focusable (so a keyboard user could reach select
-   * and close at all) turned every row into four tab stops — eighty in a list
-   * of twenty tabs, just to walk past them. This is the usual answer: one stop
-   * per row, and the controls inside reached with Left/Right.
-   *
-   * Safe to own the arrow keys here. dnd-kit uses them during a keyboard drag,
-   * but TabListItem unmounts the row while it is dragging, so this handler
-   * does not exist then.
-   */
-  const handleRowKeys = useCallback<KeyboardEventHandler<HTMLDivElement>>(
-    (e) => {
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const row = e.currentTarget;
-      const stops = [
-        row,
-        ...row.querySelectorAll<HTMLElement>("[data-row-control]"),
-      ];
-      const at = stops.indexOf(document.activeElement as HTMLElement);
-      if (at < 0) return;
-      const next = at + (e.key === "ArrowRight" ? 1 : -1);
-      if (next < 0 || next >= stops.length) return;
-      e.preventDefault();
-      e.stopPropagation();
-      stops[next].focus();
-    },
-    [],
-  );
+  const handleRowKeys = useRowKeys();
 
   const handleHighlight = useCallback<MouseEventHandler>(
     async (e) => {
@@ -105,6 +80,7 @@ export const TabDisplay: FC<{
       autoFocus={tab.active && focus}
       sx={[
         { pt: 0.2, pb: 0.2 },
+        rowControlsSx,
         {
           // Hidden with opacity, not visibility.
           //
@@ -122,15 +98,8 @@ export const TabDisplay: FC<{
           // :focus-visible rather than :focus-within for the row itself,
           // because the active tab's row carries autoFocus — any plain focus
           // rule would leave that one row wearing its controls permanently.
-          "& .itemAction, & .tabSelect": {
-            opacity: 0,
-            pointerEvents: "none",
-          },
+          "& .tabSelect": { opacity: 0, pointerEvents: "none" },
           [[
-            "&:hover .itemAction",
-            "&:focus-visible .itemAction",
-            "&:has(:focus-visible) .itemAction",
-            "& .itemAction:focus",
             "&:hover .tabSelect",
             "&:focus-visible .tabSelect",
             "&:has(:focus-visible) .tabSelect",
@@ -160,8 +129,7 @@ export const TabDisplay: FC<{
         </Box>
         <ItemButton
           className="tabSelect"
-          data-row-control
-          tabIndex={-1}
+          {...rowControlProps}
           onClick={handleHighlight}
           aria-label={isSelected ? "Deselect tab" : "Select tab"}
           sx={{
@@ -186,8 +154,7 @@ export const TabDisplay: FC<{
         <ItemButton
           onClick={handleDelete}
           edge="end"
-          data-row-control
-          tabIndex={-1}
+          {...rowControlProps}
           aria-label={`Close ${tab.title || "tab"}`}
           className="itemAction"
         >

@@ -12,6 +12,7 @@ import {
   useCallback,
 } from "react";
 
+import { rowControlsSx, useRowKeys } from "../elements/rowControls.ts";
 import { GroupItem } from "../types.ts";
 
 export const GroupDisplay: FC<{
@@ -21,6 +22,7 @@ export const GroupDisplay: FC<{
   sx?: ComponentProps<typeof ListItemButton>["sx"];
   onCtrlClick?: MouseEventHandler;
 }> = ({ group, onCtrlClick, itemAction, pre, sx }) => {
+  const rowKeys = useRowKeys();
   const handleClick = useCallback<MouseEventHandler>(
     async (e) => {
       if (e.ctrlKey || e.metaKey) {
@@ -34,23 +36,13 @@ export const GroupDisplay: FC<{
   return (
     <ListItemButton
       onClick={handleClick}
+      onKeyDown={rowKeys}
       sx={[
         { pt: 0.2, pb: 0.2, height: 49.5 },
         {
           boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
         },
-        {
-          // See TabDisplay: keyboard focus never fires :hover, so these
-          // controls were invisible and therefore unfocusable. :focus-visible,
-          // not :focus-within — an autofocused row would otherwise wear its
-          // controls permanently.
-          [`&:hover .itemAction, &:focus-visible .itemAction, &:has(:focus-visible) .itemAction`]: {
-            visibility: "visible",
-          },
-          [`& .itemAction`]: {
-            visibility: "hidden",
-          },
-        },
+        rowControlsSx,
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
     >

@@ -22,6 +22,7 @@ import {
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
+import { rowControlProps } from "../elements/rowControls.ts";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
@@ -134,6 +135,7 @@ export const GroupListItem: FC<
         />
         <IconButton
           onClick={handleOpenMenuClick}
+          {...rowControlProps}
           aria-label={`Actions for group ${group.title || ""}`.trim()}
           size="small"
         >
@@ -143,6 +145,7 @@ export const GroupListItem: FC<
           className="close-button"
           onClick={handleDelete}
           edge="end"
+          {...rowControlProps}
           aria-label={`Close every tab in group ${group.title || ""}`.trim()}
         >
           <Close />
@@ -176,11 +179,18 @@ export const GroupListItem: FC<
     return (
       <>
         {expanded === undefined && (
-          <IconButton>
+          // Indicator only — the row's click collapses the group.
+          <IconButton tabIndex={-1} aria-hidden>
             {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
         )}
         <ItemButton
+          {...rowControlProps}
+          aria-label={
+            isSelected
+              ? `Deselect every tab in group ${group.title || ""}`.trim()
+              : `Select every tab in group ${group.title || ""}`.trim()
+          }
           onClick={handleSelectButton}
           className={!isSelected ? "itemAction" : undefined}
           sx={{
@@ -192,7 +202,7 @@ export const GroupListItem: FC<
         </ItemButton>
       </>
     );
-  }, [expanded, group.collapsed, handleSelectButton, isSelected]);
+  }, [expanded, group.collapsed, group.title, handleSelectButton, isSelected]);
   return (
     <>
       {outerDZ.isOver && !outerDZ.isSelf ? <DropPlaceholder /> : null}

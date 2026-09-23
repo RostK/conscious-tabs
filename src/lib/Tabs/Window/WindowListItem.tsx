@@ -17,6 +17,7 @@ import { bringPanelAlong } from "../../surfaces.ts";
 import { closeWindow } from "../actions.ts";
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { ItemButton } from "../elements/ItemButton.tsx";
+import { rowControlProps } from "../elements/rowControls.ts";
 import { SelectionContext } from "../selection";
 import { Tabs } from "../Tabs.tsx";
 import { TabItem, TabsStructure } from "../types.ts";
@@ -67,6 +68,7 @@ export const WindowListItem: FC<{
         className="close-button"
         onClick={handleCloseWindow}
         edge="end"
+        {...rowControlProps}
         aria-label={`Close this window and its ${flatTabs.length} tab${
           flatTabs.length === 1 ? "" : "s"
         }`}
@@ -100,6 +102,12 @@ export const WindowListItem: FC<{
   const pre = useMemo(() => {
     return (
       <ItemButton
+        {...rowControlProps}
+        aria-label={
+          isSelected
+            ? "Deselect every tab in this window"
+            : "Select every tab in this window"
+        }
         onClick={handleSelectButton}
         className={!isSelected ? "itemAction" : undefined}
         sx={{

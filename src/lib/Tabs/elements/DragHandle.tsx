@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { ItemButton } from "./ItemButton.tsx";
+import { rowControlProps } from "./rowControls.ts";
 
 /**
  * The keyboard's way into a drag.
@@ -57,14 +58,15 @@ export const DragHandle: FC<{
   return (
     <ItemButton
       className={className}
-      // Reached with Left/Right from the row, not by Tab — see TabDisplay.
-      data-row-control
+      // Reached with Left/Right from the row, not by Tab.
+      {...rowControlProps}
       ref={setActivatorNodeRef}
       aria-label={label}
       onKeyDown={onKeyDown}
       onClick={swallowClick}
       sx={[{ cursor: "grab" }, ...(Array.isArray(sx) ? sx : [sx])]}
       {...attributes}
+      // Last, because dnd-kit's attributes set tabIndex 0 and the row owns Tab.
       tabIndex={-1}
     >
       <DragIndicator fontSize="small" />
