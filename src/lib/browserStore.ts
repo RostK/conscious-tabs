@@ -62,6 +62,40 @@ export const createBrowserStore = <T>({
   let generation = 0;
   let attached: ChromeEvent[] = [];
   const listeners = new Set<() => void>();
+  let coldRetry: ReturnType<typeof setTimeout> | undefined;
+  let coldAttempts = 0;
+
+  const cancelColdRetry = () => {
+    if (coldRetry !== undefined) clearTimeout(coldRetry);
+    coldRetry = undefined;
+    coldAttempts = 0;
+  };
+
+  /**
+   * Ask again after a first load that failed with nothing to fall back on.
+   *
+   * Rule 3 leans on "the next event retries", which is sound only while there
+   * is a snapshot to keep showing. A cold start that fails has none, and no
+   * event is promised — a quiet browser sends nothing — so the view sits on
+   * `undefined` indefinitely and draws neither a list nor its empty state.
+   *
+   * Bounded on purpose. The failures this covers are transient (a window
+   * tearing down, the extension reloading) and clear in well under a second;
+   * if the extension's context is gone instead, every attempt will fail for
+   * as long as the page lives, and an unbounded loop would spend the rest of
+   * that life writing to the console. Five doublings, then leave it to the
+   * events.
+   */
+  const COLD_RETRY_LIMIT = 5;
+  const scheduleColdRetry = () => {
+    if (coldRetry !== undefined || coldAttempts >= COLD_RETRY_LIMIT) return;
+    const wait = 200 * 2 ** coldAttempts;
+    coldAttempts += 1;
+    coldRetry = setTimeout(() => {
+      coldRetry = undefined;
+      if (snapshot === undefined && listeners.size > 0) void run();
+    }, wait);
+  };
 
   const run = async () => {
     const mine = ++generation;
@@ -70,10 +104,15 @@ export const createBrowserStore = <T>({
       next = await load();
     } catch (error) {
       console.error(`Couldn't read ${label}`, error);
+      // Nothing to stand on, and nothing obliged to ask again: see above.
+      if (mine === generation && snapshot === undefined && listeners.size > 0) {
+        scheduleColdRetry();
+      }
       return;
     }
     if (mine !== generation) return;
     if (snapshot !== undefined && equals(snapshot, next)) return;
+    cancelColdRetry();
     snapshot = next;
     listeners.forEach((notify) => {
       notify();
@@ -107,6 +146,7 @@ export const createBrowserStore = <T>({
       });
       attached = [];
       refresh.clear();
+      cancelColdRetry();
       generation += 1; // an answer in flight is nobody's now
       snapshot = undefined;
     };

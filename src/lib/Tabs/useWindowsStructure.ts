@@ -24,5 +24,12 @@ const store = createBrowserStore<chrome.windows.Window[]>({
     ),
 });
 
-export const useWindowsStructure = (): chrome.windows.Window[] =>
-  store.useValue() ?? [];
+/**
+ * `undefined` until the first read resolves, for the same reason the tab list
+ * is: an empty array is a claim that the user has no browsing windows, and
+ * both views draw a conclusion from it. Flattening the two together here put
+ * the "have we actually looked yet" test in every consumer instead of in the
+ * type, where the next consumer has to know to write it.
+ */
+export const useWindowsStructure = (): chrome.windows.Window[] | undefined =>
+  store.useValue();

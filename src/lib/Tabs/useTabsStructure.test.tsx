@@ -181,6 +181,36 @@ describe("several consumers", () => {
     );
   });
 
+  /**
+   * "The next event retries" holds only while there is a snapshot to keep
+   * showing. A cold start that fails has none, and a quiet browser sends
+   * nothing to rescue it — so the view drew neither a list nor its empty
+   * state, for as long as the page lived.
+   */
+  it("asks again when the very first read fails", async () => {
+    const tabs = [tab({ id: 1, title: "First" })];
+    installChrome({ windows: WINDOWS, tabs });
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    const real = chrome.tabs.query;
+    let failed = false;
+    chrome.tabs.query = ((info: chrome.tabs.QueryInfo = {}) => {
+      if (failed) return real(info);
+      failed = true;
+      return Promise.reject(new Error("extension reloading"));
+    }) as unknown as typeof chrome.tabs.query;
+
+    const { result } = renderHook(() => useTabsStructure());
+
+    // Nothing fires an event here: the store has to come back by itself.
+    await waitFor(() => expect(titles(result.current)).toEqual(["First"]), {
+      timeout: 3000,
+    });
+    expect(logged).toHaveBeenCalled();
+  });
+
   // An event that changes nothing the app holds should cost nothing to
   // render. Without this every load published a new object and every
   // subscriber re-rendered, for every event Chrome sends.

@@ -97,6 +97,24 @@ describe("with nothing left to show", () => {
     expect(await screen.findByText("No other tabs are open.")).toBeInTheDocument();
   });
 
+  /**
+   * Every browsing window gone — the anchor's own window closed out from under
+   * a float that outlived it, or a profile left holding nothing but ours.
+   *
+   * The guard here used to be `allWindows.length > 0`, which could not tell
+   * this apart from "the window read has not landed yet" and so stayed silent
+   * for both. The view then rendered nothing whatsoever: no list, no message.
+   */
+  it("says so when there is no browsing window left at all", async () => {
+    installChrome({ windows: [], tabs: [] });
+
+    renderView();
+
+    expect(
+      await screen.findByText("No other tabs are open."),
+    ).toBeInTheDocument();
+  });
+
   // The first paint happens before the first query resolves; flashing the
   // empty state there would make every open look like a failure.
   it("does not flash the empty state before the first query resolves", () => {
