@@ -33,7 +33,7 @@
 | T-11 | **done** | Brand canvas painted from the first frame in both schemes — measured exact in the harness. AC-27 (float window title) still wants eyes on a real float. |
 | T-12 | **done** | Snackbar surfacing is correct by construction — each surface has its own React root and notistack provider in its own JS realm. Separately, toasts were lifted 64px clear of the fixed control bar, which they had been covering for their full three seconds. Confirmed in the real extension by the user, 2026-09-23. |
 | T-13 | **done** | `manifest.test.ts` guards AC-22 and the AC-23 posture; README and store-listing now describe both new surfaces. Neither policy file appears in the branch diff. |
-| T-14 | **not started — needs a real float** | Freshness with the anchor backgrounded. |
+| T-14 | **AC-21 done — AC-20 half done** | **AC-21 met, measured 2026-09-23:** 79 s idle in a document Chrome reported `hidden` — zero `chrome.tabs.query`, `chrome.tabGroups.query` and `chrome.windows.getAll`, with the list still rendered. Statically there is nothing that could poll: no `setInterval`, `requestAnimationFrame`, `requestIdleCallback` or `chrome.alarms` anywhere in `src/`, and the service worker only calls `setPanelBehavior` once. The only timers are the 10 ms query debounce and one `setTimeout(…, 0)` in `float.ts`, both edge-triggered. **AC-20:** the app half is measured — in the same hidden document, a fired event reached the DOM in 0 ms (title change) and 252 ms (tab close), well inside the 1 s budget. The browser half — a real float staying fresh while the anchor tab is backgrounded and occluded — still needs a real float. |
 | T-15 | **not started — needs a real float** | Keyboard walkthrough and screen-reader pass. |
 | T-16 | **partly done** | AC-26 markup-safety tests written; PI-7 discharged by pointing `LEARNINGS.md` at SPEC-01 §1.2 rather than duplicating it. The E-1…E-16 sweep needs a real float. |
 
@@ -603,7 +603,20 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   and T-14 is confirmation in the real app rather than discovery.
 - **Note:** AC-21 should pass by construction — `useUpdateEvents` is purely event-driven, with a
   10 ms debounce and no interval anywhere. Confirm, do not build.
-- **ACs:** **AC-20** *(manual)*, **AC-21** *(manual with instrumentation)*
+- **ACs:** **AC-20** *(manual — app half measured, browser half outstanding)*, **AC-21** *(**met**, measured 2026-09-23)*
+- **Measured 2026-09-23, harness at 401x641 with the page hidden:**
+  - AC-21 — counters wrapped around `chrome.tabs.query`, `chrome.tabGroups.query` and
+    `chrome.windows.getAll`; 79 s with no interaction produced **0, 0, 0**. A first run read 10
+    queries and was discarded: those were my own probe events, not wake-ups.
+  - AC-20 (app half) — `onUpdated` for a title reached the DOM in **0 ms**; a close in **252 ms**
+    (the undo prompt debounce sits in that path). Both with `document.visibilityState === "hidden"`.
+  - A timer probe ran 17 intervals at exactly 5.0 s over 86 s hidden, so nothing was being
+    throttled at that horizon. Chrome applies intensive throttling only after ~5 minutes hidden,
+    which is worth knowing for the **anchor tab's own copy**, not the float — T-0 measured the
+    float's realm reporting `visible`.
+  - **`requestAnimationFrame` never fires in a hidden document.** Found by hanging a probe on it.
+    Nothing in `src/` schedules updates that way, and nothing should start: it would stall exactly
+    when AC-20 is being asked of it.
 
 #### T-15 · Accessibility pass
 
