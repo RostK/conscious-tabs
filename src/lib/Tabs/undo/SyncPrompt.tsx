@@ -91,6 +91,11 @@ export const SyncPrompt: FC = () => {
     chrome.tabs.onRemoved.addListener(handleRemove);
     return () => {
       chrome.tabs.onRemoved.removeListener(handleRemove);
+      // The burst belongs to this surface. Left running, it prompts from a
+      // document the user has already left — and, in tests, from the case
+      // after the one that started it.
+      burstCount = 0;
+      flush.clear();
     };
   }, []);
   return <></>;

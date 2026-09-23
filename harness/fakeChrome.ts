@@ -36,24 +36,63 @@ const event = () => {
 };
 
 const TITLES: [string, string][] = [
-  ["Using the Document Picture-in-Picture API - Web APIs | MDN", "https://developer.mozilla.org/en-US/docs/Web/API/Document_Picture-in-Picture_API"],
-  ["chrome.sidePanel | API | Chrome for Developers", "https://developer.chrome.com/docs/extensions/reference/api/sidePanel"],
-  ["RostK/conscious-tabs: A quieter way to handle tab overload", "https://github.com/RostK/conscious-tabs"],
-  ["Show a speaker badge on tabs that are playing sound by RostK", "https://github.com/RostK/conscious-tabs/pull/4"],
-  ["Inbox (1,284) - rkaniuchenko@gmail.com - Gmail", "https://mail.google.com/mail/u/0/#inbox"],
-  ["Google Calendar - Week of 20 September 2026", "https://calendar.google.com/calendar/u/0/r"],
-  ["A very long tab title that keeps going and going well past any reasonable width to see how it truncates", "https://example.com/some/deep/path/that/is/also/quite/long/indeed"],
+  [
+    "Using the Document Picture-in-Picture API - Web APIs | MDN",
+    "https://developer.mozilla.org/en-US/docs/Web/API/Document_Picture-in-Picture_API",
+  ],
+  [
+    "chrome.sidePanel | API | Chrome for Developers",
+    "https://developer.chrome.com/docs/extensions/reference/api/sidePanel",
+  ],
+  [
+    "RostK/conscious-tabs: A quieter way to handle tab overload",
+    "https://github.com/RostK/conscious-tabs",
+  ],
+  [
+    "Show a speaker badge on tabs that are playing sound by RostK",
+    "https://github.com/RostK/conscious-tabs/pull/4",
+  ],
+  [
+    "Inbox (1,284) - rkaniuchenko@gmail.com - Gmail",
+    "https://mail.google.com/mail/u/0/#inbox",
+  ],
+  [
+    "Google Calendar - Week of 20 September 2026",
+    "https://calendar.google.com/calendar/u/0/r",
+  ],
+  [
+    "A very long tab title that keeps going and going well past any reasonable width to see how it truncates",
+    "https://example.com/some/deep/path/that/is/also/quite/long/indeed",
+  ],
   ["", "https://untitled.example.com/"],
   ["مرحبا بالعالم — right to left title", "https://rtl.example.com/"],
-  ["Solve Algorithms | HackerRank", "https://www.hackerrank.com/domains/algorithms"],
+  [
+    "Solve Algorithms | HackerRank",
+    "https://www.hackerrank.com/domains/algorithms",
+  ],
   ["Anthropic Courses", "https://anthropic.skilljar.com/"],
-  ["jj-vcs/jj: A Git-compatible VCS that is both simple and powerful", "https://github.com/jj-vcs/jj"],
-  ["OpenSpec | A lightweight and configurable spec framework", "https://openspec.dev/"],
+  [
+    "jj-vcs/jj: A Git-compatible VCS that is both simple and powerful",
+    "https://github.com/jj-vcs/jj",
+  ],
+  [
+    "OpenSpec | A lightweight and configurable spec framework",
+    "https://openspec.dev/",
+  ],
   ["Future: UK · Events Calendar", "https://luma.com/ldn"],
-  ["Written questions and answers - UK Parliament", "https://questions-statements.parliament.uk/written-questions"],
-  ["Google Flow – AI creative studio for video, images", "https://flow.google.com/"],
+  [
+    "Written questions and answers - UK Parliament",
+    "https://questions-statements.parliament.uk/written-questions",
+  ],
+  [
+    "Google Flow – AI creative studio for video, images",
+    "https://flow.google.com/",
+  ],
   ["Google Antigravity - Download", "https://antigravity.google/download"],
-  ["Finding the Holy Grail of AI Agent UIs", "https://mlops.community/blog/finding-the-holy-grail-of-ai-agent-uis/"],
+  [
+    "Finding the Holy Grail of AI Agent UIs",
+    "https://mlops.community/blog/finding-the-holy-grail-of-ai-agent-uis/",
+  ],
 ];
 
 const tabs: chrome.tabs.Tab[] = TITLES.map((entry, i) => {
@@ -80,15 +119,40 @@ const tabs: chrome.tabs.Tab[] = TITLES.map((entry, i) => {
 });
 
 const windows: chrome.windows.Window[] = [
-  { id: 1, focused: true, type: "normal", state: "normal", incognito: false, alwaysOnTop: false } as chrome.windows.Window,
-  { id: 2, focused: false, type: "normal", state: "normal", incognito: false, alwaysOnTop: false } as chrome.windows.Window,
+  {
+    id: 1,
+    focused: true,
+    type: "normal",
+    state: "normal",
+    incognito: false,
+    alwaysOnTop: false,
+  } as chrome.windows.Window,
+  {
+    id: 2,
+    focused: false,
+    type: "normal",
+    state: "normal",
+    incognito: false,
+    alwaysOnTop: false,
+  } as chrome.windows.Window,
 ];
 
 const groups: chrome.tabGroups.TabGroup[] = [
-  { id: 500, title: "Reading", color: "purple", collapsed: false, windowId: 1 } as chrome.tabGroups.TabGroup,
+  {
+    id: 500,
+    title: "Reading",
+    color: "purple",
+    collapsed: false,
+    windowId: 1,
+  } as chrome.tabGroups.TabGroup,
 ];
 
 export const installFakeChrome = () => {
+  // The fixtures, reachable from the console. Queries hand out clones now,
+  // as the real chrome.* does, so a probe cannot make a change happen by
+  // mutating what it was given — it has to change the data the fake serves.
+  (globalThis as unknown as { harnessTabs: unknown }).harnessTabs = tabs;
+  (globalThis as unknown as { harnessGroups: unknown }).harnessGroups = groups;
   const onRemoved = event();
   const onUpdated = event();
   const onActivated = event();
@@ -118,9 +182,10 @@ export const installFakeChrome = () => {
       sendMessage: () => Promise.resolve(undefined),
     },
     tabs: {
+      // Cloned, as the real chrome.* does across its process boundary.
       query: (info: chrome.tabs.QueryInfo = {}) =>
         Promise.resolve(
-          tabs.filter(
+          structuredClone(tabs).filter(
             (tab) =>
               (info.windowId === undefined || tab.windowId === info.windowId) &&
               (info.active === undefined || tab.active === info.active),

@@ -155,6 +155,40 @@ describe("several consumers", () => {
     );
   });
 
+  // An event that changes nothing the app holds should cost nothing to
+  // render. Without this every load published a new object and every
+  // subscriber re-rendered, for every event Chrome sends.
+  it("does not notify when the browser answers the same thing twice", async () => {
+    installChrome({ windows: WINDOWS, tabs: [tab({ id: 1 })] });
+    let renders = 0;
+    const { result } = renderHook(() => {
+      renders += 1;
+      return useTabsStructure();
+    });
+    await waitFor(() => expect(result.current).toBeDefined());
+
+    const settled = renders;
+    [1, 2, 3].forEach(() => {
+      (chrome.tabs.onUpdated as unknown as { fire: () => void }).fire();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(renders).toBe(settled);
+  });
+
+  // A later subscriber is served by the snapshot that is already there.
+  it("does not re-query for a subscriber that arrives late", async () => {
+    installChrome({ windows: WINDOWS, tabs: [tab({ id: 1 })] });
+    const first = renderHook(() => useTabsStructure());
+    await waitFor(() => expect(first.result.current).toBeDefined());
+
+    vi.mocked(chrome.tabs.query).mockClear();
+    const second = renderHook(() => useTabsStructure());
+
+    expect(second.result.current).toBeDefined();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(chrome.tabs.query).not.toHaveBeenCalled();
+  });
   it("stops listening once the last consumer goes", async () => {
     const { unmount, result } = renderHook(() => useTabsStructure());
     await waitFor(() => expect(result.current).toBeDefined());
