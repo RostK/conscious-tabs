@@ -62,8 +62,19 @@ const FLOAT_HEIGHT = 640;
 export type FloatState = "closed" | "open" | "wasClosed";
 
 let state: FloatState = "closed";
-/** Set while *we* are the ones closing it, so the notice stays quiet. */
-let closingOurselves = false;
+/**
+ * The window *we* asked to close, so the notice stays quiet for it.
+ *
+ * A boolean instead of a window is what it was, and it could stick: nothing
+ * cleared it but the pagehide that followed, so a close that produced none —
+ * a window already gone, an event missed — left it set for the life of the
+ * realm. The next float to be genuinely evicted then read as a close the user
+ * asked for, and AC-34's notice, with its one-click way back, never appeared.
+ *
+ * Naming the window makes the flag answer "did we ask for *this* one to go",
+ * which a later float can never match by accident.
+ */
+let closingOurselves: Window | undefined;
 /**
  * Our own handle on the float. Closing through this rather than through
  * `documentPictureInPicture.window` matters: if that global were ever null
@@ -138,7 +149,7 @@ export const openFloat = (): void => {
 
 export const closeFloat = (): void => {
   if (!current) return;
-  closingOurselves = true;
+  closingOurselves = current;
   current.close();
 };
 
@@ -230,6 +241,9 @@ const fillFloat = (float: Window) => {
   doc.body.append(frame);
 
   current = float;
+  // Nothing about a previous window applies to this one, and holding the
+  // reference would keep a dead window alive for no reason.
+  closingOurselves = undefined;
   setState("open");
   float.addEventListener("pagehide", () => {
     handleFloatGone(float);
@@ -257,8 +271,8 @@ const handleFloatGone = (float: Window) => {
   // longer close.
   if (float !== current) return;
   current = undefined;
-  if (closingOurselves) {
-    closingOurselves = false;
+  if (closingOurselves === float) {
+    closingOurselves = undefined;
     setState("closed");
     return;
   }

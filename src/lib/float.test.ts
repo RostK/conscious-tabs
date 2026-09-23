@@ -262,6 +262,36 @@ describe("when the float goes away", () => {
     expect(float.getFloatState()).toBe("wasClosed");
   });
 
+  /**
+   * A close that never produces a pagehide must not buy silence for the next
+   * float's eviction. The flag used to be a boolean that only the pagehide
+   * cleared, so one missed event muted AC-34's notice for the rest of the
+   * session — the case where the user most needs it, since an eviction happens
+   * while they are in another application by definition.
+   */
+  it("still reports the next eviction after a close that fired no pagehide", async () => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    const first = makeFloatWindow();
+    const second = makeFloatWindow();
+    const handed = [first, second];
+    installPiP(() => Promise.resolve(handed.shift()));
+    const float = await loadFloat();
+
+    float.openFloat();
+    await settle();
+    float.closeFloat(); // Chrome never sends the pagehide for this one.
+    expect(first.close).toHaveBeenCalled();
+
+    float.openFloat();
+    await settle();
+    expect(float.getFloatState()).toBe("open");
+
+    second.fire("pagehide"); // evicted, not asked for
+    await settle();
+
+    expect(float.getFloatState()).toBe("wasClosed");
+  });
+
   // D-2a: Chrome's own "Back to tab" focuses the opener on the way out. It is
   // a close we did not initiate, but nagging about it would be absurd — the
   // user just chose it.
