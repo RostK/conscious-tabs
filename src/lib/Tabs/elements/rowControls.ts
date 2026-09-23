@@ -1,3 +1,4 @@
+import { useDndContext } from "@dnd-kit/core";
 import { KeyboardEventHandler, useCallback } from "react";
 
 /**
@@ -66,25 +67,32 @@ export const selectedProps = (selected: boolean) =>
  * stretch this handler would claim the first arrow press, move focus off the
  * drag handle and stop the event before dnd-kit's KeyboardSensor saw it.
  *
- * `aria-pressed` on the activator is dnd-kit's own published signal for "this
- * is being dragged", so it needs no plumbing through three row components.
+ * dnd-kit's own context says whether a drag is in progress, which is the
+ * question being asked. An earlier version read `aria-pressed` off the
+ * focused element, which dnd-kit does set on the activator — but that
+ * attribute means "this toggle is on", so the first row control to become a
+ * genuine toggle would have silently switched the arrow keys off.
  */
-export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
-  useCallback((event) => {
-    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-    if (document.activeElement?.getAttribute("aria-pressed") === "true") {
-      return;
-    }
-    const row = event.currentTarget;
-    const stops: HTMLElement[] = [
-      row,
-      ...row.querySelectorAll<HTMLElement>("[data-row-control]"),
-    ];
-    const at = stops.indexOf(document.activeElement as HTMLElement);
-    if (at < 0) return;
-    const next = at + (event.key === "ArrowRight" ? 1 : -1);
-    if (next < 0 || next >= stops.length) return;
-    event.preventDefault();
-    event.stopPropagation();
-    stops[next].focus();
-  }, []);
+export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> => {
+  const { active } = useDndContext();
+
+  return useCallback(
+    (event) => {
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+      if (active) return;
+      const row = event.currentTarget;
+      const stops: HTMLElement[] = [
+        row,
+        ...row.querySelectorAll<HTMLElement>("[data-row-control]"),
+      ];
+      const at = stops.indexOf(document.activeElement as HTMLElement);
+      if (at < 0) return;
+      const next = at + (event.key === "ArrowRight" ? 1 : -1);
+      if (next < 0 || next >= stops.length) return;
+      event.preventDefault();
+      event.stopPropagation();
+      stops[next].focus();
+    },
+    [active],
+  );
+};

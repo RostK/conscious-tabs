@@ -216,6 +216,32 @@ describe("opening the float", () => {
     expect(first.close).not.toHaveBeenCalled();
   });
 
+  /**
+   * Chrome has already opened a real window by the time we dress it, so a
+   * throw in between must not leave one nothing can close. Ownership is taken
+   * first; if the filling fails, the window is taken away again.
+   */
+  it("takes the window away if it cannot be filled", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const pipWindow = makeFloatWindow();
+    pipWindow.document.createElement = () => {
+      throw new Error("the document went away");
+    };
+    installPiP(() => Promise.resolve(pipWindow));
+    const float = await loadFloat();
+
+    float.openFloat();
+    await settle();
+
+    expect(pipWindow.close).toHaveBeenCalled();
+    expect(enqueueSnackbar).toHaveBeenCalled();
+
+    // And the close reads as ours, not as an eviction to nag about.
+    pipWindow.fire("pagehide");
+    await settle();
+    expect(float.getFloatState()).toBe("closed");
+  });
+
   // AC-7: a refusal must reach the user, not only the console.
   it("tells the user when the request is refused", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);

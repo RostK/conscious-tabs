@@ -219,7 +219,38 @@ const canvas = (): string =>
     ? dark.canvas
     : light.canvas;
 
+/**
+ * Take ownership before doing anything that can fail.
+ *
+ * Chrome has already opened a real always-on-top window by the time this
+ * runs. Dressing it first and recording it afterwards meant a throw in
+ * between left that window on screen with nothing tracking it: closeFloat()
+ * returned early, no pagehide listener was attached, and the `pip.window`
+ * guard then swallowed the click that would have tried again — a float only
+ * its own title bar could close, under a toast saying it had failed to open.
+ */
 const fillFloat = (float: Window) => {
+  current = float;
+  closingOurselves = undefined;
+  float.addEventListener("pagehide", () => {
+    handleFloatGone(float);
+  });
+  setState("open");
+
+  try {
+    dressFloat(float);
+  } catch (error) {
+    // An empty window is worse than none: take it away and say so, rather
+    // than leaving the user a blank always-on-top rectangle.
+    console.error("Could not fill the floating window", error);
+    closeFloat();
+    enqueueSnackbar("Couldn't open the floating window", {
+      variant: "error",
+    });
+  }
+};
+
+const dressFloat = (float: Window) => {
   const doc = float.document;
   doc.documentElement.style.height = "100%";
   doc.body.style.margin = "0";
@@ -239,15 +270,6 @@ const fillFloat = (float: Window) => {
   frame.title = "Conscious Tabs";
   frame.style.cssText = `display:block;border:0;width:100%;height:100%;background:${canvas()}`;
   doc.body.append(frame);
-
-  current = float;
-  // Nothing about a previous window applies to this one, and holding the
-  // reference would keep a dead window alive for no reason.
-  closingOurselves = undefined;
-  setState("open");
-  float.addEventListener("pagehide", () => {
-    handleFloatGone(float);
-  });
 };
 
 /**
