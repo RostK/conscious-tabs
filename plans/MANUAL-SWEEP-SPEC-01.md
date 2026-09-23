@@ -19,7 +19,7 @@ Walked against a real float by RostK. **Everything passed** except two that were
 ### Re-run of B and D — 2026-09-23, after the review fixes
 
 Walked again by RostK, and passed. Worth recording as its own run rather than
-folding into the one above:  changed three times between them — the
+folding into the one above: `float.ts` changed three times between them — the
 double-activation guard, the pagehide identity check and the close flag — and all
 three had only ever run against a stubbed Picture-in-Picture window. Sections B and
 D are precisely the paths they touch, so the first sweep no longer spoke for them.
