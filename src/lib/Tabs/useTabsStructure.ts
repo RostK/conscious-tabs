@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { useDebouncedCallback } from "use-debounce";
+import { debounce } from "@mui/material";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { browsingWindowIds, isOwnPage } from "../surfaces.ts";
-import { useUpdateEvents } from "../useUpdateEvents.ts";
 import { GroupItem, TabItem, TabsStructure } from "./types.ts";
 
 import TAB_GROUP_ID_NONE = chrome.tabGroups.TAB_GROUP_ID_NONE;
@@ -79,6 +78,105 @@ const getTabsTree = (
 };
 
 /**
+ * One query, however many components ask.
+ *
+ * This used to be per-component state: five callers, each with its own chrome
+ * listeners, its own debounce and its own three-call query. A single
+ * `chrome.tabs.onUpdated` cost 12 extension round trips — measured, four of
+ * each call — because four copies were mounted at once and every one of them
+ * answered the same event independently. The work is identical in all of them,
+ * so it belongs in one place that they subscribe to.
+ *
+ * The snapshot stays raw (tabs and groups as Chrome returned them); each
+ * consumer builds its own tree, because `filter` differs between them and
+ * building it is pure computation, which is not what was expensive.
+ */
+type Snapshot = {
+  tabs: chrome.tabs.Tab[];
+  groups: chrome.tabGroups.TabGroup[];
+};
+
+let snapshot: Snapshot | undefined;
+const listeners = new Set<() => void>();
+
+/**
+ * Answers can arrive out of order.
+ *
+ * Each load is three awaited round trips, so a load started earlier can finish
+ * later than one started after it. Without this, the older answer wins simply
+ * by landing last, and the list shows state that has already been superseded —
+ * a closed tab back from the dead — until some unrelated event refreshes it.
+ */
+let generation = 0;
+
+const load = async () => {
+  const mine = ++generation;
+
+  // Two exclusions, both learned the hard way.
+  //
+  // The float's own window: chrome.tabs has no filter for it, and its
+  // `windowType` is "normal" like everything else, so the browsing windows
+  // have to be resolved first and the tabs matched against them.
+  //
+  // Our own pages: the anchor tab is the one holding the float, and
+  // chrome.tabs.query is unfiltered by default — so without this the manager
+  // listed the tab whose closure kills the float, with a close button on it.
+  const browsing = await browsingWindowIds();
+  const tabs = (await chrome.tabs.query({})).filter(
+    ({ url, windowId }) => browsing.has(windowId) && !isOwnPage(url),
+  );
+  const groups = await chrome.tabGroups.query({});
+
+  if (mine !== generation) return;
+  snapshot = { tabs, groups };
+  listeners.forEach((notify) => {
+    notify();
+  });
+};
+
+const refresh = debounce(() => {
+  void load();
+}, 10);
+
+const TAB_EVENTS = () => [
+  chrome.tabs.onUpdated,
+  chrome.tabs.onActivated,
+  chrome.tabs.onRemoved,
+  chrome.tabs.onMoved,
+  chrome.tabs.onDetached,
+  chrome.tabGroups.onUpdated,
+];
+
+/**
+ * Chrome listeners live exactly as long as someone is subscribed. Dropping to
+ * zero also drops the snapshot: the next subscriber is then a cold start
+ * rather than a reader of whatever the last one left behind, which matters in
+ * tests, where the chrome stub is replaced between cases.
+ */
+const subscribe = (notify: () => void): (() => void) => {
+  if (listeners.size === 0) {
+    TAB_EVENTS().forEach((event) => {
+      event.addListener(refresh);
+    });
+  }
+  listeners.add(notify);
+  refresh();
+
+  return () => {
+    listeners.delete(notify);
+    if (listeners.size > 0) return;
+    TAB_EVENTS().forEach((event) => {
+      event.removeListener(refresh);
+    });
+    refresh.clear();
+    generation += 1; // an answer in flight is nobody's now
+    snapshot = undefined;
+  };
+};
+
+const getSnapshot = () => snapshot;
+
+/**
  * `undefined` until the first query has resolved — not the same thing as an
  * empty browser, which is what an initial `[]` claimed. TabsView drew its
  * "No other tabs are open." from that claim, so the message appeared for as
@@ -89,47 +187,11 @@ export const useTabsStructure: (options?: {
   filter?: (item: chrome.tabs.Tab) => boolean;
 }) => TabsStructure | undefined = (options) => {
   const filter = options?.filter;
-  const [tabsStructure, setTabsStructure] = useState<TabsStructure>();
-  const [tabs, setTabs] = useState<chrome.tabs.Tab[]>();
-  const [groups, setGroups] = useState<chrome.tabGroups.TabGroup[]>([]);
-  const getTabsFunc = useCallback(async () => {
-    // Two exclusions, both learned the hard way.
-    //
-    // The float's own window: chrome.tabs has no filter for it, and its
-    // `windowType` is "normal" like everything else, so the browsing windows
-    // have to be resolved first and the tabs matched against them.
-    //
-    // Our own pages: the anchor tab is the one holding the float, and
-    // chrome.tabs.query is unfiltered by default — so without this the manager
-    // listed the tab whose closure kills the float, with a close button on it.
-    const browsing = await browsingWindowIds();
-    const tabs = (await chrome.tabs.query({})).filter(
-      ({ url, windowId }) => browsing.has(windowId) && !isOwnPage(url),
-    );
-    const groups = await chrome.tabGroups.query({});
-    setTabs(tabs);
-    setGroups(groups);
-  }, []);
-  const getTabs = useDebouncedCallback(getTabsFunc, 10);
+  const current = useSyncExternalStore(subscribe, getSnapshot);
 
-  useEffect(() => {
-    getTabs();
-  }, [getTabs]);
-
-  const getInitialData = useCallback(async () => {
-    void getTabs();
-  }, [getTabs]);
-
-  useUpdateEvents({
-    init: getInitialData,
-    onTabsUpdate: getTabs,
-    onGroupsUpdate: getTabs,
-  });
-
-  useEffect(() => {
-    if (!tabs) return;
-    setTabsStructure(getTabsTree(tabs, groups, filter));
-  }, [filter, groups, tabs]);
-
-  return tabsStructure;
+  return useMemo(
+    () =>
+      current ? getTabsTree(current.tabs, current.groups, filter) : undefined,
+    [current, filter],
+  );
 };
