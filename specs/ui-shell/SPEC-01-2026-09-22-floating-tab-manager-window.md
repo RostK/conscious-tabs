@@ -247,8 +247,19 @@ Priority uses MoSCoW.
   **Verify:** manual.
 - **AC-11** _(Must)_ WHEN the float closes for any reason — user close, return control, or eviction
   by another Picture-in-Picture request — the anchor tab SHALL show the full tab manager without a
-  page reload and without losing the user's current search text.
-  **Verify:** manual — type a search, float, close the float, assert the query survives.
+  page reload and without losing the user's current search text, AND SHALL make itself the active
+  tab of its window so the user lands on the manager rather than having to find it. It SHALL NOT
+  focus that window.
+  **Extended 2026-09-22.** US-4 asks the user to "land on a full, working tab manager, so that I
+  never have to hunt for it", and only the first half had been built: the manager was full and
+  working, but it sat in a tab the user had to go and locate — made harder by the revised AC-16,
+  which filters this extension's own pages out of the list, so the manager cannot help anyone find
+  the manager. Not focusing the window is deliberate: an eviction (E-1) can land while the user is
+  in another application entirely, and dragging Chrome to the front would be ruder than simply
+  being the tab they arrive on when they come back by themselves.
+  **Verify:** manual — type a search, float, close the float, assert the query survives and the
+  anchor tab is active; separately, evict the float from another application and assert Chrome
+  does not steal focus.
 - **AC-12** _(Must)_ IF the anchor tab is closed or navigated away from while the float is open,
   THEN the float SHALL close (platform-enforced, C-6) and the system SHALL leave no orphaned window
   and no stale state in any surviving surface.

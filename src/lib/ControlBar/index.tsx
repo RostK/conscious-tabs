@@ -14,7 +14,13 @@ import {
   Toolbar,
   Tooltip,
 } from "@mui/material";
-import { FC, useContext, useSyncExternalStore } from "react";
+import {
+  FC,
+  useContext,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 
 import {
   backToSidePanel,
@@ -76,6 +82,30 @@ export const ControlBar: FC = () => {
   const floating =
     useSyncExternalStore(subscribeFloat, getFloatState) === "open";
 
+  /**
+   * US-4: "land on a full, working tab manager, so that I never have to hunt
+   * for it." Closing the float used to leave the user wherever they were, with
+   * the manager in a tab they had to go and find — harder than it sounds,
+   * because this extension's own pages are filtered out of its own list, so
+   * the manager cannot help you locate the manager.
+   *
+   * The tab is activated; the window deliberately is not focused. An eviction
+   * (E-1) can happen while the user is in another application entirely, and
+   * yanking Chrome to the front would be a far ruder answer than simply being
+   * the tab they land on when they come back of their own accord.
+   */
+  const wasFloating = useRef(false);
+  useEffect(() => {
+    if (floating) {
+      wasFloating.current = true;
+      return;
+    }
+    if (!wasFloating.current) return;
+    wasFloating.current = false;
+    if (host === "anchor" && self?.id !== undefined) {
+      void chrome.tabs.update(self.id, { active: true });
+    }
+  }, [floating, host, self]);
 
   return (
     <>
