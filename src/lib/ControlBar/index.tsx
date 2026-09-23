@@ -1,4 +1,5 @@
 import {
+  OpenInNew,
   PictureInPictureAlt,
   PictureInPictureAltOutlined,
   TabUnselected,
@@ -173,6 +174,24 @@ export const ControlBar: FC = () => {
               Float on top
             </Button>
           )}
+          {host === "float" && (
+            /* The float's way back to the manager tab. Not a float affordance,
+               so AC-14 is untouched — and deliberately does not close the
+               float: it is always-on-top, so it stays visible over the tab you
+               just went to, and "Stop floating" is waiting there when you want
+               it. `openAnchorTab` focuses-or-creates, and while a float is up
+               the anchor necessarily exists, so this is always a "go to". */
+            <Tooltip title="Show the full manager in its tab">
+              <Button
+                startIcon={<OpenInNew />}
+                onClick={handleAnchor}
+                sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+              >
+                Go to tab
+              </Button>
+            </Tooltip>
+          )}
+
           {host === "anchor" && !floating && self && (
             /* Hidden while floating: this closes the anchor tab, and the float
                cannot outlive it. sidePanel.open() needs the gesture too, which

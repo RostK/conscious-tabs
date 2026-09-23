@@ -271,6 +271,16 @@ Priority uses MoSCoW.
 - **AC-14** _(Must)_ The system SHALL NOT present a float affordance while the app is running
   inside the float itself.
   **Verify:** unit — render with host `float`.
+- **AC-43** _(Must)_ _(added 2026-09-22)_ WHILE the app is running in the float, the system SHALL
+  present a control that focuses the anchor tab, and that control SHALL NOT close the float.
+  **Why it was added.** The float had no route to the manager's own tab. The tab exists — the
+  float cannot outlive it — but it is unlabelled in Chrome's strip and, since the revised AC-16,
+  filtered out of the manager's own list, so the manager could not help anyone find the manager.
+  Not closing the float is the point: the float is always-on-top, so it stays visible over the tab
+  the user just moved to, and AC-9's "Stop floating" is waiting there if that is what they wanted.
+  This is not a float affordance, so AC-14 is untouched.
+  **Verify:** unit — render with host `float` and assert the control is present; manual — click it
+  with a float up and assert the anchor tab comes forward with the float still on top.
 - **AC-34** _(Must)_ WHEN the float is evicted by another Picture-in-Picture request (C-5), the
   anchor tab SHALL present a named state explaining that the floating window was closed, together
   with a control that reopens the float in one activation.
@@ -695,7 +705,8 @@ these were things the spec asserted confidently and got wrong.
 | 10 | **AC-42** added | AC-19 states the principle; the undo prompt firing in every live surface, and restoring twice, is the case that actually occurs. |
 | 11 | **§9** extended | Three more files carried the per-window host model than the table listed: `useAudioTabs`, `SyncPrompt`, and the view keys. The table said seven sites; it was ten. |
 | 12 | **G-2** corrected, **AC-3** reaffirmed | G-2 claimed "exactly one copy at a time", which per-window side panels never delivered. AC-3's timing was re-argued from the width cost and from the anchor tab being a destination rather than a corridor — both better grounds than C-12's "forced by the gesture rules". |
-| 13 | **A-7, A-8** closed | Both verified. A-8 was checked before any surrounding code was rewritten, because a float you cannot type in would have ended the feature. |
+| 13 | **AC-43** added, **AC-11** extended | The float had no way back to the manager's tab, and closing the float left the user wherever they were rather than on the manager — US-4's "so that I never have to hunt for it" had only been half built. Both are consequences of AC-16's filtering, which is what made the anchor tab unfindable from the manager in the first place. |
+| 14 | **A-7, A-8** closed | Both verified. A-8 was checked before any surrounding code was rewritten, because a float you cannot type in would have ended the feature. |
 
 **The pattern worth carrying forward.** Five of these twelve are corrections to things this spec
 asserted rather than measured — C-9, C-12, C-15, C-7 and the §9 table. Every one was settled by a
