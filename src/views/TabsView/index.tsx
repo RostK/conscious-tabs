@@ -6,7 +6,8 @@ import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 
 export const TabsView: FC = () => {
-  const tabsStructure = useTabsStructure();
+  const loaded = useTabsStructure();
+  const tabsStructure = loaded ?? [];
   const allWindows = useWindowsStructure();
 
   // A window whose only tab was ours now has nothing to show. Rendering it
@@ -19,9 +20,11 @@ export const TabsView: FC = () => {
   // filtered out: close everything but the anchor tab and there is genuinely
   // nothing left to mirror. The float must say so rather than go blank.
   //
-  // Gated on `allWindows` having loaded, not on `windows` being empty, so the
-  // first paint before the first query resolves does not flash this.
-  if (allWindows.length > 0 && windows.length === 0) {
+  // Gated on both queries having resolved, not on `windows` being empty. The
+  // windows arrive first — one call against three plus a debounce — so gating
+  // on them alone announced an empty browser on every open, for as long as the
+  // tabs took to follow.
+  if (loaded && allWindows.length > 0 && windows.length === 0) {
     return (
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">

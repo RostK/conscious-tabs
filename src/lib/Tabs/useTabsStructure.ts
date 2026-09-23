@@ -78,12 +78,19 @@ const getTabsTree = (
   return [...structure.values()];
 };
 
+/**
+ * `undefined` until the first query has resolved — not the same thing as an
+ * empty browser, which is what an initial `[]` claimed. TabsView drew its
+ * "No other tabs are open." from that claim, so the message appeared for as
+ * long as the tabs took to arrive: the windows query is one call, this is three
+ * plus a debounce, so the gap is real and lands on every open.
+ */
 export const useTabsStructure: (options?: {
   filter?: (item: chrome.tabs.Tab) => boolean;
-}) => TabsStructure = (options) => {
+}) => TabsStructure | undefined = (options) => {
   const filter = options?.filter;
-  const [tabsStructure, setTabsStructure] = useState<TabsStructure>([]);
-  const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
+  const [tabsStructure, setTabsStructure] = useState<TabsStructure>();
+  const [tabs, setTabs] = useState<chrome.tabs.Tab[]>();
   const [groups, setGroups] = useState<chrome.tabGroups.TabGroup[]>([]);
   const getTabsFunc = useCallback(async () => {
     // Two exclusions, both learned the hard way.
@@ -120,6 +127,7 @@ export const useTabsStructure: (options?: {
   });
 
   useEffect(() => {
+    if (!tabs) return;
     setTabsStructure(getTabsTree(tabs, groups, filter));
   }, [filter, groups, tabs]);
 

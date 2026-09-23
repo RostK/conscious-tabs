@@ -43,7 +43,7 @@ export const SelectionToolbar: FC = () => {
   });
 
   const flatTabs = useMemo(() => {
-    return tabsStructure
+    return (tabsStructure ?? [])
       .reduce((acc, item) => {
         return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
       }, [] as TabItem[])

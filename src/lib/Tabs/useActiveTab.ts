@@ -21,7 +21,7 @@ export const useActiveTab = (): TabItem | undefined => {
   const tabsStructure = useTabsStructure();
 
   return useMemo(() => {
-    const flatTabs = tabsStructure.flatMap((item) =>
+    const flatTabs = (tabsStructure ?? []).flatMap((item) =>
       item.type === "group" ? item.tabs : [item],
     );
     return flatTabs.find((tab) => tab.active && tab.windowId === hostWindowId);

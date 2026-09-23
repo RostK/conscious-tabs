@@ -28,7 +28,7 @@ export const useAudioTabs = (): TabItem[] => {
   const tabsStructure = useTabsStructure();
 
   return useMemo(() => {
-    const flatTabs = tabsStructure.flatMap((item) =>
+    const flatTabs = (tabsStructure ?? []).flatMap((item) =>
       item.type === "group" ? item.tabs : [item],
     );
     return flatTabs.filter((tab) => tab.audible || tab.mutedInfo?.muted);

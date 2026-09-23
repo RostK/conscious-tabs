@@ -15,10 +15,13 @@ export const SearchView: FC<{ search: string }> = ({ search }) => {
     [search],
   );
 
-  const tabsStructure = useTabsStructure({ filter: filterTabs });
+  const loaded = useTabsStructure({ filter: filterTabs });
+  const tabsStructure = loaded ?? [];
   const windows = useWindowsStructure();
 
-  if (windows.length > 0 && tabsStructure.length === 0) {
+  // `loaded` guards the same gap TabsView had: until the first query resolves
+  // there is no basis for saying nothing matched.
+  if (loaded && windows.length > 0 && tabsStructure.length === 0) {
     return (
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">
