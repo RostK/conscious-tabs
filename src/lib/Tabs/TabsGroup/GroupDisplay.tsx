@@ -40,7 +40,9 @@ export const GroupDisplay: FC<{
           boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
         },
         {
-          [`&:hover .itemAction`]: {
+          // See TabDisplay: keyboard focus never fires :hover, so these
+          // controls were invisible and therefore unfocusable.
+          [`&:hover .itemAction, &:focus-within .itemAction`]: {
             visibility: "visible",
           },
           [`& .itemAction`]: {

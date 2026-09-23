@@ -67,7 +67,13 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
       sx={[
         { pt: 0.2, pb: 0.2 },
         {
-          "&:hover .itemAction": {
+          // :focus-within alongside :hover throughout. Keyboard focus never
+          // triggers :hover, so tabbing through the list reached rows whose
+          // select and close controls stayed invisible — and a
+          // visibility:hidden element is not focusable, so they were not just
+          // unseen but unreachable. AC-33 asks every control to have an
+          // accessible name; one that cannot be focused has no name to read.
+          "&:hover .itemAction, &:focus-within .itemAction": {
             visibility: "visible",
           },
           "& .itemAction": {
@@ -77,10 +83,10 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
           // of it. It used to be absolutely positioned at left:-8, which put it
           // over the avatar — survivable in a wide window, plainly broken at
           // the float's 400px, where there is no margin to hang it in.
-          "&:hover .tabIcon": {
+          "&:hover .tabIcon, &:focus-within .tabIcon": {
             visibility: "hidden",
           },
-          "&:hover .tabSelect": {
+          "&:hover .tabSelect, &:focus-within .tabSelect": {
             visibility: "visible",
           },
         },

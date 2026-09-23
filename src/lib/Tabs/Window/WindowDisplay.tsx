@@ -36,7 +36,9 @@ export const WindowDisplay: FC<{
           pl: "1.8rem",
         },
         {
-          [`&:hover .itemAction`]: {
+          // See TabDisplay: keyboard focus never fires :hover, so these
+          // controls were invisible and therefore unfocusable.
+          [`&:hover .itemAction, &:focus-within .itemAction`]: {
             visibility: "visible",
           },
           [`& .itemAction`]: {
