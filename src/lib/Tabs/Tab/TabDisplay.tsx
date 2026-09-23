@@ -106,44 +106,46 @@ export const TabDisplay: FC<{
       sx={[
         { pt: 0.2, pb: 0.2 },
         {
-          // Revealed on hover, or on *keyboard* focus. Keyboard focus never
-          // triggers :hover, so tabbing through the list used to reach rows
-          // whose select and close controls stayed invisible — and a
-          // visibility:hidden element is not focusable, so they were not just
-          // unseen but unreachable.
+          // Hidden with opacity, not visibility.
           //
-          // :focus-visible rather than :focus-within, because the active
-          // tab's row carries autoFocus: any focus-based rule would match it
-          // permanently and leave one row wearing its controls at all times.
-          // :focus-visible is exactly the distinction wanted — a keyboard user
-          // is here, rather than focus merely having been placed.
+          // visibility: hidden also removes an element from the focus order —
+          // not just from Tab, but from focus() entirely — so the Left/Right
+          // roving below could not move onto a control that had not already
+          // been revealed some other way. It failed silently, which is the
+          // worst way for it to fail.
+          //
+          // opacity keeps them focusable while invisible; tabIndex -1 keeps
+          // them out of Tab; pointer-events stops the mouse hitting what it
+          // cannot see. Focusing one reveals it, so arrowing along a row
+          // lights up each control as it arrives.
+          //
+          // :focus-visible rather than :focus-within for the row itself,
+          // because the active tab's row carries autoFocus — any plain focus
+          // rule would leave that one row wearing its controls permanently.
+          "& .itemAction, & .tabSelect": {
+            opacity: 0,
+            pointerEvents: "none",
+          },
           [[
             "&:hover .itemAction",
             "&:focus-visible .itemAction",
             "&:has(:focus-visible) .itemAction",
+            "& .itemAction:focus",
+            "&:hover .tabSelect",
+            "&:focus-visible .tabSelect",
+            "&:has(:focus-visible) .tabSelect",
+            "& .tabSelect:focus",
           ].join(", ")]: {
-            visibility: "visible",
+            opacity: 1,
+            pointerEvents: "auto",
           },
-          "& .itemAction": {
-            visibility: "hidden",
-          },
-          // The checkbox takes the favicon's square rather than sitting on top
-          // of it. It used to be absolutely positioned at left:-8, which put it
-          // over the avatar — survivable in a wide window, plainly broken at
-          // the float's 400px, where there is no margin to hang it in.
           [[
             "&:hover .tabIcon",
             "&:focus-visible .tabIcon",
             "&:has(:focus-visible) .tabIcon",
+            "&:has(.tabSelect:focus) .tabIcon",
           ].join(", ")]: {
-            visibility: "hidden",
-          },
-          [[
-            "&:hover .tabSelect",
-            "&:focus-visible .tabSelect",
-            "&:has(:focus-visible) .tabSelect",
-          ].join(", ")]: {
-            visibility: "visible",
+            opacity: 0,
           },
         },
       ]}
@@ -151,10 +153,7 @@ export const TabDisplay: FC<{
       <ListItemAvatar
         sx={{ minWidth: "36px", pt: "5px", position: "relative" }}
       >
-        <Box
-          className="tabIcon"
-          sx={{ visibility: isSelected ? "hidden" : "visible" }}
-        >
+        <Box className="tabIcon" sx={{ opacity: isSelected ? 0 : 1 }}>
           <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
             <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
           </AudioBadge>
@@ -172,7 +171,11 @@ export const TabDisplay: FC<{
             position: "absolute",
             top: -1,
             left: -5.5,
-            visibility: isSelected ? "visible" : "hidden",
+            // opacity, not visibility — a hidden element cannot be focused,
+            // and the row's Left/Right roving has to be able to land here.
+            ...(isSelected
+              ? { opacity: 1, pointerEvents: "auto" }
+              : { opacity: 0 }),
           }}
         >
           {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
