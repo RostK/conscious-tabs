@@ -1,12 +1,18 @@
 import { IconButton } from "@mui/material";
-import { ComponentProps, FC } from "react";
+import { ComponentProps, forwardRef } from "react";
 
-export const ItemButton: FC<ComponentProps<typeof IconButton>> = ({
-  sx,
-  ...props
-}) => {
+/**
+ * Forwards its ref so dnd-kit can be told which element is the drag activator
+ * (`setActivatorNodeRef`) — without that, focus is not restored to the handle
+ * after a keyboard drag ends.
+ */
+export const ItemButton = forwardRef<
+  HTMLButtonElement,
+  ComponentProps<typeof IconButton>
+>(({ sx, ...props }, ref) => {
   return (
     <IconButton
+      ref={ref}
       sx={[
         { backgroundColor: "background.paper" },
         (theme) => ({
@@ -19,4 +25,6 @@ export const ItemButton: FC<ComponentProps<typeof IconButton>> = ({
       {...props}
     />
   );
-};
+});
+
+ItemButton.displayName = "ItemButton";

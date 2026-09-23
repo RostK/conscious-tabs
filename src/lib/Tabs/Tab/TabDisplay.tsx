@@ -10,7 +10,7 @@ import {
   ListItemSecondaryAction,
   ListItemText,
 } from "@mui/material";
-import { FC, MouseEventHandler, useCallback } from "react";
+import { FC, MouseEventHandler, ReactNode, useCallback } from "react";
 
 import { activateTab, closeTab } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
@@ -19,10 +19,11 @@ import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
 
-export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
-  tab,
-  focus = true,
-}) => {
+export const TabDisplay: FC<{
+  focus?: boolean;
+  tab: TabItem;
+  dragHandle?: ReactNode;
+}> = ({ tab, focus = true, dragHandle }) => {
   const { isSelected, switchSelection } = useSelected(tab.id as number);
   const handleActivate = useCallback<MouseEventHandler>(
     (e) => {
@@ -118,10 +119,11 @@ export const TabDisplay: FC<{ focus?: boolean; tab: TabItem }> = ({
         </ItemButton>
       </ListItemAvatar>
       <ListItemSecondaryAction>
+        {dragHandle}
         <ItemButton
           onClick={handleDelete}
           edge="end"
-          aria-label="delete"
+          aria-label={`Close ${tab.title || "tab"}`}
           className="itemAction"
         >
           <Close />

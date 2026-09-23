@@ -2,7 +2,6 @@ import { useDraggable } from "@dnd-kit/core";
 import {
   Close,
   ContentCopy,
-  DragIndicator,
   MoreVert,
   OpenInNew,
   PushPin,
@@ -22,7 +21,12 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { FC, useState } from "react";
+import {
+  FC,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  useState,
+} from "react";
 
 import {
   closeTab,
@@ -33,6 +37,7 @@ import {
   setPinned,
 } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
+import { DragHandle } from "../elements/DragHandle.tsx";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useActiveTab } from "../useActiveTab.ts";
 
@@ -44,10 +49,18 @@ import { useActiveTab } from "../useActiveTab.ts";
 export const CurrentTab: FC = () => {
   const tab = useActiveTab();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
-  const { attributes, listeners, setNodeRef } = useDraggable({
-    id: `current-tab-${tab?.id ?? "none"}`,
-    data: tab,
-  });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef } =
+    useDraggable({
+      id: `current-tab-${tab?.id ?? "none"}`,
+      data: tab,
+    });
+  // See DragHandle: the mouse half stays on the card so it drags from
+  // anywhere, the keyboard half moves to the grip, which stops this card
+  // being an unlabelled tab stop that announces only "draggable".
+  const onMouseDown = listeners?.onMouseDown as
+    | MouseEventHandler<HTMLDivElement>
+    | undefined;
+  const onKeyDown = listeners?.onKeyDown as KeyboardEventHandler | undefined;
   const closeMenu = () => setMenuAnchor(null);
 
   if (!tab?.id) {
@@ -67,8 +80,7 @@ export const CurrentTab: FC = () => {
       <Divider />
       <Box
         ref={setNodeRef}
-        {...listeners}
-        {...attributes}
+        onMouseDown={onMouseDown}
         sx={{
           display: "flex",
           alignItems: "center",
@@ -89,9 +101,14 @@ export const CurrentTab: FC = () => {
           touchAction: "none",
         }}
       >
-        <DragIndicator
-          fontSize="small"
-          sx={{ color: "text.disabled", flexShrink: 0 }}
+        <DragHandle
+          label="Reorder the current tab"
+          setActivatorNodeRef={setActivatorNodeRef}
+          attributes={attributes}
+          onKeyDown={onKeyDown}
+          // No hover-reveal rule on this card, so the default class would
+          // hide the grip permanently.
+          className={undefined}
         />
         <Box sx={{ display: "flex", flexShrink: 0 }}>
           <AudioBadge audible={tab.audible} muted={muted}>

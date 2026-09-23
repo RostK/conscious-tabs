@@ -67,12 +67,14 @@ export const WindowListItem: FC<{
         className="close-button"
         onClick={handleCloseWindow}
         edge="end"
-        aria-label="delete"
+        aria-label={`Close this window and its ${flatTabs.length} tab${
+          flatTabs.length === 1 ? "" : "s"
+        }`}
       >
         <Close />
       </ItemButton>
     );
-  }, [handleCloseWindow]);
+  }, [handleCloseWindow, flatTabs.length]);
 
   const isSelected = useMemo(
     () => !flatTabs.find(({ id }) => id && !selected.includes(id)),

@@ -450,6 +450,18 @@ which is precisely why Chrome forbids `alwaysOnTop` on `windows.create`.
 - **AC-33** _(Should)_ Every control unique to this feature SHALL have an accessible name that
   states its effect, and any control whose activation destroys the float SHALL say so in that name
   or its tooltip.
+  **Widened 2026-09-22 after a keyboard pass through the float.** Scoping this to controls "unique
+  to this feature" was a mistake: the float renders the *existing* list, so the existing list's
+  keyboard and naming defects are the ones a float user meets, and they were worse than anything
+  the new surfaces introduced.
+  Three found. Row controls were revealed on `:hover` alone, and `visibility: hidden` also removes
+  an element from the tab order — so select and close were not merely unseen but **unreachable** by
+  keyboard, on every row. dnd-kit's drag attributes were spread on a wrapper around each row,
+  making every row **two** tab stops, the first unlabelled and announcing only "draggable". And
+  several controls were named `delete` — including a *menu* button, and a close-window button that
+  does not delete anything it names.
+  Read this criterion as covering every control the float presents, not only the ones this feature
+  added.
   **Verify:** unit (accessible-name queries) plus a manual screen-reader pass.
 
 ### 5.8 Discoverability

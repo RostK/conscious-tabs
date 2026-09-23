@@ -11,6 +11,7 @@ import { IconButton, Menu, MenuItem } from "@mui/material";
 import {
   ComponentProps,
   FC,
+  KeyboardEventHandler,
   MouseEventHandler,
   useCallback,
   useContext,
@@ -19,6 +20,7 @@ import {
 } from "react";
 
 import { DropPlaceholder, useDropzone } from "../DnD";
+import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
@@ -78,10 +80,18 @@ export const GroupListItem: FC<
     attributes,
     listeners,
     setNodeRef: setNodeRefDraggable,
+    setActivatorNodeRef,
   } = useDraggable({
     id: group.id as number,
     data: group,
   });
+
+  // See DragHandle: the mouse half stays on the row, the keyboard half moves
+  // to a named control, so a group row is one tab stop rather than two.
+  const onMouseDown = listeners?.onMouseDown as
+    | MouseEventHandler<HTMLDivElement>
+    | undefined;
+  const onKeyDown = listeners?.onKeyDown as KeyboardEventHandler | undefined;
 
   const handleOpenMenuClick: MouseEventHandler<HTMLElement> = (event) => {
     event.preventDefault();
@@ -116,9 +126,15 @@ export const GroupListItem: FC<
   const itemAction = useMemo(() => {
     return (
       <>
+        <DragHandle
+          label={`Reorder group ${group.title || ""}`.trim()}
+          setActivatorNodeRef={setActivatorNodeRef}
+          attributes={attributes}
+          onKeyDown={onKeyDown}
+        />
         <IconButton
           onClick={handleOpenMenuClick}
-          aria-label="delete"
+          aria-label={`Actions for group ${group.title || ""}`.trim()}
           size="small"
         >
           <MoreVert />
@@ -127,13 +143,13 @@ export const GroupListItem: FC<
           className="close-button"
           onClick={handleDelete}
           edge="end"
-          aria-label="delete"
+          aria-label={`Close every tab in group ${group.title || ""}`.trim()}
         >
           <Close />
         </ItemButton>
       </>
     );
-  }, [handleDelete]);
+  }, [handleDelete, group.title, setActivatorNodeRef, attributes, onKeyDown]);
 
   const isSelected = useMemo(
     () => !group.tabs.find(({ id }) => id && !selected.includes(id)),
@@ -200,7 +216,7 @@ export const GroupListItem: FC<
                 }}
               />
             )}
-            <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
+            <div ref={setNodeRefDraggable} onMouseDown={onMouseDown}>
               <OuterDropzone>
                 <GroupDisplay
                   onCtrlClick={handleSelectButton}

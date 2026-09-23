@@ -1,8 +1,14 @@
 import { useDraggable } from "@dnd-kit/core";
-import { ComponentProps, FC } from "react";
+import {
+  ComponentProps,
+  FC,
+  KeyboardEventHandler,
+  MouseEventHandler,
+} from "react";
 
 import { DropPlaceholder } from "../DnD";
 import { useDropzone } from "../DnD/useDropzone.tsx";
+import { DragHandle } from "../elements/DragHandle.tsx";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { GroupItem } from "../types.ts";
 import { handleDrop } from "./handleDrop.ts";
@@ -22,10 +28,18 @@ export const TabListItem: FC<
     attributes,
     listeners,
     setNodeRef: setNodeRefDraggable,
+    setActivatorNodeRef,
   } = useDraggable({
     id: tab.id as number,
     data: tab,
   });
+
+  // dnd-kit types every listener as a bare `Function`, so the two halves are
+  // narrowed once here rather than cast at each use.
+  const onMouseDown = listeners?.onMouseDown as
+    | MouseEventHandler<HTMLDivElement>
+    | undefined;
+  const onKeyDown = listeners?.onKeyDown as KeyboardEventHandler | undefined;
 
   return (
     <>
@@ -51,9 +65,24 @@ export const TabListItem: FC<
               : {},
           ]}
         >
-          <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
+          {/* Only the mouse listener goes here, so the whole row stays
+              draggable by pointer. The keyboard half — and dnd-kit's
+              tabIndex/role/aria — lives on the handle instead; see
+              DragHandle for why the two had to be separated. */}
+          <div ref={setNodeRefDraggable} onMouseDown={onMouseDown}>
             <Dropzone>
-              <TabDisplay tab={tab} {...props} />
+              <TabDisplay
+                tab={tab}
+                dragHandle={
+                  <DragHandle
+                    label={`Reorder ${tab.title || "tab"}`}
+                    setActivatorNodeRef={setActivatorNodeRef}
+                    attributes={attributes}
+                    onKeyDown={onKeyDown}
+                  />
+                }
+                {...props}
+              />
             </Dropzone>
           </div>
         </TabGrid>
