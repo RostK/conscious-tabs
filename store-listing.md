@@ -15,7 +15,7 @@ Conscious Tabs — calm tab manager
 ## Summary / short description (≤132 chars)
 
 ```
-A quieter way to handle tab overload. Find, tidy, group, and close every open tab from one calm side panel.
+A quieter way to handle tab overload. Find, tidy, group, mute, and close every open tab — from the side panel or floating on top.
 ```
 
 > This matches the `description` field in `manifest.json`.
@@ -41,7 +41,7 @@ What you can do
 
 • Drag and drop — reorder tabs and groups, or move them between windows.
 
-• Quiet the noise — spot which tabs are playing sound and mute them from the toolbar.
+• Quiet the noise — see at a glance which tabs are playing sound. Mute one from its own row, or silence them all from the toolbar.
 
 • Undo closes — bring a tab back from a snackbar, restored via your browser's session history.
 
