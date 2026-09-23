@@ -10,6 +10,10 @@ lives in [`../specs/`](../specs/INDEX.md), not here.
 | ------- | ---------- | --------------------------- | ----------------- | ------------- | ------------------------------------------------------------------------------------------ |
 | SPEC-01 | 2026-09-22 | Floating tab manager window | in progress       | single-agent  | [PLAN-SPEC-01-floating-tab-manager-window.md](PLAN-SPEC-01-floating-tab-manager-window.md) |
 
+**Companion document.** [MANUAL-SWEEP-SPEC-01.md](MANUAL-SWEEP-SPEC-01.md) — the checks a real
+floating window has to answer, which no test can: the browser-owned parts of T-14, T-15 and T-16,
+ordered so one float session covers them.
+
 ## Status values
 
 - **awaiting approval** — written, not yet agreed. Do not start building.
