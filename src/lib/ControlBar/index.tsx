@@ -1,5 +1,4 @@
 import {
-  OpenInNew,
   PictureInPictureAlt,
   PictureInPictureAltOutlined,
   TabUnselected,
@@ -12,14 +11,10 @@ import {
   Button,
   Divider,
   IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
   Toolbar,
   Tooltip,
 } from "@mui/material";
-import { FC, useContext, useState, useSyncExternalStore } from "react";
+import { FC, useContext, useSyncExternalStore } from "react";
 
 import {
   backToSidePanel,
@@ -61,16 +56,18 @@ const handleAnchor = async () => {
 };
 
 /**
- * The surface controls are laid out differently per host, on purpose.
+ * One labelled control per host, never behind a menu.
  *
- * The side panel is ~320px wide and could not fit a third labelled button —
- * three of them wrapped onto two lines each — so its one surface action hides
- * behind the logo, where a menu item's secondary line can carry the
- * explanation that a tooltip could not (a tooltip needs a hover, so keyboard
- * and touch users never see it).
+ * Reaching the float already costs two clicks and cannot cost fewer: the side
+ * panel is not a top-level traversable, so it can never call `requestWindow()`
+ * itself (C-1), and activation does not cross documents (C-3). Two is the
+ * platform floor, so anything that adds a third is spending the one budget
+ * this feature has none of. A menu behind the logo was tried and did exactly
+ * that.
  *
- * The anchor tab has a whole browser window. Hiding two plainly-named actions
- * in a menu there buys nothing and costs a click.
+ * The bar fits a labelled button because New tab and New window gave up their
+ * labels for it — they are conventional actions nobody has to be taught, while
+ * floating is the one nobody can guess.
  */
 export const ControlBar: FC = () => {
   const { selected } = useContext(SelectionContext);
@@ -79,10 +76,6 @@ export const ControlBar: FC = () => {
   const floating =
     useSyncExternalStore(subscribeFloat, getFloatState) === "open";
 
-  const [menu, setMenu] = useState<HTMLElement | null>(null);
-  const closeMenu = () => {
-    setMenu(null);
-  };
 
   return (
     <>
@@ -105,25 +98,28 @@ export const ControlBar: FC = () => {
         <SelectionToolbar />
         <Divider />
         <Toolbar sx={{ gap: 0.5 }}>
-          {host === "panel" ? (
-            <Tooltip title="Where to show Conscious Tabs">
-              <IconButton
-                aria-label="Where to show Conscious Tabs"
-                aria-haspopup="menu"
-                onClick={(e) => {
-                  setMenu(e.currentTarget);
-                }}
-              >
-                <img src={logo} alt="" />
-              </IconButton>
-            </Tooltip>
-          ) : (
-            <Box
-              component="img"
-              src={logo}
-              alt=""
-              sx={{ width: 32, height: 32, flexShrink: 0, mx: 0.5 }}
-            />
+          <Box
+            component="img"
+            src={logo}
+            alt=""
+            sx={{ width: 32, height: 32, flexShrink: 0, mx: 0.5 }}
+          />
+
+          {host === "panel" && (
+            /* The trailing ellipsis is the whole reason this can be honest:
+               it is the long-standing convention for "this opens something
+               rather than doing it", and floating cannot be started from the
+               side panel at all (C-1). The accessible name opens with the
+               visible text so voice control still matches it, then spells out
+               the second step. */
+            <Button
+              startIcon={<PictureInPictureAlt />}
+              onClick={handleAnchor}
+              aria-label="Float on top — opens the tab manager in a tab, where you can float it over your other apps"
+              sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+            >
+              Float on top…
+            </Button>
           )}
 
           {host === "anchor" && floating && (
@@ -178,30 +174,6 @@ export const ControlBar: FC = () => {
           </Tooltip>
         </Toolbar>
       </AppBar>
-
-      {host === "panel" && (
-        <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
-          <MenuItem
-            onClick={() => {
-              void handleAnchor();
-              closeMenu();
-            }}
-          >
-            <ListItemIcon>
-              <OpenInNew fontSize="small" />
-            </ListItemIcon>
-            {/* The secondary line is the whole discovery mechanism. Floating
-                cannot be started from the side panel at all — Chrome refuses
-                Picture-in-Picture outside a real tab — so naming it on a
-                control that only opens the tab would promise something this
-                click does not deliver. */}
-            <ListItemText
-              primary="Open in a tab"
-              secondary="Where it can float on top of other apps"
-            />
-          </MenuItem>
-        </Menu>
-      )}
     </>
   );
 };

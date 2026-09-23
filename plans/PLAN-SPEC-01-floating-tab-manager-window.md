@@ -66,26 +66,27 @@ area, so the T-10 measurements taken at 400x640 stand as measured.
 
 Seven items had accumulated where this plan had outrun SPEC-01. They are now folded into the spec
 itself; see its §14 revision log. In summary: C-9 weakened, C-13/C-14/C-15 added, C-7 narrowed,
-C-12's reasoning completed, AC-16 superseded by filtering, AC-39/AC-40 revised for the menu,
+C-12's reasoning completed, AC-16 superseded by filtering, AC-39/AC-40 revised,
 NG-11 re-reasoned as impossible rather than unwanted, AC-41 and AC-42 added, §9 extended by three
 files, and A-7/A-8 both closed.
 
-**Menu only where width is scarce (user feedback, 2026-09-22).** D-8 put every surface action
-behind the logo in all hosts; that is right for the ~320px side panel and wrong for the anchor
-tab, which has a whole browser window and two plainly-named actions. Hiding them there bought
-nothing and cost a click. The panel keeps the menu — it genuinely cannot fit a third label, and
-the menu item's secondary line is doing discovery work a tooltip cannot. The anchor tab shows
-"Float on top" / "Stop floating" and "Back to panel" as visible buttons.
+**The menu is gone (user feedback, 2026-09-22).** It was introduced to solve two problems and
+solved only one of them worth solving. First it went on every host, which was plainly wrong for
+the anchor tab — a whole browser window, two plainly-named actions, nothing gained by hiding
+them. Then, kept only in the panel, it still cost a **third click on a two-click floor**: C-1 and
+C-3 mean the panel can never reach a float directly, so two is the least this feature can ever
+cost and a third is the worst thing to spend. Width had already stopped being the constraint once
+New tab and New window became icons. See D-8.
 
 **Bar layout, resolved from a real screenshot (R-5 landed).** Three labelled buttons plus the logo
 wrapped onto two lines each in the side panel. Applied the fallback T-5 already named: **New tab**
-and **New window** drop to icon buttons with tooltips and `aria-label`s. The final shape of the
-surface control itself took two further passes — a labelled button, then a menu everywhere, then
-the split above — so the settled state is:
+and **New window** drop to icon buttons with tooltips and `aria-label`s. The surface control
+itself then took three passes — labelled button, menu everywhere, menu in the panel only — before
+landing back on a labelled button with honest copy. Settled state:
 
 | Host | Logo | Surface controls |
 | --- | --- | --- |
-| Side panel | menu button | **Open in a tab** + secondary line, in the menu |
+| Side panel | decorative | **Float on top…** — one button, two clicks to a float |
 | Anchor tab | decorative | **Float on top** / **Stop floating**, **Back to panel** as buttons |
 | Float | decorative | none (AC-14) |
 
@@ -205,17 +206,17 @@ The spec deliberately left these to the plan. Each is a decision, not a discover
   an existing tab that is *already* `?host=anchor` over a bare one, and the extra tabs are left
   alone rather than closed: closing a user's tabs uninvited is worse than the duplication. AC-13
   binds what *we* create, which this satisfies.
-- **D-8 — every surface action lives in a menu behind the logo, not as buttons in the bar.**
-  *(User decision, 2026-09-22.)* Three labelled buttons wrapped onto two lines each at
-  side-panel width, and the labelled "Float on top" was over-promising anyway: in the panel it
-  opens a tab and floats nothing, because Chrome refuses Picture-in-Picture outside a real tab
-  (C-1). A tooltip was considered and rejected on the spec's own reasoning — it needs a hover, so
-  it never reaches keyboard or touch users (§5.8, AC-40). A menu costs no width, its items are
-  real text that screen readers announce, and it is honest about being a route rather than an
-  action. Panel gets **"Open in a tab"** with the secondary line *"Where it can float on top of
-  other apps"* — that line, not a tooltip, is now the entire discovery mechanism. Anchor gets
-  "Float on top" / "Stop floating" and "Back to panel".
-  **Requires amending AC-39 and AC-40**, which both assume a visible labelled control in the bar.
+- **D-8 — one labelled button, not a menu. Superseded its own first version.**
+  *(User decision, 2026-09-22, revised the same day.)* First attempt: a labelled "Float on top"
+  button, rejected because it promises something the click does not do — floating cannot start in
+  the panel (C-1). Second: every surface action behind a menu on the logo, which fixed the honesty
+  and the width but **cost a third click on a two-click floor**. C-1 plus C-3 make two clicks the
+  minimum this feature can ever cost, so a third is the most expensive thing to spend.
+  Settled: a single **"Float on top…"** button. The ellipsis is the long-standing convention for
+  "this opens something rather than doing it", so the label stops over-promising without going
+  quiet; the accessible name leads with the visible text (so voice control matches) and then names
+  the second step. Width was never really the constraint once New tab and New window became icons
+  — measured at 320px the button is 114px and the bar stays one row.
 - **D-7 — a manual "Back to panel", because the spec left the return trip with no door.**
   *(User decision, 2026-09-22, in response to "closing PiP or navigating away should open side
   panel, or not?")* The answer to the literal question is **no**, twice over: reopening the panel

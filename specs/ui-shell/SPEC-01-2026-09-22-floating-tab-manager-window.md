@@ -411,13 +411,18 @@ effectively invisible.
 - **AC-39** _(Must)_ WHILE the app is running in the side panel, the system SHALL convey — in
   text, without the user activating any control beyond opening the affordance's own menu — that
   the tab manager can be floated on top of other applications.
-  **Revised 2026-09-22.** The original wording assumed a visible labelled button in the side
-  panel's bottom bar. Two things killed that: the bar cannot fit a third label at ~320px (three
-  of them wrapped onto two lines each), and a label promising "Float on top" in the *panel* is a
-  promise the click does not keep — floating cannot be started from the side panel at all (C-1),
-  so that control only opens the anchor tab. The payoff now rides on a menu item's secondary line
-  ("Open in a tab · Where it can float on top of other apps"), which is real text rather than a
-  hover-only tooltip and costs no width.
+  **Revised 2026-09-22, twice.** The original wording assumed a visible labelled button, which
+  looked impossible: the bar could not fit a third label at ~320px. A menu behind the logo was
+  built instead — and it cost a **third click** on a journey whose floor is already two (C-1 plus
+  C-3 mean the panel can never reach a float directly, so two is the minimum this feature can ever
+  cost). Spending the one budget the feature has none of, to solve a width problem that had
+  already been solved another way, was the wrong trade.
+  Settled shape: a single labelled button, **"Float on top…"**. The bar fits it because New tab
+  and New window gave up their labels — conventional actions nobody needs taught, where floating
+  is the one nobody can guess. Measured at 320px: 114px wide, one row, no horizontal scroll. The
+  trailing ellipsis is what makes the label honest, being the long-standing convention for "this
+  opens something rather than doing it"; the accessible name opens with the visible text, so voice
+  control still matches, then spells out the second step.
   **Verify:** unit on the affordance's user-visible and accessible text (assert it names the
   floating payoff, and does not claim the click itself floats anything), plus manual.
 - **AC-40** _(Must)_ The information required by AC-39 SHALL be reachable without hovering — it
@@ -655,7 +660,7 @@ these were things the spec asserted confidently and got wrong.
 | 4 | **C-7** narrowed | Clamping does not bite at this size: 400x640 requested, 401x641 content area delivered. |
 | 5 | **C-12** reasoning completed | Conclusion unchanged; it had never ruled out `setOptions`, which is now done explicitly so it is not re-derived. |
 | 6 | **AC-16** superseded | The anchor tab is filtered out of the list rather than shown as a marked, non-closable row. User decision. E-4 is dissolved rather than guarded. |
-| 7 | **AC-39, AC-40** revised | The labelled bottom-bar control they assumed does not fit at ~320px, and promised floating from a surface that cannot float (C-1). Discovery now rides on a menu item's secondary text. |
+| 7 | **AC-39, AC-40** revised | The labelled bottom-bar control they assumed promised floating from a surface that cannot float (C-1). A menu was tried and rejected for costing a third click against a two-click floor; the settled answer is one labelled button, "Float on top…", the ellipsis carrying the "this opens a step" convention. |
 | 8 | **NG-11** re-reasoned | Automatic restoration is impossible, not merely unwanted (C-10, C-13, C-14). |
 | 9 | **AC-41** added | With NG-11 impossible, the anchor tab had no route back to the panel at all. A manual one is not what NG-11 forbids. |
 | 10 | **AC-42** added | AC-19 states the principle; the undo prompt firing in every live surface, and restoring twice, is the case that actually occurs. |
