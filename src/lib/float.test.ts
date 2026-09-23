@@ -33,6 +33,8 @@ const makeFloatWindow = () => {
 };
 
 type FloatModule = typeof import("./float.ts");
+/** The stub's events can fire; the chrome typings do not know that. */
+type Fireable = { fire: (...args: unknown[]) => void };
 
 /** The float's state is module-level, so each test needs a fresh copy. */
 const loadFloat = async (host = "anchor") => {
@@ -208,6 +210,79 @@ describe("when the float goes away", () => {
     float.acknowledgeFloatClosed();
 
     expect(float.getFloatState()).toBe("closed");
+  });
+
+  /**
+   * The float's own copy of the app cannot close the float — this module's
+   * state is per realm, so `current` is undefined inside it. It asks instead,
+   * and only the realm actually holding a float answers.
+   */
+  describe("returning to the full view from inside the float", () => {
+    const message = { type: "float:return-to-full-view" };
+
+    it("closes the float and raises this window", async () => {
+      const pipWindow = makeFloatWindow();
+      installPiP(() => Promise.resolve(pipWindow));
+      const chrome = installChrome({ currentTab: { id: 7, windowId: 3 } });
+      const float = await loadFloat();
+      float.openFloat();
+      await settle();
+
+      (chrome.runtime.onMessage as unknown as Fireable).fire(message);
+      await settle();
+
+      expect(pipWindow.close).toHaveBeenCalled();
+      expect(chrome.tabs.update).toHaveBeenCalledWith(7, { active: true });
+      // Raising the window is what separates this from the float's own close
+      // button, which deliberately leaves focus where the user put it.
+      expect(chrome.windows.update).toHaveBeenCalledWith(3, { focused: true });
+    });
+
+    // The user asked for this, so it must not be reported as a close that
+    // happened to them. closeFloat() sets the initiated-by-us flag.
+    it("does not raise the closed-on-its-own notice", async () => {
+      vi.spyOn(document, "hasFocus").mockReturnValue(false);
+      const pipWindow = makeFloatWindow();
+      installPiP(() => Promise.resolve(pipWindow));
+      const chrome = installChrome({ currentTab: { id: 7, windowId: 3 } });
+      const float = await loadFloat();
+      float.openFloat();
+      await settle();
+
+      (chrome.runtime.onMessage as unknown as Fireable).fire(message);
+      pipWindow.fire("pagehide");
+      await settle();
+
+      expect(float.getFloatState()).toBe("closed");
+    });
+
+    // Every extension realm receives the broadcast; only one holds a float.
+    it("is ignored by a realm that holds no float", async () => {
+      const chrome = installChrome({ currentTab: { id: 7, windowId: 3 } });
+      await loadFloat("panel");
+
+      (chrome.runtime.onMessage as unknown as Fireable).fire(message);
+      await settle();
+
+      expect(chrome.tabs.update).not.toHaveBeenCalled();
+    });
+
+    it("ignores messages it does not recognise", async () => {
+      const pipWindow = makeFloatWindow();
+      installPiP(() => Promise.resolve(pipWindow));
+      const chrome = installChrome({ currentTab: { id: 7, windowId: 3 } });
+      const float = await loadFloat();
+      float.openFloat();
+      await settle();
+
+      (chrome.runtime.onMessage as unknown as Fireable).fire({
+        type: "selection",
+      });
+      await settle();
+
+      expect(pipWindow.close).not.toHaveBeenCalled();
+      expect(float.getFloatState()).toBe("open");
+    });
   });
 
   it("notifies subscribers on every transition", async () => {

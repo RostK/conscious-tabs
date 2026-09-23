@@ -125,6 +125,54 @@ export const closeFloat = (): void => {
   current.close();
 };
 
+/**
+ * The float asking the document that holds it to take over.
+ *
+ * The float's own copy of the app cannot close the float: this module's state
+ * lives per realm, and inside the float `current` is undefined, so `closeFloat`
+ * there is a no-op. Calling `parent.close()` instead would work but would look
+ * to the holder like a close it did not initiate, raising the "your float
+ * closed on its own" notice for something the user deliberately asked for.
+ *
+ * So the float asks, and the holder acts — which also means the close runs
+ * through `closeFloat()` and sets the initiated-by-us flag, exactly as the
+ * anchor's own "Stop floating" does.
+ */
+const RETURN_TO_FULL_VIEW = "float:return-to-full-view";
+
+export const requestFullView = (): void => {
+  void chrome.runtime
+    .sendMessage({ type: RETURN_TO_FULL_VIEW })
+    .catch(() => undefined);
+};
+
+chrome.runtime.onMessage.addListener((message: unknown) => {
+  if ((message as { type?: string } | null)?.type !== RETURN_TO_FULL_VIEW) {
+    return;
+  }
+  // Only the document actually holding a float can answer this. Every other
+  // realm — the side panel, the float itself — receives the message too.
+  if (!current) return;
+  closeFloat();
+  void focusSelf();
+});
+
+/**
+ * Bring this tab and its window forward.
+ *
+ * Closing the float already makes the anchor the active tab (AC-11), but
+ * deliberately does not raise the window, because an eviction can land while
+ * the user is in another application. Here they explicitly asked to go to the
+ * full view, so raising it is the whole point — that is the difference between
+ * this control and the float's own close button.
+ */
+const focusSelf = async (): Promise<void> => {
+  const tab = await chrome.tabs.getCurrent();
+  if (tab?.id === undefined) return;
+  await chrome.tabs.update(tab.id, { active: true });
+  await chrome.windows.update(tab.windowId, { focused: true });
+};
+
 /** Dismiss the "it closed on its own" notice without reopening anything. */
 export const acknowledgeFloatClosed = (): void => {
   if (state === "wasClosed") setState("closed");

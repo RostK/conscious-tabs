@@ -34,6 +34,7 @@ import {
   closeFloat,
   getFloatState,
   openFloat,
+  requestFullView,
   subscribeFloat,
 } from "../float";
 import { getHost } from "../host";
@@ -188,11 +189,17 @@ export const ControlBar: FC = () => {
             /* Same words as the side panel's, for the same destination —
                nothing to learn twice. "Go to tab" was confusing here because
                "tab" is the most overloaded word in this app: the thing lists
-               tabs, so it read as "switch to one of them". */
-            <Tooltip title="The tab manager at full window width">
+               tabs, so it read as "switch to one of them".
+
+               This closes the float. Keeping it would leave an always-on-top
+               window covering the very view the user just asked to see, and
+               both show the same list — there is no state where having both is
+               better than either. AC-33 requires a control that destroys the
+               float to say so, hence the tooltip. */
+            <Tooltip title="Stops floating and shows the manager at full window width">
               <Button
                 startIcon={<OpenInNew />}
-                onClick={handleAnchor}
+                onClick={requestFullView}
                 sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
               >
                 Open full view

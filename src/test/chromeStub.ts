@@ -18,12 +18,27 @@ import { vi } from "vitest";
 export const EXTENSION_ID = "abcdefghijklmnopabcdefghijklmnop";
 export const EXTENSION_ORIGIN = `chrome-extension://${EXTENSION_ID}/`;
 
-/** A `chrome.*.onFoo` event that records its listeners without firing them. */
-const event = () => ({
-  addListener: vi.fn(),
-  removeListener: vi.fn(),
-  hasListener: vi.fn(() => false),
-});
+/**
+ * A `chrome.*.onFoo` event that records its listeners and can fire them.
+ *
+ * Firing matters for anything driven by a browser event rather than a call —
+ * the float's "return to full view" message, for one, which is the only way
+ * the float's own copy of the app can reach the document holding the float.
+ */
+type Listener = (...args: never[]) => void;
+const event = () => {
+  const listeners = new Set<Listener>();
+  return {
+    addListener: vi.fn((fn: Listener) => listeners.add(fn)),
+    removeListener: vi.fn((fn: Listener) => listeners.delete(fn)),
+    hasListener: vi.fn((fn: Listener) => listeners.has(fn)),
+    fire: (...args: never[]) => {
+      listeners.forEach((fn) => {
+        fn(...args);
+      });
+    },
+  };
+};
 
 /**
  * Chrome match patterns compare the pattern's path against path *plus query*,

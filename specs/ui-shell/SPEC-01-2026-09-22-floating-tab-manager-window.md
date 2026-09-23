@@ -271,16 +271,29 @@ Priority uses MoSCoW.
 - **AC-14** _(Must)_ The system SHALL NOT present a float affordance while the app is running
   inside the float itself.
   **Verify:** unit — render with host `float`.
-- **AC-43** _(Must)_ _(added 2026-09-22)_ WHILE the app is running in the float, the system SHALL
-  present a control that focuses the anchor tab, and that control SHALL NOT close the float.
+- **AC-43** _(Must)_ _(added 2026-09-22, revised same day)_ WHILE the app is running in the float,
+  the system SHALL present a control that returns the user to the anchor tab, and that control
+  SHALL close the float, make the anchor tab active, AND focus its window. Per AC-33 the control
+  SHALL say that it stops floating.
   **Why it was added.** The float had no route to the manager's own tab. The tab exists — the
   float cannot outlive it — but it is unlabelled in Chrome's strip and, since the revised AC-16,
   filtered out of the manager's own list, so the manager could not help anyone find the manager.
-  Not closing the float is the point: the float is always-on-top, so it stays visible over the tab
-  the user just moved to, and AC-9's "Stop floating" is waiting there if that is what they wanted.
-  This is not a float affordance, so AC-14 is untouched.
-  **Verify:** unit — render with host `float` and assert the control is present; manual — click it
-  with a float up and assert the anchor tab comes forward with the float still on top.
+  **Why "SHALL NOT close the float" was reversed within the day.** The first version kept the
+  float up, reasoning that it is always-on-top so it stays available. That is exactly the problem:
+  it stays on top of the very view the user just asked to see, and both show the same list. There
+  is no state in which having both is better than having either. Closing also gives the two exits
+  a real distinction — the float's own close button dismisses it without raising the window
+  (an eviction can land while the user is elsewhere, AC-11), whereas this control raises it,
+  because going there is what the user asked for.
+  **Implementation note, because it is not obvious.** The float's own copy of the app cannot close
+  the float: the float module's state is per realm, so inside the float the handle is undefined.
+  Calling `parent.close()` would work but would look to the holding document like a close it did
+  not initiate, raising AC-34's notice for something deliberate. The float therefore asks the
+  holder over `chrome.runtime` messaging, and the holder closes it through the same path as
+  AC-9's "Stop floating".
+  **Verify:** unit — render with host `float` and assert the control is present; unit on the
+  message path, asserting the float closes, the window is raised, and AC-34's notice does *not*
+  appear. Manual — click it with a float up and assert you land on the full view with no float.
 - **AC-34** _(Must)_ WHEN the float is evicted by another Picture-in-Picture request (C-5), the
   anchor tab SHALL present a named state explaining that the floating window was closed, together
   with a control that reopens the float in one activation.
