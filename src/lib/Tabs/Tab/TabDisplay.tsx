@@ -145,7 +145,11 @@ export const TabDisplay: FC<{
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>
-      <ListItemAvatar sx={{ minWidth: "36px", pt: "5px" }}>
+      {/* No top padding. It nudged the favicon down against the first line of
+          text, which put its centre ~2.5px below the row's centre line — and
+          so below the checkbox and the close button, which are both centred.
+          Invisible until the checkbox came to sit over the favicon. */}
+      <ListItemAvatar sx={{ minWidth: "36px" }}>
         <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
           <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
         </AudioBadge>
