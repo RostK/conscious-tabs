@@ -26,6 +26,7 @@ import { FloatClosedNotice } from "./lib/FloatClosedNotice.tsx";
 import { AudioTabs } from "./lib/Tabs/AudioTabs";
 import { CurrentTab } from "./lib/Tabs/CurrentTab";
 import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
+import { setRowDragActive } from "./lib/Tabs/elements/rowControls.ts";
 import { TabAvatarsDisplay } from "./lib/Tabs/elements/TabAvatarsDisplay.tsx";
 import { SelectionContext, SelectionProvider } from "./lib/Tabs/selection";
 import { TabDisplay } from "./lib/Tabs/Tab/TabDisplay.tsx";
@@ -100,10 +101,12 @@ function App() {
   const handleDragStart = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragStart"]
   >(({ active }) => {
+    setRowDragActive(true);
     setDragging(active.data.current as unknown as DefaultDrag);
   }, []);
 
   const handleDragCancel = useCallback(() => {
+    setRowDragActive(false);
     setDragging(null);
   }, []);
 
@@ -118,6 +121,7 @@ function App() {
           dispatchSelected({ type: "clear" });
         }
       }
+      setRowDragActive(false);
       setDragging(null);
     },
     [dispatchSelected, dragging],

@@ -1,4 +1,3 @@
-import { useDndContext } from "@dnd-kit/core";
 import { KeyboardEventHandler, useCallback } from "react";
 
 /**
@@ -67,32 +66,37 @@ export const selectedProps = (selected: boolean) =>
  * stretch this handler would claim the first arrow press, move focus off the
  * drag handle and stop the event before dnd-kit's KeyboardSensor saw it.
  *
- * dnd-kit's own context says whether a drag is in progress, which is the
- * question being asked. An earlier version read `aria-pressed` off the
- * focused element, which dnd-kit does set on the activator — but that
- * attribute means "this toggle is on", so the first row control to become a
- * genuine toggle would have silently switched the arrow keys off.
+ * Whether a drag is running is asked at event time, not subscribed to.
+ * `App`'s DndContext handlers set the flag below, which costs nothing and
+ * cannot drift: both of the alternatives tried here were worse.
+ * `aria-pressed` on the focused element is dnd-kit's activator marker, but
+ * the attribute means "this toggle is on", so the first row control to
+ * become a genuine toggle would have switched the arrows off. `useDndContext`
+ * says exactly the right thing, but subscribes every row to a context
+ * memoised on `collisions` and `over` — recomputed continuously while a drag
+ * moves, so every row re-rendered on every pointer move.
  */
-export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> => {
-  const { active } = useDndContext();
+let dragActive = false;
 
-  return useCallback(
-    (event) => {
-      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-      if (active) return;
-      const row = event.currentTarget;
-      const stops: HTMLElement[] = [
-        row,
-        ...row.querySelectorAll<HTMLElement>("[data-row-control]"),
-      ];
-      const at = stops.indexOf(document.activeElement as HTMLElement);
-      if (at < 0) return;
-      const next = at + (event.key === "ArrowRight" ? 1 : -1);
-      if (next < 0 || next >= stops.length) return;
-      event.preventDefault();
-      event.stopPropagation();
-      stops[next].focus();
-    },
-    [active],
-  );
+/** Called by App's DndContext on drag start, end and cancel. */
+export const setRowDragActive = (value: boolean): void => {
+  dragActive = value;
 };
+
+export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
+  useCallback((event) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    if (dragActive) return;
+    const row = event.currentTarget;
+    const stops: HTMLElement[] = [
+      row,
+      ...row.querySelectorAll<HTMLElement>("[data-row-control]"),
+    ];
+    const at = stops.indexOf(document.activeElement as HTMLElement);
+    if (at < 0) return;
+    const next = at + (event.key === "ArrowRight" ? 1 : -1);
+    if (next < 0 || next >= stops.length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    stops[next].focus();
+  }, []);

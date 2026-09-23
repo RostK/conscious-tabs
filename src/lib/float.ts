@@ -230,20 +230,35 @@ const canvas = (): string =>
  * its own title bar could close, under a toast saying it had failed to open.
  */
 const fillFloat = (float: Window) => {
-  current = float;
-  closingOurselves = undefined;
-  float.addEventListener("pagehide", () => {
-    handleFloatGone(float);
-  });
-  setState("open");
-
   try {
+    // Ownership first, and inside the try: `addEventListener` can throw on a
+    // window that is already going away, and a float recorded without its
+    // pagehide listener is one this module would never hear about again.
+    current = float;
+    closingOurselves = undefined;
+    float.addEventListener("pagehide", () => {
+      handleFloatGone(float);
+    });
     dressFloat(float);
+    // Last, so a float that never filled is never announced as open. Saying
+    // so first meant a failure read as open-then-closed, and ControlBar takes
+    // that transition as the user landing back from a float (US-4) and pulls
+    // them to the anchor tab — for a window they never saw.
+    setState("open");
   } catch (error) {
     // An empty window is worse than none: take it away and say so, rather
     // than leaving the user a blank always-on-top rectangle.
     console.error("Could not fill the floating window", error);
-    closeFloat();
+    try {
+      float.close();
+    } catch {
+      // Already gone, which is the outcome we wanted anyway. Closing through
+      // closeFloat() here would rethrow into openFloat's catch and report the
+      // same single failure twice.
+    }
+    current = undefined;
+    closingOurselves = undefined;
+    setState("closed");
     enqueueSnackbar("Couldn't open the floating window", {
       variant: "error",
     });

@@ -242,6 +242,44 @@ describe("opening the float", () => {
     expect(float.getFloatState()).toBe("closed");
   });
 
+  // A float that never filled was never open, and saying otherwise makes
+  // ControlBar treat the failure as the user landing back from a float.
+  it("never reports open for a float it could not fill", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const pipWindow = makeFloatWindow();
+    pipWindow.document.createElement = () => {
+      throw new Error("the document went away");
+    };
+    installPiP(() => Promise.resolve(pipWindow));
+    const float = await loadFloat();
+
+    const seen: string[] = [];
+    float.subscribeFloat(() => seen.push(float.getFloatState()));
+    float.openFloat();
+    await settle();
+
+    expect(seen).not.toContain("open");
+    expect(float.getFloatState()).toBe("closed");
+  });
+
+  // The listener is what makes a float knowable; attaching it can throw on a
+  // window that is already going away, and that must not leave one untracked.
+  it("gives the window back if it cannot even be listened to", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const pipWindow = makeFloatWindow();
+    pipWindow.addEventListener = () => {
+      throw new Error("the window went away");
+    };
+    installPiP(() => Promise.resolve(pipWindow));
+    const float = await loadFloat();
+
+    float.openFloat();
+    await settle();
+
+    expect(pipWindow.close).toHaveBeenCalled();
+    expect(float.getFloatState()).toBe("closed");
+  });
+
   // AC-7: a refusal must reach the user, not only the console.
   it("tells the user when the request is refused", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
