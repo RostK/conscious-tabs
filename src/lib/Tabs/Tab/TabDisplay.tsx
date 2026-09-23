@@ -4,7 +4,6 @@ import {
   Close,
 } from "@mui/icons-material";
 import {
-  Box,
   ListItemAvatar,
   ListItemButton,
   ListItemSecondaryAction,
@@ -114,42 +113,35 @@ export const TabDisplay: FC<{
             opacity: 1,
             pointerEvents: "auto",
           },
-          [[
-            "&:hover .tabIcon",
-            "&:focus-visible .tabIcon",
-            "&:has(:focus-visible) .tabIcon",
-            "&:has(.tabSelect:focus) .tabIcon",
-          ].join(", ")]: {
-            opacity: 0,
-          },
         },
       ]}
     >
-      <ListItemAvatar
-        sx={{ minWidth: "36px", pt: "5px", position: "relative" }}
+      {/* Beside the favicon, in the row's left padding — not in its slot.
+          Selection persists, and a persistent checkbox that took the favicon's
+          place would cost the user the one thing that identifies the tab they
+          are about to act on. That is what the original -8 was for; the swap
+          that replaced it only looked acceptable while hovering.
+          The fill is what makes the overlap read as two adjacent controls
+          rather than one on top of the other, so this control keeps it even
+          though the right-hand actions no longer need it. */}
+      <ItemButton
+        className="tabSelect"
+        {...rowControlProps}
+        {...selectedProps(isSelected)}
+        onClick={handleHighlight}
+        aria-label={isSelected ? "Deselect tab" : "Select tab"}
+        sx={{
+          position: "absolute",
+          left: -8,
+          backgroundColor: "background.paper",
+        }}
       >
-        <Box className="tabIcon" sx={{ opacity: isSelected ? 0 : 1 }}>
-          <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
-            <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
-          </AudioBadge>
-        </Box>
-        <ItemButton
-          className="tabSelect"
-          {...rowControlProps}
-          onClick={handleHighlight}
-          aria-label={isSelected ? "Deselect tab" : "Select tab"}
-          sx={{
-            // Concentric with the favicon it replaces — measured, not
-            // guessed: a 37px button over a 26px icon needs these exact
-            // offsets or the swap visibly jumps on hover.
-            position: "absolute",
-            top: -1,
-            left: -5.5,
-          }}
-          {...selectedProps(isSelected)}
-        >
-          {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
-        </ItemButton>
+        {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
+      </ItemButton>
+      <ListItemAvatar sx={{ minWidth: "36px", pt: "5px" }}>
+        <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
+          <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
+        </AudioBadge>
       </ListItemAvatar>
       <ListItemSecondaryAction>
         {dragHandle}
