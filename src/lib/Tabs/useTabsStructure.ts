@@ -1,5 +1,5 @@
 import { debounce } from "@mui/material";
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { browsingWindowIds, isOwnPage } from "../surfaces.ts";
 import { GroupItem, TabItem, TabsStructure } from "./types.ts";
@@ -111,6 +111,7 @@ let generation = 0;
 
 const load = async () => {
   const mine = ++generation;
+  let next: Snapshot;
 
   // Two exclusions, both learned the hard way.
   //
@@ -121,14 +122,25 @@ const load = async () => {
   // Our own pages: the anchor tab is the one holding the float, and
   // chrome.tabs.query is unfiltered by default — so without this the manager
   // listed the tab whose closure kills the float, with a close button on it.
-  const browsing = await browsingWindowIds();
-  const tabs = (await chrome.tabs.query({})).filter(
-    ({ url, windowId }) => browsing.has(windowId) && !isOwnPage(url),
-  );
-  const groups = await chrome.tabGroups.query({});
+  try {
+    const browsing = await browsingWindowIds();
+    const tabs = (await chrome.tabs.query({})).filter(
+      ({ url, windowId }) => browsing.has(windowId) && !isOwnPage(url),
+    );
+    const groups = await chrome.tabGroups.query({});
+    next = { tabs, groups };
+  } catch (error) {
+    // Any of the three can reject while the browser is tearing a window
+    // down or the extension is reloading. The last snapshot stands: a read
+    // that failed says nothing about what the browser holds, and the next
+    // event retries. Reported rather than swallowed, because the only
+    // symptom otherwise is a list that quietly stops matching.
+    console.error("Couldn't read the browser's tabs", error);
+    return;
+  }
 
   if (mine !== generation) return;
-  snapshot = { tabs, groups };
+  snapshot = next;
   listeners.forEach((notify) => {
     notify();
   });
@@ -181,6 +193,20 @@ const subscribe = (notify: () => void): (() => void) => {
 };
 
 const getSnapshot = () => snapshot;
+
+/**
+ * Hold the store open for as long as the caller is mounted, without
+ * re-rendering when it changes.
+ *
+ * For readers of `wasListedTab`, which asks a question *about* the snapshot
+ * rather than rendering it. Without this the filter rested on an unstated
+ * invariant — that some other component happened to be subscribed — and the
+ * moment it was not, `wasListedTab` would answer yes to everything and the
+ * float's own about:blank tab would start raising "Tab closed" again.
+ */
+export const useKeepTabsLoaded = (): void => {
+  useEffect(() => subscribe(() => undefined), []);
+};
 
 /**
  * Was this tab one the manager was mirroring?

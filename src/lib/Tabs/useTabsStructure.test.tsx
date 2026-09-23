@@ -120,6 +120,41 @@ describe("several consumers", () => {
     );
   });
 
+  /**
+   * A read that failed says nothing about what the browser holds. Wiping the
+   * list on a rejection would turn a transient API failure into an empty
+   * manager; dropping the promise turns it into an unhandled rejection.
+   */
+  it("keeps the last snapshot when a read fails, and recovers after", async () => {
+    const tabs = [tab({ id: 1, title: "First" })];
+    installChrome({ windows: WINDOWS, tabs });
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    const { result } = renderHook(() => useTabsStructure());
+    await waitFor(() => expect(titles(result.current)).toEqual(["First"]));
+
+    const real = chrome.tabs.query;
+    chrome.tabs.query = (() =>
+      Promise.reject(
+        new Error("window is going away"),
+      )) as typeof chrome.tabs.query;
+    (chrome.tabs.onUpdated as unknown as { fire: () => void }).fire();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(titles(result.current)).toEqual(["First"]);
+    expect(logged).toHaveBeenCalled();
+
+    chrome.tabs.query = real;
+    tabs.push(tab({ id: 2, title: "Second" }));
+    (chrome.tabs.onUpdated as unknown as { fire: () => void }).fire();
+
+    await waitFor(() =>
+      expect(titles(result.current)).toEqual(["First", "Second"]),
+    );
+  });
+
   it("stops listening once the last consumer goes", async () => {
     const { unmount, result } = renderHook(() => useTabsStructure());
     await waitFor(() => expect(result.current).toBeDefined());

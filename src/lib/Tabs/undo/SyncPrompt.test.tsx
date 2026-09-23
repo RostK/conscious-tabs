@@ -85,6 +85,23 @@ describe("what counts as a tab the user closed", () => {
     expect(enqueueSnackbar).not.toHaveBeenCalled();
   });
 
+  /**
+   * The filter must not depend on some other component happening to be
+   * mounted: SyncPrompt holds the store open itself.
+   */
+  it("filters on its own, with nothing else subscribed", async () => {
+    render(<SyncPrompt />);
+
+    // its own subscription, not a sibling's
+    await waitFor(() => expect(chrome.tabs.query).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    removed(4242);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(enqueueSnackbar).not.toHaveBeenCalled();
+  });
+
   // Losing a real undo is worse than an extra prompt, so before the first
   // query has landed there is nothing to filter against and everything counts.
   it("prompts for anything closed before the first query lands", async () => {

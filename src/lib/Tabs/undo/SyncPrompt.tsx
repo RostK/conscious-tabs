@@ -2,7 +2,7 @@ import { Button, debounce } from "@mui/material";
 import { closeSnackbar, enqueueSnackbar } from "notistack";
 import { FC, useEffect } from "react";
 
-import { wasListedTab } from "../useTabsStructure.ts";
+import { useKeepTabsLoaded, wasListedTab } from "../useTabsStructure.ts";
 import { restoreSessions } from "./restore.ts";
 import { shouldPrompt } from "./shouldPrompt.ts";
 
@@ -84,6 +84,9 @@ const handleRemove = (tabId: number) => {
 };
 
 export const SyncPrompt: FC = () => {
+  // Keeps the snapshot wasListedTab reads alive, rather than relying on
+  // some other component being mounted to do it.
+  useKeepTabsLoaded();
   useEffect(() => {
     chrome.tabs.onRemoved.addListener(handleRemove);
     return () => {
