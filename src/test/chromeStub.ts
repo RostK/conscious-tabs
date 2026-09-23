@@ -96,6 +96,7 @@ export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
       reload: vi.fn(async () => undefined),
       onUpdated: event(),
       onActivated: event(),
+      onCreated: event(),
       onRemoved: event(),
       onMoved: event(),
       onDetached: event(),

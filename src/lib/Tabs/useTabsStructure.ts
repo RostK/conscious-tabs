@@ -139,6 +139,12 @@ const refresh = debounce(() => {
 }, 10);
 
 const TAB_EVENTS = () => [
+  // onCreated included, though a new tab almost always fires onUpdated a
+  // moment later anyway: "almost always" is not the same as always, and a
+  // tab the store has not heard of is one the undo prompt will not speak
+  // for — see wasListedTab. A background tab now also reaches the list
+  // when it is created rather than when something else happens to it.
+  chrome.tabs.onCreated,
   chrome.tabs.onUpdated,
   chrome.tabs.onActivated,
   chrome.tabs.onRemoved,

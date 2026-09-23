@@ -104,6 +104,22 @@ describe("several consumers", () => {
     expect(chrome.tabs.query).toHaveBeenCalledTimes(1);
   });
 
+  it("notices a tab the moment it is created", async () => {
+    const tabs = [tab({ id: 1, title: "First" })];
+    installChrome({ windows: WINDOWS, tabs });
+
+    const { result } = renderHook(() => useTabsStructure());
+    await waitFor(() => expect(titles(result.current)).toEqual(["First"]));
+
+    // The stub queries the same array, so this is a tab Chrome now has.
+    tabs.push(tab({ id: 2, title: "Brand new" }));
+    (chrome.tabs.onCreated as unknown as { fire: () => void }).fire();
+
+    await waitFor(() =>
+      expect(titles(result.current)).toEqual(["First", "Brand new"]),
+    );
+  });
+
   it("stops listening once the last consumer goes", async () => {
     const { unmount, result } = renderHook(() => useTabsStructure());
     await waitFor(() => expect(result.current).toBeDefined());

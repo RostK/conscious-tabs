@@ -136,6 +136,7 @@ export const installFakeChrome = () => {
       reload: () => Promise.resolve(undefined),
       onUpdated,
       onActivated,
+      onCreated: event(),
       onRemoved,
       onMoved: event(),
       onDetached: event(),
