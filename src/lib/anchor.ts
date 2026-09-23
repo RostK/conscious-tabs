@@ -11,11 +11,26 @@ import { getHost } from "./host";
  * the floating window, because Document Picture-in-Picture refuses to open from
  * anywhere that is not a top-level traversable (the side panel is not one).
  */
-export const ANCHOR_URL = () =>
-  chrome.runtime.getURL("index.html?host=anchor");
+export const ANCHOR_URL = () => chrome.runtime.getURL("index.html?host=anchor");
 
-const isAnchorTab = (tab: chrome.tabs.Tab): boolean =>
-  new URLSearchParams(tab.url?.split("?")[1] ?? "").get("host") === "anchor";
+/**
+ * Parsed as a URL, not split on the first "?".
+ *
+ * `split("?")[1]` hands the fragment to URLSearchParams along with the query,
+ * so `index.html?host=anchor#anything` reads as host `"anchor#anything"` and a
+ * real anchor tab stops being recognised as one. openAnchorTab would then take
+ * it for a stale extension page and navigate it — destroying the float it was
+ * holding, which is the one thing that path promises never to do.
+ */
+const isAnchorTab = (tab: chrome.tabs.Tab): boolean => {
+  if (!tab.url) return false;
+  try {
+    return new URL(tab.url).searchParams.get("host") === "anchor";
+  } catch {
+    // A tab we cannot parse is not one we should navigate.
+    return false;
+  }
+};
 
 /**
  * Focus the anchor tab, creating it only if there isn't one — never a second.
@@ -81,7 +96,9 @@ export const backToSidePanel = (self: chrome.tabs.Tab): void => {
   if (self.windowId === undefined) return;
   void chrome.sidePanel
     .open({ windowId: self.windowId })
-    .then(() => (self.id === undefined ? undefined : chrome.tabs.remove(self.id)))
+    .then(() =>
+      self.id === undefined ? undefined : chrome.tabs.remove(self.id),
+    )
     .catch(() => {
       enqueueSnackbar("Couldn't open the side panel", { variant: "error" });
     });

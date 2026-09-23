@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  ChromeStub,
-  extensionUrl,
-  installChrome,
-} from "../test/chromeStub.ts";
+import { ChromeStub, extensionUrl, installChrome } from "../test/chromeStub.ts";
 import { closeIfSidePanel, openAnchorTab } from "./anchor.ts";
 
 const ANCHOR = extensionUrl("index.html?host=anchor");
@@ -49,6 +45,39 @@ describe("openAnchorTab", () => {
     await openAnchorTab();
 
     expect(chrome.windows.update).toHaveBeenCalledWith(42, { focused: true });
+  });
+
+  /**
+   * The anchor tab is the document holding the float, so mistaking it for a
+   * stale extension page means navigating it — and the float dies with the
+   * document. A fragment on the URL was enough to cause that.
+   */
+  it("recognises an anchor tab carrying a fragment, and leaves it alone", async () => {
+    const chrome: ChromeStub = installChrome({
+      tabs: [{ id: 7, windowId: 3, url: `${ANCHOR}#section` }],
+    });
+
+    await openAnchorTab();
+
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+    expect(chrome.tabs.update).toHaveBeenCalledWith(7, { active: true });
+    expect(chrome.tabs.update).not.toHaveBeenCalledWith(7, {
+      active: true,
+      url: ANCHOR,
+    });
+  });
+
+  it("still upgrades a bare extension page carrying a fragment", async () => {
+    const chrome: ChromeStub = installChrome({
+      tabs: [{ id: 9, windowId: 3, url: `${BARE}#section` }],
+    });
+
+    await openAnchorTab();
+
+    expect(chrome.tabs.update).toHaveBeenCalledWith(9, {
+      active: true,
+      url: ANCHOR,
+    });
   });
 
   // D-5b: a bare extension page left over from before this feature would also
