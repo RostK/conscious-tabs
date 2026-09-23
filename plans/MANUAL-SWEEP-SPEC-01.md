@@ -16,6 +16,16 @@ Walked against a real float by RostK. **Everything passed** except two that were
   one-click reopen) and AC-35 (our float evicting a video PiP silently). The state machine behind
   AC-34 has 13 unit tests; it is the eviction that starts it that no one has witnessed.
 
+### Re-run of B and D — 2026-09-23, after the review fixes
+
+Walked again by RostK, and passed. Worth recording as its own run rather than
+folding into the one above:  changed three times between them — the
+double-activation guard, the pagehide identity check and the close flag — and all
+three had only ever run against a stubbed Picture-in-Picture window. Sections B and
+D are precisely the paths they touch, so the first sweep no longer spoke for them.
+
+E-1 and E-2 remain deferred on the same grounds as before: no video PiP was set up.
+
 The checklist stays here rather than being deleted: it is what a future change to the float has to
 be walked through again, and the two open items are the first things to run when a video PiP is to
 hand.
