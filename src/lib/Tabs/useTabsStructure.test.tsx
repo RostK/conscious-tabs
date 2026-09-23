@@ -121,6 +121,32 @@ describe("several consumers", () => {
   });
 
   /**
+   * A cross-window drag fires onDetached as it starts and onAttached when it
+   * lands — seconds later, if the user hesitates over where to drop. Hearing
+   * only the first meant the store queried a tab still in flight and never
+   * learned where it settled, leaving the row under the window it left.
+   */
+  it("hears a tab arrive in another window, not just leave one", async () => {
+    const tabs = [tab({ id: 1, title: "Dragged", windowId: 1 })];
+    installChrome({
+      windows: [...WINDOWS, { id: 2, alwaysOnTop: false, type: "normal" }],
+      tabs,
+    });
+
+    const { result } = renderHook(() => useTabsStructure());
+    await waitFor(() => expect(result.current).toBeDefined());
+    expect((result.current?.[0] as TabItem).windowId).toBe(1);
+
+    // Dropped into the other window: Chrome now answers with it there.
+    tabs[0] = tab({ id: 1, title: "Dragged", windowId: 2 });
+    (chrome.tabs.onAttached as unknown as { fire: () => void }).fire();
+
+    await waitFor(() =>
+      expect((result.current?.[0] as TabItem).windowId).toBe(2),
+    );
+  });
+
+  /**
    * A read that failed says nothing about what the browser holds. Wiping the
    * list on a rejection would turn a transient API failure into an empty
    * manager; dropping the promise turns it into an unhandled rejection.
@@ -155,6 +181,70 @@ describe("several consumers", () => {
     );
   });
 
+  /**
+   * "The next event retries" holds only while there is a snapshot to keep
+   * showing. A cold start that fails has none, and a quiet browser sends
+   * nothing to rescue it — so the view drew neither a list nor its empty
+   * state, for as long as the page lived.
+   */
+  it("asks again when the very first read fails", async () => {
+    const tabs = [tab({ id: 1, title: "First" })];
+    installChrome({ windows: WINDOWS, tabs });
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    const real = chrome.tabs.query;
+    let failed = false;
+    chrome.tabs.query = ((info: chrome.tabs.QueryInfo = {}) => {
+      if (failed) return real(info);
+      failed = true;
+      return Promise.reject(new Error("extension reloading"));
+    }) as unknown as typeof chrome.tabs.query;
+
+    const { result } = renderHook(() => useTabsStructure());
+
+    // Nothing fires an event here: the store has to come back by itself.
+    await waitFor(() => expect(titles(result.current)).toEqual(["First"]), {
+      timeout: 3000,
+    });
+    expect(logged).toHaveBeenCalled();
+  });
+
+  // An event that changes nothing the app holds should cost nothing to
+  // render. Without this every load published a new object and every
+  // subscriber re-rendered, for every event Chrome sends.
+  it("does not notify when the browser answers the same thing twice", async () => {
+    installChrome({ windows: WINDOWS, tabs: [tab({ id: 1 })] });
+    let renders = 0;
+    const { result } = renderHook(() => {
+      renders += 1;
+      return useTabsStructure();
+    });
+    await waitFor(() => expect(result.current).toBeDefined());
+
+    const settled = renders;
+    [1, 2, 3].forEach(() => {
+      (chrome.tabs.onUpdated as unknown as { fire: () => void }).fire();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(renders).toBe(settled);
+  });
+
+  // A later subscriber is served by the snapshot that is already there.
+  it("does not re-query for a subscriber that arrives late", async () => {
+    installChrome({ windows: WINDOWS, tabs: [tab({ id: 1 })] });
+    const first = renderHook(() => useTabsStructure());
+    await waitFor(() => expect(first.result.current).toBeDefined());
+
+    vi.mocked(chrome.tabs.query).mockClear();
+    const second = renderHook(() => useTabsStructure());
+
+    expect(second.result.current).toBeDefined();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(chrome.tabs.query).not.toHaveBeenCalled();
+  });
   it("stops listening once the last consumer goes", async () => {
     const { unmount, result } = renderHook(() => useTabsStructure());
     await waitFor(() => expect(result.current).toBeDefined());

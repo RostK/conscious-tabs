@@ -12,7 +12,7 @@ export const TabsView: FC = () => {
 
   // A window whose only tab was ours now has nothing to show. Rendering it
   // anyway leaves a header for a window the list claims is empty.
-  const windows = allWindows.filter((window) =>
+  const windows = (allWindows ?? []).filter((window) =>
     tabsStructure.some(({ windowId }) => windowId === window.id),
   );
 
@@ -20,11 +20,15 @@ export const TabsView: FC = () => {
   // filtered out: close everything but the anchor tab and there is genuinely
   // nothing left to mirror. The float must say so rather than go blank.
   //
-  // Gated on both queries having resolved, not on `windows` being empty. The
+  // Gated on both reads having resolved, not on `windows` being empty. The
   // windows arrive first — one call against three plus a debounce — so gating
   // on them alone announced an empty browser on every open, for as long as the
   // tabs took to follow.
-  if (loaded && allWindows.length > 0 && windows.length === 0) {
+  //
+  // `allWindows &&` is the whole of that test now. It used to read
+  // `.length > 0`, which also swallowed the real case of a user with no
+  // browsing window at all — rare, but then the message is exactly right.
+  if (loaded && allWindows && windows.length === 0) {
     return (
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">

@@ -77,8 +77,12 @@ export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
       sendMessage: vi.fn(async () => undefined),
     },
     tabs: {
+      // Cloned, like the real thing. chrome.* answers cross a process
+      // boundary, so every call returns fresh objects — handing out live
+      // references instead lets a fixture mutation appear to have been there
+      // all along, which silently defeats any change detection under test.
       query: vi.fn(async (info: chrome.tabs.QueryInfo = {}) =>
-        tabs.filter(
+        structuredClone(tabs).filter(
           (tab) =>
             (typeof info.url !== "string" ||
               matchesPattern(info.url, tab.url)) &&
@@ -100,6 +104,7 @@ export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
       onRemoved: event(),
       onMoved: event(),
       onDetached: event(),
+      onAttached: event(),
     },
     tabGroups: {
       TAB_GROUP_ID_NONE: -1,

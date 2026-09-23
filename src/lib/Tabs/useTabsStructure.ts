@@ -1,6 +1,6 @@
-import { debounce } from "@mui/material";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 
+import { createBrowserStore, sameData } from "../browserStore.ts";
 import { browsingWindowIds, isOwnPage } from "../surfaces.ts";
 import { GroupItem, TabItem, TabsStructure } from "./types.ts";
 
@@ -78,164 +78,100 @@ const getTabsTree = (
 };
 
 /**
- * One query, however many components ask.
+ * The tab list, as one store the whole app subscribes to.
  *
- * This used to be per-component state: five callers, each with its own chrome
- * listeners, its own debounce and its own three-call query. A single
- * `chrome.tabs.onUpdated` cost 12 extension round trips — measured, four of
- * each call — because four copies were mounted at once and every one of them
- * answered the same event independently. The work is identical in all of them,
- * so it belongs in one place that they subscribe to.
- *
- * The snapshot stays raw (tabs and groups as Chrome returned them); each
- * consumer builds its own tree, because `filter` differs between them and
- * building it is pure computation, which is not what was expensive.
+ * The rules that make this safe — ordering, not-yet-loaded, failed reads,
+ * listener lifetime — live in createBrowserStore, which two other pieces of
+ * browser state now use as well.
  */
 type Snapshot = {
   tabs: chrome.tabs.Tab[];
   groups: chrome.tabGroups.TabGroup[];
 };
 
-let snapshot: Snapshot | undefined;
-const listeners = new Set<() => void>();
-
-/**
- * Answers can arrive out of order.
- *
- * Each load is three awaited round trips, so a load started earlier can finish
- * later than one started after it. Without this, the older answer wins simply
- * by landing last, and the list shows state that has already been superseded —
- * a closed tab back from the dead — until some unrelated event refreshes it.
- */
-let generation = 0;
-
-const load = async () => {
-  const mine = ++generation;
-  let next: Snapshot;
-
-  // Two exclusions, both learned the hard way.
-  //
-  // The float's own window: chrome.tabs has no filter for it, and its
-  // `windowType` is "normal" like everything else, so the browsing windows
-  // have to be resolved first and the tabs matched against them.
-  //
-  // Our own pages: the anchor tab is the one holding the float, and
-  // chrome.tabs.query is unfiltered by default — so without this the manager
-  // listed the tab whose closure kills the float, with a close button on it.
-  try {
-    const browsing = await browsingWindowIds();
-    const tabs = (await chrome.tabs.query({})).filter(
+const store = createBrowserStore<Snapshot>({
+  label: "the browser's tabs",
+  equals: sameData,
+  events: () => [
+    // onCreated included, though a new tab almost always fires onUpdated a
+    // moment later anyway: "almost always" is not the same as always, and a
+    // tab the store has not heard of is one the undo prompt will not speak
+    // for — see wasListedTab.
+    chrome.tabs.onCreated,
+    chrome.tabs.onUpdated,
+    chrome.tabs.onActivated,
+    chrome.tabs.onRemoved,
+    chrome.tabs.onMoved,
+    // Both halves of a cross-window drag. onDetached fires when the drag
+    // starts and onAttached when it lands, which can be seconds later —
+    // listening only to the first meant querying a tab still in flight and
+    // never hearing where it came down, so the row sat in the wrong window
+    // until something unrelated refreshed the list.
+    chrome.tabs.onDetached,
+    chrome.tabs.onAttached,
+    chrome.tabGroups.onUpdated,
+  ],
+  load: async () => {
+    // Two exclusions, both learned the hard way.
+    //
+    // The float's own window: chrome.tabs has no filter for it, and its
+    // `windowType` is "normal" like everything else, so the browsing windows
+    // have to be resolved first and the tabs matched against them.
+    //
+    // Our own pages: the anchor tab is the one holding the float, and
+    // chrome.tabs.query is unfiltered by default — so without this the manager
+    // listed the tab whose closure kills the float, with a close button on it.
+    //
+    // Asked together rather than in turn: no answer here depends on another,
+    // and this runs on every browser event, so awaiting them one at a time
+    // spent three round trips of latency to learn what one costs.
+    const [browsing, queried, groups] = await Promise.all([
+      browsingWindowIds(),
+      chrome.tabs.query({}),
+      chrome.tabGroups.query({}),
+    ]);
+    const tabs = queried.filter(
       ({ url, windowId }) => browsing.has(windowId) && !isOwnPage(url),
     );
-    const groups = await chrome.tabGroups.query({});
-    next = { tabs, groups };
-  } catch (error) {
-    // Any of the three can reject while the browser is tearing a window
-    // down or the extension is reloading. The last snapshot stands: a read
-    // that failed says nothing about what the browser holds, and the next
-    // event retries. Reported rather than swallowed, because the only
-    // symptom otherwise is a list that quietly stops matching.
-    console.error("Couldn't read the browser's tabs", error);
-    return;
-  }
-
-  if (mine !== generation) return;
-  snapshot = next;
-  listeners.forEach((notify) => {
-    notify();
-  });
-};
-
-const refresh = debounce(() => {
-  void load();
-}, 10);
-
-const TAB_EVENTS = () => [
-  // onCreated included, though a new tab almost always fires onUpdated a
-  // moment later anyway: "almost always" is not the same as always, and a
-  // tab the store has not heard of is one the undo prompt will not speak
-  // for — see wasListedTab. A background tab now also reaches the list
-  // when it is created rather than when something else happens to it.
-  chrome.tabs.onCreated,
-  chrome.tabs.onUpdated,
-  chrome.tabs.onActivated,
-  chrome.tabs.onRemoved,
-  chrome.tabs.onMoved,
-  chrome.tabs.onDetached,
-  chrome.tabGroups.onUpdated,
-];
-
-/**
- * Chrome listeners live exactly as long as someone is subscribed. Dropping to
- * zero also drops the snapshot: the next subscriber is then a cold start
- * rather than a reader of whatever the last one left behind, which matters in
- * tests, where the chrome stub is replaced between cases.
- */
-const subscribe = (notify: () => void): (() => void) => {
-  if (listeners.size === 0) {
-    TAB_EVENTS().forEach((event) => {
-      event.addListener(refresh);
-    });
-  }
-  listeners.add(notify);
-  refresh();
-
-  return () => {
-    listeners.delete(notify);
-    if (listeners.size > 0) return;
-    TAB_EVENTS().forEach((event) => {
-      event.removeListener(refresh);
-    });
-    refresh.clear();
-    generation += 1; // an answer in flight is nobody's now
-    snapshot = undefined;
-  };
-};
-
-const getSnapshot = () => snapshot;
+    return { tabs, groups };
+  },
+});
 
 /**
  * Hold the store open for as long as the caller is mounted, without
- * re-rendering when it changes.
- *
- * For readers of `wasListedTab`, which asks a question *about* the snapshot
- * rather than rendering it. Without this the filter rested on an unstated
- * invariant — that some other component happened to be subscribed — and the
- * moment it was not, `wasListedTab` would answer yes to everything and the
- * float's own about:blank tab would start raising "Tab closed" again.
+ * re-rendering when it changes — for readers of `wasListedTab`, which asks a
+ * question *about* the snapshot rather than rendering it.
  */
-export const useKeepTabsLoaded = (): void => {
-  useEffect(() => subscribe(() => undefined), []);
-};
+export const useKeepTabsLoaded = store.useAlive;
 
 /**
  * Was this tab one the manager was mirroring?
  *
  * `chrome.tabs.onRemoved` fires for tabs this app never showed and never
  * would: the float's own window holds an `about:blank` tab, so closing the
- * float raised "Tab closed" with an UNDO that offered to restore it. The
- * list already knows which tabs it mirrors — this is that knowledge, asked
- * at the moment of the event, while the removed tab is still in the last
+ * float raised "Tab closed" with an UNDO that offered to restore it. Asked at
+ * the moment of the event, while the removed tab is still in the last
  * snapshot and before the refresh it triggers has landed.
  *
  * Unknown before the first load, where the honest answer is yes: better a
  * prompt for a tab we had not catalogued than a lost undo.
  */
-export const wasListedTab = (id: number): boolean =>
-  snapshot ? snapshot.tabs.some((tab) => tab.id === id) : true;
+export const wasListedTab = (id: number): boolean => {
+  const snapshot = store.get();
+  return snapshot ? snapshot.tabs.some((tab) => tab.id === id) : true;
+};
 
 /**
  * `undefined` until the first query has resolved — not the same thing as an
  * empty browser, which is what an initial `[]` claimed. TabsView drew its
  * "No other tabs are open." from that claim, so the message appeared for as
- * long as the tabs took to arrive: the windows query is one call, this is three
- * plus a debounce, so the gap is real and lands on every open.
+ * long as the tabs took to arrive.
  */
-export const useTabsStructure: (options?: {
+export const useTabsStructure = (options?: {
   filter?: (item: chrome.tabs.Tab) => boolean;
-}) => TabsStructure | undefined = (options) => {
+}): TabsStructure | undefined => {
   const filter = options?.filter;
-  const current = useSyncExternalStore(subscribe, getSnapshot);
+  const current = store.useValue();
 
   return useMemo(
     () =>
