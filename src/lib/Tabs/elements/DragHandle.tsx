@@ -1,6 +1,11 @@
 import { DraggableAttributes } from "@dnd-kit/core";
 import { DragIndicator } from "@mui/icons-material";
-import { FC, KeyboardEventHandler, MouseEventHandler } from "react";
+import {
+  ComponentProps,
+  FC,
+  KeyboardEventHandler,
+  MouseEventHandler,
+} from "react";
 
 import { ItemButton } from "./ItemButton.tsx";
 
@@ -33,12 +38,14 @@ export const DragHandle: FC<{
    * current-tab card has no such rule, so the default would hide it forever.
    */
   className?: string;
+  sx?: ComponentProps<typeof ItemButton>["sx"];
 }> = ({
   label,
   setActivatorNodeRef,
   attributes,
   onKeyDown,
   className = "itemAction",
+  sx,
 }) => {
   // The handle sits inside the row's own button, so a click on it would
   // otherwise bubble and switch tabs — grabbing is not activating.
@@ -50,12 +57,15 @@ export const DragHandle: FC<{
   return (
     <ItemButton
       className={className}
+      // Reached with Left/Right from the row, not by Tab — see TabDisplay.
+      data-row-control
       ref={setActivatorNodeRef}
       aria-label={label}
       onKeyDown={onKeyDown}
       onClick={swallowClick}
-      sx={{ cursor: "grab" }}
+      sx={[{ cursor: "grab" }, ...(Array.isArray(sx) ? sx : [sx])]}
       {...attributes}
+      tabIndex={-1}
     >
       <DragIndicator fontSize="small" />
     </ItemButton>

@@ -14,7 +14,11 @@ export const ItemButton = forwardRef<
     <IconButton
       ref={ref}
       sx={[
-        { backgroundColor: "background.paper" },
+        // No solid fill. It was there to mask the title running underneath an
+        // absolutely-positioned action, but it only matched a row at rest —
+        // on a hovered or selected row the buttons read as white patches
+        // stamped over it. The rows reserve space for their actions now, so
+        // there is nothing to mask.
         (theme) => ({
           "&:hover": {
             backgroundColor: `color-mix(in srgb, ${theme.palette.background.paper} 80%, ${theme.palette.text.primary})`,

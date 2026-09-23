@@ -41,8 +41,10 @@ export const GroupDisplay: FC<{
         },
         {
           // See TabDisplay: keyboard focus never fires :hover, so these
-          // controls were invisible and therefore unfocusable.
-          [`&:hover .itemAction, &:focus-within .itemAction`]: {
+          // controls were invisible and therefore unfocusable. :focus-visible,
+          // not :focus-within — an autofocused row would otherwise wear its
+          // controls permanently.
+          [`&:hover .itemAction, &:focus-visible .itemAction, &:has(:focus-visible) .itemAction`]: {
             visibility: "visible",
           },
           [`& .itemAction`]: {
