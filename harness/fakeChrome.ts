@@ -205,6 +205,7 @@ export const installFakeChrome = () => {
       onRemoved,
       onMoved: event(),
       onDetached: event(),
+      onAttached: event(),
     },
     tabGroups: {
       TAB_GROUP_ID_NONE: -1,

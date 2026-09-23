@@ -121,6 +121,32 @@ describe("several consumers", () => {
   });
 
   /**
+   * A cross-window drag fires onDetached as it starts and onAttached when it
+   * lands — seconds later, if the user hesitates over where to drop. Hearing
+   * only the first meant the store queried a tab still in flight and never
+   * learned where it settled, leaving the row under the window it left.
+   */
+  it("hears a tab arrive in another window, not just leave one", async () => {
+    const tabs = [tab({ id: 1, title: "Dragged", windowId: 1 })];
+    installChrome({
+      windows: [...WINDOWS, { id: 2, alwaysOnTop: false, type: "normal" }],
+      tabs,
+    });
+
+    const { result } = renderHook(() => useTabsStructure());
+    await waitFor(() => expect(result.current).toBeDefined());
+    expect((result.current?.[0] as TabItem).windowId).toBe(1);
+
+    // Dropped into the other window: Chrome now answers with it there.
+    tabs[0] = tab({ id: 1, title: "Dragged", windowId: 2 });
+    (chrome.tabs.onAttached as unknown as { fire: () => void }).fire();
+
+    await waitFor(() =>
+      expect((result.current?.[0] as TabItem).windowId).toBe(2),
+    );
+  });
+
+  /**
    * A read that failed says nothing about what the browser holds. Wiping the
    * list on a rejection would turn a transient API failure into an empty
    * manager; dropping the promise turns it into an unhandled rejection.

@@ -104,6 +104,7 @@ export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
       onRemoved: event(),
       onMoved: event(),
       onDetached: event(),
+      onAttached: event(),
     },
     tabGroups: {
       TAB_GROUP_ID_NONE: -1,

@@ -102,7 +102,13 @@ const store = createBrowserStore<Snapshot>({
     chrome.tabs.onActivated,
     chrome.tabs.onRemoved,
     chrome.tabs.onMoved,
+    // Both halves of a cross-window drag. onDetached fires when the drag
+    // starts and onAttached when it lands, which can be seconds later —
+    // listening only to the first meant querying a tab still in flight and
+    // never hearing where it came down, so the row sat in the wrong window
+    // until something unrelated refreshed the list.
     chrome.tabs.onDetached,
+    chrome.tabs.onAttached,
     chrome.tabGroups.onUpdated,
   ],
   load: async () => {
@@ -115,11 +121,18 @@ const store = createBrowserStore<Snapshot>({
     // Our own pages: the anchor tab is the one holding the float, and
     // chrome.tabs.query is unfiltered by default — so without this the manager
     // listed the tab whose closure kills the float, with a close button on it.
-    const browsing = await browsingWindowIds();
-    const tabs = (await chrome.tabs.query({})).filter(
+    //
+    // Asked together rather than in turn: no answer here depends on another,
+    // and this runs on every browser event, so awaiting them one at a time
+    // spent three round trips of latency to learn what one costs.
+    const [browsing, queried, groups] = await Promise.all([
+      browsingWindowIds(),
+      chrome.tabs.query({}),
+      chrome.tabGroups.query({}),
+    ]);
+    const tabs = queried.filter(
       ({ url, windowId }) => browsing.has(windowId) && !isOwnPage(url),
     );
-    const groups = await chrome.tabGroups.query({});
     return { tabs, groups };
   },
 });
