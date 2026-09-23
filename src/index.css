@@ -60,6 +60,22 @@ body {
   background-color: transparent;
 }
 
+/* Lift the toasts clear of the fixed control bar.
+ *
+ * notistack anchors its container to the very bottom of the viewport, which
+ * parked every snackbar on top of New tab / New window and the surface
+ * controls for the whole three seconds it was up. Worst in the float, where
+ * that bar is a much larger share of a 641px window, and worst of all for the
+ * undo toast — the one you are most likely to want to act on while it is
+ * covering the thing underneath it.
+ *
+ * 64px is the bar's measured 57px plus a gap. !important is needed because
+ * notistack injects its own positioning at runtime, after this file loads, so
+ * equal specificity would lose on cascade order. */
+.notistack-SnackbarContainer {
+  bottom: 64px !important;
+}
+
 h1 {
   font-size: 3.2em;
   line-height: 1.1;

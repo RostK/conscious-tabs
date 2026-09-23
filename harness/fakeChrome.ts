@@ -15,12 +15,25 @@
  * vitest's `vi.fn`, which has no business in a browser bundle.
  */
 
-const noop = () => undefined;
-const event = () => ({
-  addListener: noop,
-  removeListener: noop,
-  hasListener: () => false,
-});
+/**
+ * A real event, not a stub. The harness is worth much more when acting on it
+ * actually changes something: close a tab and the list updates, the undo toast
+ * appears, and the layout can be measured in the state it will really be in.
+ */
+type Listener = (...args: never[]) => void;
+const event = () => {
+  const listeners = new Set<Listener>();
+  return {
+    addListener: (fn: Listener) => listeners.add(fn),
+    removeListener: (fn: Listener) => listeners.delete(fn),
+    hasListener: (fn: Listener) => listeners.has(fn),
+    fire: (...args: never[]) => {
+      listeners.forEach((fn) => {
+        fn(...args);
+      });
+    },
+  };
+};
 
 const TITLES: [string, string][] = [
   ["Using the Document Picture-in-Picture API - Web APIs | MDN", "https://developer.mozilla.org/en-US/docs/Web/API/Document_Picture-in-Picture_API"],
@@ -76,12 +89,23 @@ const groups: chrome.tabGroups.TabGroup[] = [
 ];
 
 export const installFakeChrome = () => {
+  const onRemoved = event();
+  const onUpdated = event();
+  const onActivated = event();
+
   const remove = (ids: number | number[]) => {
     const list = Array.isArray(ids) ? ids : [ids];
     for (const id of list) {
       const at = tabs.findIndex((tab) => tab.id === id);
       if (at >= 0) tabs.splice(at, 1);
     }
+    // Fire, so the views re-query and SyncPrompt raises its undo toast.
+    list.forEach((id) => {
+      (onRemoved.fire as (...a: unknown[]) => void)(id, {
+        windowId: 1,
+        isWindowClosing: false,
+      });
+    });
     return Promise.resolve();
   };
 
@@ -110,9 +134,9 @@ export const installFakeChrome = () => {
       group: () => Promise.resolve(1),
       duplicate: () => Promise.resolve(undefined),
       reload: () => Promise.resolve(undefined),
-      onUpdated: event(),
-      onActivated: event(),
-      onRemoved: event(),
+      onUpdated,
+      onActivated,
+      onRemoved,
       onMoved: event(),
       onDetached: event(),
     },
@@ -142,7 +166,12 @@ export const installFakeChrome = () => {
     },
     sessions: {
       MAX_SESSION_RESULTS: 25,
-      getRecentlyClosed: () => Promise.resolve([]),
+      // A closed entry to restore, so the undo toast actually appears and its
+      // position can be checked against the fixed control bar.
+      getRecentlyClosed: () =>
+        Promise.resolve([
+          { lastModified: Date.now(), tab: { sessionId: "fake-session" } },
+        ]),
       restore: () => Promise.resolve(undefined),
     },
   };

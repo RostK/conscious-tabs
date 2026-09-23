@@ -137,20 +137,24 @@ export const ControlBar: FC = () => {
           />
 
           {host === "panel" && (
-            /* The trailing ellipsis is the whole reason this can be honest:
-               it is the long-standing convention for "this opens something
-               rather than doing it", and floating cannot be started from the
-               side panel at all (C-1). The accessible name opens with the
-               visible text so voice control still matches it, then spells out
-               the second step. */
-            <Button
-              startIcon={<PictureInPictureAlt />}
-              onClick={handleAnchor}
-              aria-label="Float on top — opens the tab manager in a tab, where you can float it over your other apps"
-              sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
-            >
-              Float on top…
-            </Button>
+            /* Names the destination, not a capability this surface does not
+               have. The panel cannot float anything (C-1), so every label
+               claiming it does was false — "Float on top…" leaned on the
+               ellipsis convention to carry a promise the click never keeps.
+               Floating is discovered one click away, in the tab, on a control
+               that genuinely floats. The accessible name leads with the
+               visible text so voice control matches, then adds what the
+               destination is for. */
+            <Tooltip title="The tab manager at full window width">
+              <Button
+                startIcon={<OpenInNew />}
+                onClick={handleAnchor}
+                aria-label="Open full view — the tab manager at full window width, where it can be floated on top of your other apps"
+                sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+              >
+                Open full view
+              </Button>
+            </Tooltip>
           )}
 
           {host === "anchor" && floating && (
@@ -181,13 +185,17 @@ export const ControlBar: FC = () => {
                just went to, and "Stop floating" is waiting there when you want
                it. `openAnchorTab` focuses-or-creates, and while a float is up
                the anchor necessarily exists, so this is always a "go to". */
-            <Tooltip title="Show the full manager in its tab">
+            /* Same words as the side panel's, for the same destination —
+               nothing to learn twice. "Go to tab" was confusing here because
+               "tab" is the most overloaded word in this app: the thing lists
+               tabs, so it read as "switch to one of them". */
+            <Tooltip title="The tab manager at full window width">
               <Button
                 startIcon={<OpenInNew />}
                 onClick={handleAnchor}
                 sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
               >
-                Go to tab
+                Open full view
               </Button>
             </Tooltip>
           )}

@@ -456,12 +456,19 @@ effectively invisible.
   C-3 mean the panel can never reach a float directly, so two is the minimum this feature can ever
   cost). Spending the one budget the feature has none of, to solve a width problem that had
   already been solved another way, was the wrong trade.
-  Settled shape: a single labelled button, **"Float on top…"**. The bar fits it because New tab
-  and New window gave up their labels — conventional actions nobody needs taught, where floating
-  is the one nobody can guess. Measured at 320px: 114px wide, one row, no horizontal scroll. The
-  trailing ellipsis is what makes the label honest, being the long-standing convention for "this
-  opens something rather than doing it"; the accessible name opens with the visible text, so voice
-  control still matches, then spells out the second step.
+  **Third revision, and this criterion was the problem.** After a labelled button, a menu, and a
+  labelled button with an ellipsis, the honest conclusion is that **AC-39 as originally written
+  asked for something impossible**: a label on the side panel's control that advertises floating.
+  That control cannot float — C-1 — so every wording claiming it does is false, and "Float on
+  top…" was leaning on the ellipsis convention to smuggle the promise past the reader. It did not
+  land.
+  Settled shape: the label names the **destination**, **"Open full view"**, which is exactly what
+  the click delivers. Floating is discovered one click later, in the tab, on a control that
+  genuinely floats. That is acceptable because step one is independently worth doing — "more
+  room" is a thing people want on its own — so the feature is one click from view rather than
+  buried behind an action nobody would otherwise take. The accessible name leads with the visible
+  text, so voice control matches, and then names what the destination is for, which keeps the
+  floating payoff reachable for screen-reader users at no cost in width.
   **Verify:** unit on the affordance's user-visible and accessible text (assert it names the
   floating payoff, and does not claim the click itself floats anything), plus manual.
 - **AC-40** _(Must)_ The information required by AC-39 SHALL be reachable without hovering — it
@@ -699,7 +706,7 @@ these were things the spec asserted confidently and got wrong.
 | 4 | **C-7** narrowed | Clamping does not bite at this size: 400x640 requested, 401x641 content area delivered. |
 | 5 | **C-12** reasoning completed | Conclusion unchanged; it had never ruled out `setOptions`, which is now done explicitly so it is not re-derived. |
 | 6 | **AC-16** superseded | The anchor tab is filtered out of the list rather than shown as a marked, non-closable row. User decision. E-4 is dissolved rather than guarded. |
-| 7 | **AC-39, AC-40** revised | The labelled bottom-bar control they assumed promised floating from a surface that cannot float (C-1). A menu was tried and rejected for costing a third click against a two-click floor; the settled answer is one labelled button, "Float on top…", the ellipsis carrying the "this opens a step" convention. |
+| 7 | **AC-39, AC-40** revised, three times | AC-39 asked for a side-panel label advertising floating from a surface that cannot float (C-1) — an impossible brief, not a copy problem. Attempts: labelled button (lied), menu (honest but cost a third click against a two-click floor), ellipsis (still lied, just quietly). Settled: the label names the destination, "Open full view", and floating is discovered one click later on a control that actually floats. |
 | 8 | **NG-11** re-reasoned | Automatic restoration is impossible, not merely unwanted (C-10, C-13, C-14). |
 | 9 | **AC-41** added | With NG-11 impossible, the anchor tab had no route back to the panel at all. A manual one is not what NG-11 forbids. |
 | 10 | **AC-42** added | AC-19 states the principle; the undo prompt firing in every live surface, and restoring twice, is the case that actually occurs. |

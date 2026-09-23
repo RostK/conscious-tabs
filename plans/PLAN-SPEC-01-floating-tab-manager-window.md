@@ -86,9 +86,9 @@ landing back on a labelled button with honest copy. Settled state:
 
 | Host | Logo | Surface controls |
 | --- | --- | --- |
-| Side panel | decorative | **Float on top…** — one button, two clicks to a float |
+| Side panel | decorative | **Open full view** — names the destination, not a capability it lacks |
 | Anchor tab | decorative | **Float on top** / **Stop floating**, **Back to panel** as buttons |
-| Float | decorative | **Go to tab** — focuses the anchor tab, leaves the float up (AC-43) |
+| Float | decorative | **Open full view** — same words, same destination; leaves the float up (AC-43) |
 
 **Sequencing deviation, deliberate:** T-2 and T-3 were built **before** T-0 rather than after. The
 plan assumed T-0 could be run against the spike, but the spike only reaches the float through a
