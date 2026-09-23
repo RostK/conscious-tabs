@@ -4,6 +4,7 @@ import {
   Close,
 } from "@mui/icons-material";
 import {
+  Box,
   ListItemAvatar,
   ListItemButton,
   ListItemSecondaryAction,
@@ -116,32 +117,50 @@ export const TabDisplay: FC<{
         },
       ]}
     >
-      {/* Beside the favicon, in the row's left padding — not in its slot.
-          Selection persists, and a persistent checkbox that took the favicon's
-          place would cost the user the one thing that identifies the tab they
-          are about to act on. That is what the original -8 was for; the swap
-          that replaced it only looked acceptable while hovering.
-          The fill is what makes the overlap read as two adjacent controls
-          rather than one on top of the other, so this control keeps it even
-          though the right-hand actions no longer need it. */}
-      <ItemButton
-        className="tabSelect"
-        {...rowControlProps}
-        {...selectedProps(isSelected)}
-        onClick={handleHighlight}
-        aria-label={isSelected ? "Deselect tab" : "Select tab"}
-        sx={{
-          position: "absolute",
-          left: -8,
-          backgroundColor: "background.paper",
-        }}
-      >
-        {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
-      </ItemButton>
       <ListItemAvatar sx={{ minWidth: "36px", pt: "5px" }}>
-        <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
-          <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
-        </AudioBadge>
+        {/* The checkbox centres on *this* box, which is exactly the favicon.
+            Centring it on the avatar slot instead needed hand-tuned offsets,
+            and those silently stopped being right every time anything around
+            them moved — which happened three times. */}
+        <Box
+          sx={{
+            position: "relative",
+            display: "inline-flex",
+            // Sized to the favicon, not to its contents: AudioBadge's badge
+            // hangs off the corner and widened the box, which pulled the
+            // centre — and so the checkbox — several pixels to the left.
+            width: 26,
+            height: 26,
+          }}
+        >
+          <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
+            <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
+          </AudioBadge>
+          {/* Over the favicon, framing it — not beside it, and not instead of
+              it. Beside crammed two icons into 16px of padding and read as
+              clutter; instead of cost a selected row the one thing that
+              identifies the tab, because selection persists. No fill, so the
+              favicon stays legible inside the box. */}
+          <ItemButton
+            className="tabSelect"
+            {...rowControlProps}
+            {...selectedProps(isSelected)}
+            onClick={handleHighlight}
+            aria-label={isSelected ? "Deselect tab" : "Select tab"}
+            sx={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            {isSelected ? (
+              <CheckBoxOutlined />
+            ) : (
+              <CheckBoxOutlineBlankOutlined />
+            )}
+          </ItemButton>
+        </Box>
       </ListItemAvatar>
       <ListItemSecondaryAction>
         {dragHandle}
