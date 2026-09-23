@@ -47,6 +47,8 @@ What you can do
 
 • Float it on top — open Conscious Tabs in a tab, then float it into a small always-on-top window that stays visible over your other apps. Triage your tabs without switching back to the browser, and get your full browser width back while you do it.
 
+• Reach it all from the keyboard — Tab steps between rows, the arrow keys reach the controls on the row you're on, and every button announces the tab, group, or window it acts on rather than just "Close".
+
 • Fits your browser — follows your system light / dark theme and sits natively in the side panel.
 
 Private by design

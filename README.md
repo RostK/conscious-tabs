@@ -22,6 +22,10 @@ and from there **floats on top** of your other applications in a small always-on
 - **Float it on top** — from the full-tab view, send the manager into an always-on-top window and
   triage your tabs without switching back to the browser first. Costs no browser width and needs no
   extra permission.
+- **Built for the keyboard** — `Tab` moves between rows, `←` / `→` reach the controls on the row
+  you're on. One stop per row, so walking a list of twenty tabs costs twenty stops rather than
+  eighty. Controls reveal on focus as well as on hover, and each is named for what it acts on —
+  _"Close Gmail"_, not _"Close"_.
 - Follows your system **light / dark** theme.
 
 ## Install
