@@ -81,15 +81,15 @@ browser frame) to fill the 1280×800 canvas.
 Recommended set, in order:
 
 1. **Hero — the whole panel.** The tab list with the current-tab panel pinned at
-   the top and one tab group expanded. Caption: *"Every open tab, calm and in one place."*
+   the top and one tab group expanded. Caption: _"Every open tab, calm and in one place."_
 2. **Search.** A query typed in, list filtered to matching tabs. Caption:
-   *"Find any tab by title or URL — across every window."*
+   _"Find any tab by title or URL — across every window."_
 3. **Multi-select + bulk action.** A few tabs checked with the selection toolbar
-   showing. Caption: *"Select and tidy in bulk — close, group, or move."*
+   showing. Caption: _"Select and tidy in bulk — close, group, or move."_
 4. **Current-tab quick actions.** The current-tab panel with its menu open
-   (mute / pin / duplicate / move). Caption: *"Manage the tab you're on without scrolling."*
+   (mute / pin / duplicate / move). Caption: _"Manage the tab you're on without scrolling."_
 5. **Dark mode.** The same hero view in system dark theme. Caption:
-   *"Follows your system light and dark theme."*
+   _"Follows your system light and dark theme."_
 
 ### Ready-to-upload assets
 
@@ -100,15 +100,16 @@ windows) so no personal data appears — driven through its real interactions
 (search typed, tabs selected, the current-tab menu opened, dark theme
 emulated) and composited onto the branded frame:
 
-| File | Scene |
-| --- | --- |
-| `store-assets/01-hero.png` | Hero — the whole panel |
-| `store-assets/02-search.png` | Search / filter |
-| `store-assets/03-multiselect.png` | Multi-select + bulk actions |
+| File                              | Scene                         |
+| --------------------------------- | ----------------------------- |
+| `store-assets/01-hero.png`        | Hero — the whole panel        |
+| `store-assets/02-search.png`      | Search / filter               |
+| `store-assets/03-multiselect.png` | Multi-select + bulk actions   |
 | `store-assets/04-current-tab.png` | Current-tab quick-action menu |
-| `store-assets/05-dark-mode.png` | Dark mode |
+| `store-assets/05-dark-mode.png`   | Dark mode                     |
 
 Optional promo assets (dashboard only, not required):
+
 - Small promo tile **440×280**, marquee **1400×560** — use the paper background
   with the plum logo and the summary line.
 

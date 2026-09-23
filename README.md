@@ -1,10 +1,12 @@
 # Conscious Tabs
 
-A quieter way to handle tab overload — every open tab, searchable and closable from one tidy panel.
+A quieter way to handle tab overload — every open tab, searchable and closable from the side panel, a
+full tab, or a small window that floats above your other apps.
 
-Conscious Tabs is a Chrome extension that lives in the browser **side panel** and mirrors your open
-tabs — grouped by window and by Chrome tab group — so you can find, switch, tidy, and close them
-without hunting through a crowded tab strip.
+Conscious Tabs is a Chrome extension that mirrors your open tabs — grouped by window and by Chrome
+tab group — so you can find, switch, tidy, and close them without hunting through a crowded tab
+strip. It lives in the browser **side panel**, opens into a **full tab** when you want more room,
+and from there **floats on top** of your other applications in a small always-on-top window.
 
 ## Features
 
@@ -15,9 +17,11 @@ without hunting through a crowded tab strip.
   selection to a new window in one action.
 - **Drag and drop** to reorder tabs and groups, or move them between windows.
 - **Undo** closed tabs from a snackbar (restores via the browser's session history).
-- **Open it in a tab** for a roomier view — and from there, **float it on top** of your other
-  applications in a small always-on-top window, so you can triage tabs without switching back to
-  the browser first. Costs no browser width and needs no extra permission.
+- **Audio at a glance** — a speaker badge marks every tab making noise. Mute one from its own row,
+  or silence them all from the toolbar.
+- **Float it on top** — from the full-tab view, send the manager into an always-on-top window and
+  triage your tabs without switching back to the browser first. Costs no browser width and needs no
+  extra permission.
 - Follows your system **light / dark** theme.
 
 ## Install
@@ -37,6 +41,7 @@ without hunting through a crowded tab strip.
 | ------------------ | ------------------------------------------------------ |
 | `npm run dev`      | Vite dev server with HMR (writes the build to `dist/`) |
 | `npm run build`    | Type-check (`tsc`) and bundle to `dist/`               |
+| `npm run test`     | Vitest, single run                                     |
 | `npm run lint`     | ESLint (`--max-warnings 0`)                            |
 | `npm run lint:fix` | ESLint with autofix                                    |
 | `npm run prettier` | Format the project with Prettier                       |
