@@ -2,6 +2,10 @@ import { Button, debounce } from "@mui/material";
 import { closeSnackbar, enqueueSnackbar } from "notistack";
 import { FC, useEffect } from "react";
 
+import { useKeepTabsLoaded, wasListedTab } from "../useTabsStructure.ts";
+import { restoreSessions } from "./restore.ts";
+import { shouldPrompt } from "./shouldPrompt.ts";
+
 // chrome.sessions only retains the most recently closed entries.
 const MAX_RESTORE = chrome.sessions.MAX_SESSION_RESULTS;
 
@@ -9,32 +13,12 @@ const MAX_RESTORE = chrome.sessions.MAX_SESSION_RESULTS;
 const tabCountOf = (session: chrome.sessions.Session): number =>
   session.window ? session.window.tabs?.length ?? 1 : 1;
 
-const restore = async (sessions: chrome.sessions.Session[]) => {
-  const focusedWindow = await chrome.windows.getLastFocused();
-  const [activeTab] = await chrome.tabs.query({
-    active: true,
-    windowId: focusedWindow.id,
-  });
-
-  // Oldest-first so restored tabs land back in roughly their original order.
-  for (const session of [...sessions].reverse()) {
-    const sessionId = session.tab?.sessionId ?? session.window?.sessionId;
-    if (sessionId) {
-      await chrome.sessions.restore(sessionId);
-    }
-  }
-
-  // Restoring steals focus/activation; put the user back where they were.
-  if (focusedWindow.id) {
-    void chrome.windows.update(focusedWindow.id, { focused: true });
-  }
-  if (activeTab?.id) {
-    void chrome.tabs.update(activeTab.id, { active: true });
-  }
-};
-
 const prompt = async (closedCount: number) => {
   if (closedCount === 0) return;
+  // Checked here rather than on the event: visibility can change during the
+  // 200ms burst window, and what matters is where the user is when the
+  // prompt would actually appear.
+  if (!shouldPrompt()) return;
   const recentSessions = await chrome.sessions.getRecentlyClosed({
     maxResults: MAX_RESTORE,
   });
@@ -64,7 +48,16 @@ const prompt = async (closedCount: number) => {
         variant="text"
         color="secondary"
         onClick={async () => {
-          await restore(toRestore);
+          try {
+            await restoreSessions(toRestore);
+          } catch {
+            // A session id is spent once restored, so a second surface's UNDO
+            // for the same burst will reject. Say so quietly rather than
+            // leaving an unhandled rejection in the console.
+            enqueueSnackbar("Couldn't restore those tabs", {
+              variant: "error",
+            });
+          }
           closeSnackbar(snackbarId);
         }}
       >
@@ -81,12 +74,19 @@ const flush = debounce(() => {
   burstCount = 0;
   void prompt(count);
 }, 200);
-const handleRemove = () => {
+const handleRemove = (tabId: number) => {
+  // Only tabs the manager was showing. The float's own window carries an
+  // about:blank tab, so "Stop floating" otherwise announced a tab closure
+  // the user never made — and offered to undo it.
+  if (!wasListedTab(tabId)) return;
   burstCount += 1;
   flush();
 };
 
 export const SyncPrompt: FC = () => {
+  // Keeps the snapshot wasListedTab reads alive, rather than relying on
+  // some other component being mounted to do it.
+  useKeepTabsLoaded();
   useEffect(() => {
     chrome.tabs.onRemoved.addListener(handleRemove);
     return () => {

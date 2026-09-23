@@ -11,6 +11,7 @@ import { IconButton, Menu, MenuItem } from "@mui/material";
 import {
   ComponentProps,
   FC,
+  KeyboardEventHandler,
   MouseEventHandler,
   useCallback,
   useContext,
@@ -19,7 +20,9 @@ import {
 } from "react";
 
 import { DropPlaceholder, useDropzone } from "../DnD";
+import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
+import { rowControlProps, selectedProps } from "../elements/rowControls.ts";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
@@ -78,10 +81,18 @@ export const GroupListItem: FC<
     attributes,
     listeners,
     setNodeRef: setNodeRefDraggable,
+    setActivatorNodeRef,
   } = useDraggable({
     id: group.id as number,
     data: group,
   });
+
+  // See DragHandle: the mouse half stays on the row, the keyboard half moves
+  // to a named control, so a group row is one tab stop rather than two.
+  const onMouseDown = listeners?.onMouseDown as
+    | MouseEventHandler<HTMLDivElement>
+    | undefined;
+  const onKeyDown = listeners?.onKeyDown as KeyboardEventHandler | undefined;
 
   const handleOpenMenuClick: MouseEventHandler<HTMLElement> = (event) => {
     event.preventDefault();
@@ -116,9 +127,16 @@ export const GroupListItem: FC<
   const itemAction = useMemo(() => {
     return (
       <>
+        <DragHandle
+          label={`Reorder group ${group.title || ""}`.trim()}
+          setActivatorNodeRef={setActivatorNodeRef}
+          attributes={attributes}
+          onKeyDown={onKeyDown}
+        />
         <IconButton
           onClick={handleOpenMenuClick}
-          aria-label="delete"
+          {...rowControlProps}
+          aria-label={`Actions for group ${group.title || ""}`.trim()}
           size="small"
         >
           <MoreVert />
@@ -127,13 +145,14 @@ export const GroupListItem: FC<
           className="close-button"
           onClick={handleDelete}
           edge="end"
-          aria-label="delete"
+          {...rowControlProps}
+          aria-label={`Close every tab in group ${group.title || ""}`.trim()}
         >
           <Close />
         </ItemButton>
       </>
     );
-  }, [handleDelete]);
+  }, [handleDelete, group.title, setActivatorNodeRef, attributes, onKeyDown]);
 
   const isSelected = useMemo(
     () => !group.tabs.find(({ id }) => id && !selected.includes(id)),
@@ -160,23 +179,27 @@ export const GroupListItem: FC<
     return (
       <>
         {expanded === undefined && (
-          <IconButton>
+          // Indicator only — the row's click collapses the group.
+          <IconButton tabIndex={-1} aria-hidden>
             {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
         )}
         <ItemButton
+          {...rowControlProps}
+          aria-label={
+            isSelected
+              ? `Deselect every tab in group ${group.title || ""}`.trim()
+              : `Select every tab in group ${group.title || ""}`.trim()
+          }
           onClick={handleSelectButton}
-          className={!isSelected ? "itemAction" : undefined}
-          sx={{
-            position: "absolute",
-            left: -8,
-          }}
+          className="itemAction"
+          {...selectedProps(isSelected)}
         >
           {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
         </ItemButton>
       </>
     );
-  }, [expanded, group.collapsed, handleSelectButton, isSelected]);
+  }, [expanded, group.collapsed, group.title, handleSelectButton, isSelected]);
   return (
     <>
       {outerDZ.isOver && !outerDZ.isSelf ? <DropPlaceholder /> : null}
@@ -200,15 +223,22 @@ export const GroupListItem: FC<
                 }}
               />
             )}
-            <div ref={setNodeRefDraggable} {...listeners} {...attributes}>
+            <div ref={setNodeRefDraggable} onMouseDown={onMouseDown}>
               <OuterDropzone>
                 <GroupDisplay
                   onCtrlClick={handleSelectButton}
                   group={group}
                   sx={[
+                    // Hold the controls open while this row's own menu is,
+                    // so the menu is not left anchored to something that has
+                    // faded out. It has to set the property the shared model
+                    // actually hides with: this said `visibility: visible`,
+                    // which stopped meaning anything when rows moved to
+                    // opacity, and had been quietly doing nothing since.
                     open && {
                       [`& .itemAction`]: {
-                        visibility: "visible",
+                        opacity: 1,
+                        pointerEvents: "auto",
                       },
                     },
                     Boolean(innerDZ.active?.data.current) && {

@@ -22,9 +22,11 @@ import {
 import { ComponentProps, useCallback, useContext, useState } from "react";
 
 import { ControlBar } from "./lib/ControlBar";
+import { FloatClosedNotice } from "./lib/FloatClosedNotice.tsx";
 import { AudioTabs } from "./lib/Tabs/AudioTabs";
 import { CurrentTab } from "./lib/Tabs/CurrentTab";
 import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
+import { setRowDragActive } from "./lib/Tabs/elements/rowControls.ts";
 import { TabAvatarsDisplay } from "./lib/Tabs/elements/TabAvatarsDisplay.tsx";
 import { SelectionContext, SelectionProvider } from "./lib/Tabs/selection";
 import { TabDisplay } from "./lib/Tabs/Tab/TabDisplay.tsx";
@@ -99,7 +101,13 @@ function App() {
   const handleDragStart = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragStart"]
   >(({ active }) => {
+    setRowDragActive(true);
     setDragging(active.data.current as unknown as DefaultDrag);
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setRowDragActive(false);
+    setDragging(null);
   }, []);
 
   const handleDragStop = useCallback<
@@ -113,6 +121,7 @@ function App() {
           dispatchSelected({ type: "clear" });
         }
       }
+      setRowDragActive(false);
       setDragging(null);
     },
     [dispatchSelected, dragging],
@@ -125,6 +134,11 @@ function App() {
           sensors={sensors}
           onDragEnd={handleDragStop}
           onDragStart={handleDragStart}
+          // E-11: a drag released outside the float's window never reaches a
+          // dropzone, and without this the overlay stayed on screen following
+          // a pointer that had left the building. The float makes this easy to
+          // hit — it is a 400px window with a lot of desktop around it.
+          onDragCancel={handleDragCancel}
         >
           <AppBar
             position="sticky"
@@ -166,6 +180,7 @@ function App() {
               <AudioTabs />
             </Toolbar>
             <CurrentTab />
+            <FloatClosedNotice />
           </AppBar>
           {!search && <TabsView />}
           {search && <SearchView search={search} />}

@@ -2,7 +2,6 @@ import { useDraggable } from "@dnd-kit/core";
 import {
   Close,
   ContentCopy,
-  DragIndicator,
   MoreVert,
   OpenInNew,
   PushPin,
@@ -22,7 +21,12 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { FC, useState } from "react";
+import {
+  FC,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  useState,
+} from "react";
 
 import {
   closeTab,
@@ -33,6 +37,7 @@ import {
   setPinned,
 } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
+import { DragHandle } from "../elements/DragHandle.tsx";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useActiveTab } from "../useActiveTab.ts";
 
@@ -44,10 +49,18 @@ import { useActiveTab } from "../useActiveTab.ts";
 export const CurrentTab: FC = () => {
   const tab = useActiveTab();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
-  const { attributes, listeners, setNodeRef } = useDraggable({
-    id: `current-tab-${tab?.id ?? "none"}`,
-    data: tab,
-  });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef } =
+    useDraggable({
+      id: `current-tab-${tab?.id ?? "none"}`,
+      data: tab,
+    });
+  // See DragHandle: the mouse half stays on the card so it drags from
+  // anywhere, the keyboard half moves to the grip, which stops this card
+  // being an unlabelled tab stop that announces only "draggable".
+  const onMouseDown = listeners?.onMouseDown as
+    | MouseEventHandler<HTMLDivElement>
+    | undefined;
+  const onKeyDown = listeners?.onKeyDown as KeyboardEventHandler | undefined;
   const closeMenu = () => setMenuAnchor(null);
 
   if (!tab?.id) {
@@ -67,8 +80,7 @@ export const CurrentTab: FC = () => {
       <Divider />
       <Box
         ref={setNodeRef}
-        {...listeners}
-        {...attributes}
+        onMouseDown={onMouseDown}
         sx={{
           display: "flex",
           alignItems: "center",
@@ -79,23 +91,30 @@ export const CurrentTab: FC = () => {
           borderColor: "primary.main",
           bgcolor: (theme) =>
             `color-mix(in srgb, ${theme.palette.primary.main} 6%, transparent)`,
-          pl: 0.75,
+          // Lands the favicon on the same x as every row's (their
+          // ListItemButton pads 16px; the accent bar here is 3 of it). The
+          // grip used to sit in front of the favicon, which made matching
+          // them impossible — it is with the other actions now.
+          pl: "13px",
           pr: 1,
           py: 0.5,
           cursor: "grab",
           touchAction: "none",
         }}
       >
-        <DragIndicator
-          fontSize="small"
-          sx={{ color: "text.disabled", flexShrink: 0 }}
-        />
-        <Box sx={{ display: "flex", flexShrink: 0 }}>
+        {/* Same column the rows give their favicon: 13px padding plus the 3px
+            accent bar starts it at 16, and 32 + the 4px gap puts the title at
+            52. Both then sit on exactly the x every row below uses, which is
+            the only way to line the card up with the list — matching one of
+            the two by eye always threw the other out. */}
+        <Box sx={{ display: "flex", flexShrink: 0, width: "32px" }}>
           <AudioBadge audible={tab.audible} muted={muted}>
             <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} />
           </AudioBadge>
         </Box>
-        <Box sx={{ flexGrow: 1, minWidth: 0, mx: 0.5 }}>
+        {/* Right margin only: a left one would push the title 4px past the
+            column the rows put theirs in. */}
+        <Box sx={{ flexGrow: 1, minWidth: 0, mr: 0.5 }}>
           <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
             {tab.title || "Current tab"}
           </Typography>
@@ -123,6 +142,16 @@ export const CurrentTab: FC = () => {
             </IconButton>
           </Tooltip>
         )}
+        <DragHandle
+          label="Reorder the current tab"
+          setActivatorNodeRef={setActivatorNodeRef}
+          attributes={attributes}
+          onKeyDown={onKeyDown}
+          // This card has no hover-reveal rule, so the default class would
+          // hide the grip permanently.
+          className={undefined}
+          sx={{ color: "text.disabled" }}
+        />
         <Tooltip title="Close tab">
           <IconButton size="small" onClick={() => closeTab(id)}>
             <Close fontSize="small" />

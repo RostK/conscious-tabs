@@ -45,6 +45,8 @@ What you can do
 
 • Undo closes — bring a tab back from a snackbar, restored via your browser's session history.
 
+• Float it on top — open Conscious Tabs in a tab, then float it into a small always-on-top window that stays visible over your other apps. Triage your tabs without switching back to the browser, and get your full browser width back while you do it.
+
 • Fits your browser — follows your system light / dark theme and sits natively in the side panel.
 
 Private by design

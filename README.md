@@ -15,6 +15,9 @@ without hunting through a crowded tab strip.
   selection to a new window in one action.
 - **Drag and drop** to reorder tabs and groups, or move them between windows.
 - **Undo** closed tabs from a snackbar (restores via the browser's session history).
+- **Open it in a tab** for a roomier view — and from there, **float it on top** of your other
+  applications in a small always-on-top window, so you can triage tabs without switching back to
+  the browser first. Costs no browser width and needs no extra permission.
 - Follows your system **light / dark** theme.
 
 ## Install

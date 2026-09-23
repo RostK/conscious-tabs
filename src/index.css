@@ -36,9 +36,44 @@ a:hover {
   }
 }
 
+/* Paint the brand canvas from the very first frame.
+ *
+ * `color-scheme` above already stops a *white* flash in dark mode, but it
+ * leaves the UA's own default background showing until MUI's CssBaseline
+ * mounts and sets the real one — a visible two-step. It matters most in the
+ * float, whose document is created empty and paints before the iframe inside
+ * it has loaded anything at all.
+ *
+ * These two values are `canvas` from src/lib/Theme/brand.ts. CSS cannot import
+ * them, so they are duplicated here; change them together. */
+html {
+  background-color: #f5f1e9;
+}
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #1a1613;
+  }
+}
+
 body {
   margin: 1rem;
   background-color: transparent;
+}
+
+/* Lift the toasts clear of the fixed control bar.
+ *
+ * notistack anchors its container to the very bottom of the viewport, which
+ * parked every snackbar on top of New tab / New window and the surface
+ * controls for the whole three seconds it was up. Worst in the float, where
+ * that bar is a much larger share of a 641px window, and worst of all for the
+ * undo toast — the one you are most likely to want to act on while it is
+ * covering the thing underneath it.
+ *
+ * 64px is the bar's measured 57px plus a gap. !important is needed because
+ * notistack injects its own positioning at runtime, after this file loads, so
+ * equal specificity would lose on cascade order. */
+.notistack-SnackbarContainer {
+  bottom: 64px !important;
 }
 
 h1 {

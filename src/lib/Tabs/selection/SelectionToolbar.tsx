@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 
+import { bringPanelAlong } from "../../surfaces.ts";
 import { closeTabs } from "../actions.ts";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
 import { TabItem } from "../types.ts";
@@ -42,7 +43,7 @@ export const SelectionToolbar: FC = () => {
   });
 
   const flatTabs = useMemo(() => {
-    return tabsStructure
+    return (tabsStructure ?? [])
       .reduce((acc, item) => {
         return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
       }, [] as TabItem[])
@@ -92,7 +93,7 @@ export const SelectionToolbar: FC = () => {
       });
       if (id) {
         await chrome.tabs.move(selected, { index: 0, windowId: id });
-        await chrome.sidePanel.open({ windowId: id });
+        await bringPanelAlong(id);
       }
       dispatch({ type: "clear" });
     } catch (e) {

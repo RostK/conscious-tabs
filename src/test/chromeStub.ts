@@ -1,0 +1,150 @@
+import { vi } from "vitest";
+
+/**
+ * A hand-rolled `chrome.*` stub.
+ *
+ * Two things about this codebase force it to be installed *globally, before any
+ * module under test is imported*, rather than per-test:
+ *
+ *   - `useTabsStructure.ts` runs `import TAB_GROUP_ID_NONE = chrome.tabGroups.TAB_GROUP_ID_NONE`
+ *     at module scope.
+ *   - `SyncPrompt.tsx` reads `chrome.sessions.MAX_SESSION_RESULTS` at module scope.
+ *
+ * Either one throws on import if `chrome` is missing. `setup.ts` therefore
+ * installs a baseline stub before the suite runs; individual tests call
+ * `installChrome()` again with the fixtures they need.
+ */
+
+export const EXTENSION_ID = "abcdefghijklmnopabcdefghijklmnop";
+export const EXTENSION_ORIGIN = `chrome-extension://${EXTENSION_ID}/`;
+
+/**
+ * A `chrome.*.onFoo` event that records its listeners and can fire them.
+ *
+ * Firing matters for anything driven by a browser event rather than a call —
+ * the float's "return to full view" message, for one, which is the only way
+ * the float's own copy of the app can reach the document holding the float.
+ */
+type Listener = (...args: never[]) => void;
+const event = () => {
+  const listeners = new Set<Listener>();
+  return {
+    addListener: vi.fn((fn: Listener) => listeners.add(fn)),
+    removeListener: vi.fn((fn: Listener) => listeners.delete(fn)),
+    hasListener: vi.fn((fn: Listener) => listeners.has(fn)),
+    fire: (...args: never[]) => {
+      listeners.forEach((fn) => {
+        fn(...args);
+      });
+    },
+  };
+};
+
+/**
+ * Chrome match patterns compare the pattern's path against path *plus query*,
+ * so `chrome-extension://<id>/*` matches `index.html?host=anchor`. Only the
+ * trailing-wildcard form the app actually uses is supported.
+ */
+const matchesPattern = (pattern: string, url?: string): boolean => {
+  if (!url) return false;
+  return pattern.endsWith("*")
+    ? url.startsWith(pattern.slice(0, -1))
+    : url === pattern;
+};
+
+export interface ChromeFixtures {
+  tabs?: Partial<chrome.tabs.Tab>[];
+  windows?: Partial<chrome.windows.Window>[];
+  groups?: Partial<chrome.tabGroups.TabGroup>[];
+  /** What `chrome.tabs.getCurrent()` resolves to — undefined outside a tab. */
+  currentTab?: Partial<chrome.tabs.Tab>;
+}
+
+export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
+  const tabs = (fixtures.tabs ?? []) as chrome.tabs.Tab[];
+  const windows = (fixtures.windows ?? []) as chrome.windows.Window[];
+  const groups = (fixtures.groups ?? []) as chrome.tabGroups.TabGroup[];
+
+  return {
+    runtime: {
+      getURL: vi.fn(
+        (path: string) => `${EXTENSION_ORIGIN}${path.replace(/^\//, "")}`,
+      ),
+      id: EXTENSION_ID,
+      // SelectionContext subscribes to this; without it, rendering anything
+      // inside SelectionProvider throws on "addListener of undefined".
+      onMessage: event(),
+      sendMessage: vi.fn(async () => undefined),
+    },
+    tabs: {
+      query: vi.fn(async (info: chrome.tabs.QueryInfo = {}) =>
+        tabs.filter(
+          (tab) =>
+            (typeof info.url !== "string" ||
+              matchesPattern(info.url, tab.url)) &&
+            (info.windowId === undefined || tab.windowId === info.windowId) &&
+            (info.active === undefined || Boolean(tab.active) === info.active),
+        ),
+      ),
+      getCurrent: vi.fn(async () => fixtures.currentTab),
+      update: vi.fn(async () => undefined),
+      create: vi.fn(async () => undefined),
+      remove: vi.fn(async () => undefined),
+      move: vi.fn(async () => undefined),
+      group: vi.fn(async () => 1),
+      duplicate: vi.fn(async () => undefined),
+      reload: vi.fn(async () => undefined),
+      onUpdated: event(),
+      onActivated: event(),
+      onCreated: event(),
+      onRemoved: event(),
+      onMoved: event(),
+      onDetached: event(),
+    },
+    tabGroups: {
+      TAB_GROUP_ID_NONE: -1,
+      query: vi.fn(async () => groups),
+      update: vi.fn(async () => undefined),
+      onUpdated: event(),
+    },
+    windows: {
+      WINDOW_ID_NONE: -1,
+      getAll: vi.fn(async () => windows),
+      getCurrent: vi.fn(async () => windows[0]),
+      getLastFocused: vi.fn(async () => windows[0]),
+      get: vi.fn(async (id: number) => windows.find((w) => w.id === id)),
+      update: vi.fn(async () => undefined),
+      create: vi.fn(async () => ({ id: 99 })),
+      remove: vi.fn(async () => undefined),
+      onRemoved: event(),
+      onCreated: event(),
+      onFocusChanged: event(),
+    },
+    sidePanel: {
+      open: vi.fn(async () => undefined),
+      setPanelBehavior: vi.fn(async () => undefined),
+    },
+    sessions: {
+      MAX_SESSION_RESULTS: 25,
+      getRecentlyClosed: vi.fn(async () => []),
+      // The parameter is declared, and used, on purpose. Without it the
+      // mock's call tuple is `[]` and a test destructuring the sessionId out
+      // of it fails to compile; with it unused, eslint fails instead (there
+      // is no argsIgnorePattern in .eslintrc.cjs).
+      restore: vi.fn(async (sessionId?: string) => sessionId),
+    },
+  };
+};
+
+export type ChromeStub = ReturnType<typeof createChromeStub>;
+
+/** Install a stub as the global `chrome` and hand it back for assertions. */
+export const installChrome = (fixtures: ChromeFixtures = {}): ChromeStub => {
+  const stub = createChromeStub(fixtures);
+  (globalThis as unknown as { chrome: unknown }).chrome = stub;
+  return stub;
+};
+
+/** An extension page URL, for building tab fixtures. */
+export const extensionUrl = (path = "index.html") =>
+  `${EXTENSION_ORIGIN}${path}`;

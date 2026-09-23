@@ -13,9 +13,14 @@ import {
   useState,
 } from "react";
 
+import { bringPanelAlong } from "../../surfaces.ts";
 import { closeWindow } from "../actions.ts";
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { ItemButton } from "../elements/ItemButton.tsx";
+import {
+  rowControlProps,
+  selectedProps,
+} from "../elements/rowControls.ts";
 import { SelectionContext } from "../selection";
 import { Tabs } from "../Tabs.tsx";
 import { TabItem, TabsStructure } from "../types.ts";
@@ -48,7 +53,7 @@ export const WindowListItem: FC<{
       e.preventDefault();
       e.stopPropagation();
       if (window.id) {
-        await chrome.sidePanel.open({ windowId: window.id });
+        await bringPanelAlong(window.id);
         void chrome.windows.update(window.id, { focused: true });
       }
     },
@@ -66,12 +71,15 @@ export const WindowListItem: FC<{
         className="close-button"
         onClick={handleCloseWindow}
         edge="end"
-        aria-label="delete"
+        {...rowControlProps}
+        aria-label={`Close this window and its ${flatTabs.length} tab${
+          flatTabs.length === 1 ? "" : "s"
+        }`}
       >
         <Close />
       </ItemButton>
     );
-  }, [handleCloseWindow]);
+  }, [handleCloseWindow, flatTabs.length]);
 
   const isSelected = useMemo(
     () => !flatTabs.find(({ id }) => id && !selected.includes(id)),
@@ -97,12 +105,15 @@ export const WindowListItem: FC<{
   const pre = useMemo(() => {
     return (
       <ItemButton
+        {...rowControlProps}
+        aria-label={
+          isSelected
+            ? "Deselect every tab in this window"
+            : "Select every tab in this window"
+        }
         onClick={handleSelectButton}
-        className={!isSelected ? "itemAction" : undefined}
-        sx={{
-          position: "absolute",
-          left: -8,
-        }}
+        className="itemAction"
+        {...selectedProps(isSelected)}
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>

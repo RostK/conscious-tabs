@@ -1,5 +1,7 @@
 import { enqueueSnackbar } from "notistack";
 
+import { bringPanelAlong } from "../surfaces.ts";
+
 /**
  * Runs a chrome.* tab action, surfacing failures to the user instead of
  * swallowing them silently. `label` reads as "Couldn't <label>".
@@ -33,8 +35,7 @@ export const setMuted = (id: number, muted: boolean) =>
 
 export const activateTab = (id: number, windowId: number) =>
   run("switch to tab", async () => {
-    // Opening the side panel may need a user gesture / already be open.
-    await chrome.sidePanel.open({ windowId }).catch(() => undefined);
+    await bringPanelAlong(windowId);
     await chrome.tabs.update(id, { active: true });
     await chrome.windows.update(windowId, { focused: true });
   });
@@ -52,6 +53,6 @@ export const moveTabToNewWindow = (id: number) =>
       focused: true,
     });
     if (windowId) {
-      await chrome.sidePanel.open({ windowId });
+      await bringPanelAlong(windowId);
     }
   });
