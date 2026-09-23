@@ -5,9 +5,10 @@ import { FC, PropsWithChildren } from "react";
 /**
  * A small speaker overlay for a tab's favicon: red when the tab is making
  * sound, greyed when it is muted, absent otherwise. Shared by the current-tab
- * row and the tab list so both read the same at a glance — the toolbar's
- * AudioTabs menu is the place to act on sound, this is only the cue that says
- * which row it is coming from.
+ * row and the tab list so both read the same at a glance.
+ *
+ * The cue, not the control: the row it marks carries its own mute button, and
+ * the toolbar's AudioTabs menu acts on every noisy tab at once.
  */
 export const AudioBadge: FC<
   PropsWithChildren<{ audible?: boolean; muted?: boolean; size?: number }>

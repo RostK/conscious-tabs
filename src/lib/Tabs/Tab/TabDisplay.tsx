@@ -2,6 +2,8 @@ import {
   CheckBoxOutlineBlankOutlined,
   CheckBoxOutlined,
   Close,
+  VolumeOff,
+  VolumeUp,
 } from "@mui/icons-material";
 import {
   ListItemAvatar,
@@ -9,14 +11,9 @@ import {
   ListItemSecondaryAction,
   ListItemText,
 } from "@mui/material";
-import {
-  FC,
-  MouseEventHandler,
-  ReactNode,
-  useCallback,
-} from "react";
+import { FC, MouseEventHandler, ReactNode, useCallback } from "react";
 
-import { activateTab, closeTab } from "../actions.ts";
+import { activateTab, closeTab, setMuted } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import {
@@ -59,6 +56,21 @@ export const TabDisplay: FC<{
       }
     },
     [tab.id],
+  );
+  const muted = Boolean(tab.mutedInfo?.muted);
+  // Only a row with something to mute offers the control. On every other row
+  // it would be a button that does nothing, and one more stop on the Left/Right
+  // walk — the badge on the favicon is what tells you which rows have it.
+  const noisy = muted || Boolean(tab.audible);
+  const handleMute = useCallback<MouseEventHandler>(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (tab.id) {
+        void setMuted(tab.id, !muted);
+      }
+    },
+    [muted, tab.id],
   );
   const handleRowKeys = useRowKeys();
 
@@ -155,6 +167,17 @@ export const TabDisplay: FC<{
         </AudioBadge>
       </ListItemAvatar>
       <ListItemSecondaryAction>
+        {noisy && (
+          <ItemButton
+            onClick={handleMute}
+            {...rowControlProps}
+            aria-label={`${muted ? "Unmute" : "Mute"} ${tab.title || "tab"}`}
+            className="itemAction"
+            sx={{ color: muted ? "text.disabled" : "error.main" }}
+          >
+            {muted ? <VolumeOff /> : <VolumeUp />}
+          </ItemButton>
+        )}
         {dragHandle}
         <ItemButton
           onClick={handleDelete}
@@ -172,7 +195,7 @@ export const TabDisplay: FC<{
         // which is what made them look like patches on a hovered row. Reserved
         // permanently rather than on hover, so revealing them never reflows
         // the text.
-        sx={{ pr: "64px" }}
+        sx={{ pr: noisy ? "96px" : "64px" }}
         primaryTypographyProps={{ noWrap: true }}
         secondaryTypographyProps={{ noWrap: true }}
         primary={tab.title}
