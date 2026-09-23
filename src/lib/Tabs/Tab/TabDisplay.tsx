@@ -134,6 +134,13 @@ export const TabDisplay: FC<{
           position: "absolute",
           left: -8,
           backgroundColor: "background.paper",
+          // Above the favicon, not behind it. Both are positioned — this one
+          // absolutely, the favicon by the Badge that AudioBadge wraps it in —
+          // so at z-index auto they paint in DOM order, and the badge, coming
+          // later, took the overlap. The fill then stopped dead at the
+          // favicon's edge, and the control read as a flat square jammed
+          // against it rather than a round button sitting over the row.
+          zIndex: 1,
         }}
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
