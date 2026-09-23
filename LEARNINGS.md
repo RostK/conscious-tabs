@@ -51,6 +51,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   have sunk the feature: a float you cannot search is a read-only poster of your tabs. The app
   runs in an extension-origin iframe inside the PiP window, so this also confirms that frame
   keeps working normally — it is not a degraded or inert context.
+- 2026-09-23 — **Falsify every new test by reverting the fix it guards.** A test that
+  passes against a deliberately broken build is not evidence, and finding out why it
+  passes is worth more than the test. The `TabsView` empty-state test passed with the
+  list's own filter disabled, which made no sense — and the reason was a real defect it
+  had walked straight past: the view rendered "No other tabs are open." whenever the
+  windows query had resolved and the tabs query had not, which is every open. Ten of the
+  fixes in this branch were pinned this way; three of the tests written alongside them
+  pass either way on purpose, and each says so, because they guard the half that must
+  *not* change. Evidence: `src/views/TabsView/TabsView.test.tsx`,
+  `src/lib/float.test.ts`.
 
 ## What Doesn't Work
 
@@ -101,6 +111,30 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   programmatically (yes, one-way), whether it can be hidden per tab (no), and how to tell a
   floating window apart from a real one (`alwaysOnTop`). Several of those cost a throwaway probe
   extension each. Deliberately not duplicated here — one copy, with its evidence attached.
+- 2026-09-23 — **The float's own window holds an `about:blank` tab, and it has now caused
+  three separate bugs.** It appeared in the tab list as an ordinary row with a close
+  button that would have killed the float; its *window* appeared as a window row with a
+  close control of its own; and closing the float fired `chrome.tabs.onRemoved`, so the
+  undo prompt announced a tab closure the user never made and offered to restore it.
+  Each was found in the running extension, by a person, weeks apart. The rule that would
+  have caught all three at once: **anything that enumerates tabs or reacts to a tab event
+  must first ask whether the subject is one the manager actually mirrors** — not whether
+  it looks like a tab, because it is one. Evidence: `src/lib/surfaces.ts`
+  (`browsingWindowIds`, `isBrowsingWindow`), `src/lib/Tabs/useTabsStructure.ts`
+  (`wasListedTab`), `src/lib/Tabs/undo/SyncPrompt.tsx`.
+- 2026-09-23 — **Two positioned elements at `z-index: auto` paint in DOM order, and
+  nothing in this stack's test tooling can see it.** The row checkbox is
+  `position: absolute`; the favicon sits inside the MUI `Badge` that `AudioBadge` wraps
+  it in, which is `position: relative` — so the badge, coming later in the tree, took the
+  overlap and the checkbox painted underneath. jsdom models no painting order at all, and
+  the layout harness could not show it either, because its fake tabs carry
+  `favIconUrl: ""` and the fallback globe is mostly transparent: an opaque fill showing
+  *through* a favicon looks identical to one sitting *on* it. Two probes that do work:
+  `document.elementFromPoint(x, y)` at the disputed pixel returns whichever element is
+  really on top, and for a hidden-by-opacity ancestor you must read the ancestor —
+  `opacity` is not inherited as a computed value, so a child of a faded-out wrapper still
+  reports `1`. Evidence: `src/lib/Tabs/Tab/TabDisplay.tsx` (`zIndex: 1`),
+  `src/lib/Tabs/elements/AudioBadge.tsx`.
 
 ## Codebase Patterns
 
@@ -133,6 +167,27 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `src/lib/Tabs/actions.ts:37`, `src/lib/Tabs/actions.ts:55`,
   `src/lib/Tabs/selection/SelectionToolbar.tsx:95`,
   `src/lib/Tabs/Window/WindowListItem.tsx:51`, `src/lib/ControlBar/index.tsx:18`.
+- 2026-09-23 — **Browser state is read once, by a module-level store, and components
+  subscribe.** `useTabsStructure` was per-component state, so five callers each ran their
+  own chrome listeners, their own debounce and their own three-call query: a single
+  `chrome.tabs.onUpdated` cost 12 extension round trips, measured. It is now one store
+  behind `useSyncExternalStore`, and that is 3 — for any number of subscribers, and for a
+  burst of events as well as one. Three rules the store encodes, each of which was a bug
+  first: a **generation counter**, because three awaited round trips can land out of
+  order and the older answer used to win; **`undefined` until the first query resolves**,
+  because an initial `[]` is a claim that the browser is empty and two views printed it;
+  and **listeners that live exactly as long as a subscriber**, dropping the snapshot at
+  zero so the next subscriber starts cold. Evidence:
+  `src/lib/Tabs/useTabsStructure.ts`.
+- 2026-09-23 — **One reveal model for every row control, keyed on a class.**
+  `rowControlsSx` hides `.itemAction` with `opacity` and reveals it on hover, focus and
+  `[data-selected]`; `useRowKeys` walks the `[data-row-control]` elements with Left and
+  Right so a row is one Tab stop rather than four. Hide with **opacity, never
+  `visibility`** — `visibility: hidden` removes an element from `focus()` entirely, so
+  arrowing onto it fails silently. Anything that wants to pin controls open must set the
+  same property the model hides with: an override left saying `visibility: visible` after
+  the migration did nothing for weeks, and left a group's menu anchored to a control that
+  had faded out. Evidence: `src/lib/Tabs/elements/rowControls.ts`.
 
 ## Decisions
 
@@ -182,10 +237,25 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   additionally copies **no** stylesheets and requires `requestWindow()` to be called
   synchronously in the click handler — any `await` before it burns the transient-activation
   token. Evidence: `src/lib/Theme/index.tsx` (Emotion/MUI provider setup).
+- 2026-09-23 — **dnd-kit publishes `aria-pressed="true"` on the drag activator for the
+  life of a drag**, which is the signal to use when other handlers must yield to it —
+  no plumbing of `isDragging` through three row components. Needed because the row's
+  own Left/Right handler was stopping the arrow keys before dnd-kit's `KeyboardSensor`
+  saw them. Note the asymmetry that hid this: a dragged **tab** row unmounts
+  (`{!isDragging && …}`), so nothing of it survives to interfere, while a dragged
+  **group** row stays mounted until something is hovered
+  (`{(!isDragging || !over) && …}`). Evidence: `src/lib/Tabs/elements/rowControls.ts`,
+  `@dnd-kit/core` 6.1.0.
 
 ## Recurring Errors & Fixes
 
-_Nothing recorded yet._
+- 2026-09-23 — **`npm test` passing does not mean the branch builds.** Test files live
+  under `src/`, and `tsconfig.json` includes `src`, so `npm run build` type-checks them —
+  twice in one session a fixture with a wrong type left 115 and then 124 vitest tests
+  green while `tsc` failed. Run `npm run build` before every commit, and check its exit
+  code rather than grepping its output: an earlier non-building commit got through
+  because a `grep` in an `&&` chain masked the real status. Evidence: `tsconfig.json`
+  (`include: ["src"]`), `package.json` (`build: tsc && vite build`).
 
 ## Session Notes
 
@@ -203,6 +273,16 @@ _Nothing recorded yet._
   non-PiP popup window) and weighed them for users: a float wins by surviving outside the
   browser entirely (visible over Slack, an IDE, a full-screen call), and loses on size
   clamping, no positioning, the global one-PiP limit, and dying with its anchor.
+- 2026-09-23 — Built SPEC-01 (the floating window) to completion and SPEC-02 (tab audio
+  controls) alongside it, then reviewed the branch and fixed eleven findings. The pattern
+  worth carrying forward: everything the harness and jsdom could answer, they answered
+  cheaply and precisely — geometry, idle cost (zero queries across 79s), event-to-DOM
+  latency, API call counts — and every bug that actually reached a user was found by a
+  person looking at the running extension. Three of them came from the same fact about
+  the float's `about:blank` tab, one from paint order, one from a `visibility` rule left
+  behind by a migration. The harness is worth keeping and worth distrusting: it renders
+  the real components, but its fake favicons are transparent and its fake chrome has no
+  PiP window, so an empty result there means "not reproducible here", never "not a bug".
 
 ## Open Questions
 
