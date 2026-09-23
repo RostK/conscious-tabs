@@ -15,13 +15,7 @@ import {
   Toolbar,
   Tooltip,
 } from "@mui/material";
-import {
-  FC,
-  useContext,
-  useEffect,
-  useRef,
-  useSyncExternalStore,
-} from "react";
+import { FC, useContext, useEffect, useRef, useSyncExternalStore } from "react";
 
 import {
   backToSidePanel,
@@ -115,7 +109,13 @@ export const ControlBar: FC = () => {
       {Boolean(selected.length) && (
         <Toolbar sx={{ visibility: "hidden", height: "75px" }} />
       )}
+      {/* A footer, not a second header. MUI's AppBar renders <header>,
+          which made this a second banner landmark competing with the real
+          one — two landmarks with the same role and no way to tell them
+          apart. What it actually is, is the bar of actions at the bottom. */}
       <AppBar
+        component="footer"
+        aria-label="Actions"
         position="fixed"
         sx={{
           top: "auto",

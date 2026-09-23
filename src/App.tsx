@@ -18,11 +18,13 @@ import {
   Paper,
   styled,
   Toolbar,
+  Typography,
 } from "@mui/material";
 import { ComponentProps, useCallback, useContext, useState } from "react";
 
 import { ControlBar } from "./lib/ControlBar";
 import { FloatClosedNotice } from "./lib/FloatClosedNotice.tsx";
+import { srOnly } from "./lib/srOnly.ts";
 import { AudioTabs } from "./lib/Tabs/AudioTabs";
 import { CurrentTab } from "./lib/Tabs/CurrentTab";
 import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
@@ -150,6 +152,13 @@ function App() {
               borderColor: "divider",
             }}
           >
+            {/* Inside the banner, not before it: a heading floating outside
+                every landmark is content no landmark contains, which is its
+                own failure. Off screen because the visible identity is the
+                logo mark below, and a second title would just be clutter. */}
+            <Typography variant="h1" sx={{ ...srOnly, fontSize: "1rem" }}>
+              Conscious Tabs
+            </Typography>
             <Toolbar sx={{ gap: 1 }}>
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 <Search>
@@ -182,8 +191,13 @@ function App() {
             <CurrentTab />
             <FloatClosedNotice />
           </AppBar>
-          {!search && <TabsView />}
-          {search && <SearchView search={search} />}
+          {/* The list is the page's content. Without this the document had
+              no main landmark at all, so "skip to content" had nothing to
+              skip to and the only way in was from the very top. */}
+          <Box component="main">
+            {!search && <TabsView />}
+            {search && <SearchView search={search} />}
+          </Box>
           <ControlBar />
           <DragOverlay
             style={{ pointerEvents: "none", opacity: 0.85 }}
