@@ -87,11 +87,7 @@ export const AudioTabs: FC = () => {
               sx={{ maxWidth: 320 }}
             >
               <ListItemIcon>
-                <TabFavicon
-                  key={tab.favIconUrl}
-                  src={tab.favIconUrl}
-                  size={20}
-                />
+                <TabFavicon key={tab.url} pageUrl={tab.url} size={20} />
               </ListItemIcon>
               <ListItemText
                 primaryTypographyProps={{ noWrap: true }}

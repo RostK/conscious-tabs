@@ -57,4 +57,4 @@ background service worker, click the reload icon on the extension's card in `chr
 
 React 18 · TypeScript · Vite · [@crxjs/vite-plugin](https://crxjs.dev/) · MUI · @dnd-kit · notistack
 
-Requested permissions: `sidePanel`, `tabs`, `tabGroups`, `sessions`.
+Requested permissions: `sidePanel`, `tabs`, `tabGroups`, `sessions`, `favicon`.

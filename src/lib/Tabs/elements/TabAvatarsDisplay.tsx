@@ -4,6 +4,7 @@ import { FC, useMemo } from "react";
 
 import { srOnly } from "../../srOnly.ts";
 import { TabItem, TabsStructure } from "../types.ts";
+import { faviconUrl } from "./favicon.ts";
 
 export const TabAvatarsDisplay: FC<{ tabsStructure: TabsStructure }> = ({
   tabsStructure,
@@ -47,7 +48,7 @@ export const TabAvatarsDisplay: FC<{ tabsStructure: TabsStructure }> = ({
         <Avatar
           sx={{ background: "lightgray", width: 26, height: 26 }}
           key={tab.id}
-          src={tab.favIconUrl}
+          src={faviconUrl(tab.url, 26)}
         >
           <ArticleOutlined />
         </Avatar>

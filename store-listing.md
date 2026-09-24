@@ -68,6 +68,8 @@ A tab manager that lets you find, organise, and close your open tabs from the br
 - **tabs** — To list, search, activate, mute, pin, duplicate, reload, move, and close your open tabs.
 - **tabGroups** — To mirror and manage Chrome tab groups (collapse, rename, recolour, ungroup).
 - **sessions** — To restore recently closed tabs via the Undo action.
+- **favicon** — To show each tab's icon from the icons your browser has already
+  stored, so that drawing the list sends no request to the sites you have open.
 
 ## Screenshots
 

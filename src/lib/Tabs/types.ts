@@ -8,7 +8,6 @@ export type TabItem = {
   index: number;
   windowId: number;
   groupId: number;
-  favIconUrl?: string | undefined;
   active: boolean;
   highlighted: boolean;
   pinned?: boolean;
