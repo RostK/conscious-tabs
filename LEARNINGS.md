@@ -21,9 +21,9 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   −0.1s over 413 ticks. The float's own iframe realm separately reports `visible` and drifts
   0.0s — and that is the number that actually matters, because the shipped app's React and
   timers live inside that iframe, not in the opener. The opener therefore only has to stay
-  *alive*, not stay *responsive*, which makes a tab anchor materially safer than it looks.
+  _alive_, not stay _responsive_, which makes a tab anchor materially safer than it looks.
 - 2026-09-22 — **There IS a way to close the side panel programmatically, and it is not
-  `close()`.** `chrome.sidePanel.setOptions({ enabled: false })` called *globally* (with no
+  `close()`.** `chrome.sidePanel.setOptions({ enabled: false })` called _globally_ (with no
   `tabId`) evicts an already-open side panel. This matters because w3c/webextensions#521 and
   every discussion around it say there is no `chrome.sidePanel.close()` — literally true,
   practically misleading. Unlike a panel page calling `window.close()` on itself, this works
@@ -41,7 +41,7 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   extension window impossible in the first place), so no window a user or extension opens can
   ever have it. Evidence: `src/lib/surfaces.ts` `isBrowsingWindow`.
 - 2026-09-22 — **Chrome honoured the requested float size almost exactly**: `requestWindow({width:
-  400, height: 640})` gave an outer window of 414x681 and a content area of 401x641 at dpr 2. The
+400, height: 640})` gave an outer window of 414x681 and a content area of 401x641 at dpr 2. The
   clamping warned about in the Document PiP docs did not bite at this size, so a layout budgeted
   for 400x640 is budgeted correctly.
 - 2026-09-22 (closes assumption A-8) — **Keyboard focus and text entry do reach a text field
@@ -59,7 +59,7 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   windows query had resolved and the tabs query had not, which is every open. Ten of the
   fixes in this branch were pinned this way; three of the tests written alongside them
   pass either way on purpose, and each says so, because they guard the half that must
-  *not* change. Evidence: `src/views/TabsView/TabsView.test.tsx`,
+  _not_ change. Evidence: `src/views/TabsView/TabsView.test.tsx`,
   `src/lib/float.test.ts`.
 
 ## What Doesn't Work
@@ -72,21 +72,21 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   panel**, the action popup, or an offscreen document: `documentPictureInPicture` stays
   null / `requestWindow()` rejects, because those contexts are not a "top-level
   traversable". It works only from an extension page loaded in a real browser tab. So the
-  panel can never pop *itself* out — a float needs a separate opener surface. Chrome also
+  panel can never pop _itself_ out — a float needs a separate opener surface. Chrome also
   allows **one PiP window per browser, globally across all tabs and extensions**, so ours
   would evict the user's video PiP and vice versa. Evidence: WICG
   document-picture-in-picture issue #88 (still open, labelled `chrome-bug`) and the
   chromium-extensions thread "Try using Document Picture-in-Picture API".
 - 2026-09-22 — Do **not** measure background throttling using a `type: "popup"` window as
   the opener. An unfocused popup window still reports `visibilityState === "visible"`, so it
-  is never throttled and the result says nothing about a backgrounded *tab*, which genuinely
+  is never throttled and the result says nothing about a backgrounded _tab_, which genuinely
   is `hidden`. A first probe run reported a clean 0.0s drift from a popup opener and was
   wrongly read as a general green light; the tab case had to be re-measured from scratch.
   Two rules for any future run: require the opener to report `hidden` before trusting the
   number, and measure drift across the hidden stretch only — total drift is diluted by the
   time the opener spent visible.
 - 2026-09-22 — **`chrome.sidePanel.setOptions({ tabId, enabled: false })` does NOT hide a side
-  panel that is already open on that tab.** The `enabled` flag controls *availability* — whether
+  panel that is already open on that tab.** The `enabled` flag controls _availability_ — whether
   the panel can be opened there, whether the entry appears — not eviction. Chrome's docs and every
   blog post describing "per-tab side panels" are talking about availability, and reading them as
   "the panel follows the active tab" is wrong. Measured with a probe extension, step 2. The
@@ -96,7 +96,7 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
 - 2026-09-22 — **Re-enabling a globally disabled side panel does not bring it back.**
   `setOptions({ enabled: true })` after a global disable restores availability only; the panel
   stays shut until something calls `open()` with a live user gesture. Measured with a probe
-  extension, step 7. So the global disable above is a *close*, not a *hide*, and while it is in
+  extension, step 7. So the global disable above is a _close_, not a _hide_, and while it is in
   effect the toolbar icon cannot reopen the panel either — meaning a page that disables the panel
   and then dies leaves the user with no way back. If it is ever used, re-enable from the service
   worker on startup as a backstop.
@@ -113,7 +113,7 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   extension each. Deliberately not duplicated here — one copy, with its evidence attached.
 - 2026-09-23 — **The float's own window holds an `about:blank` tab, and it has now caused
   three separate bugs.** It appeared in the tab list as an ordinary row with a close
-  button that would have killed the float; its *window* appeared as a window row with a
+  button that would have killed the float; its _window_ appeared as a window row with a
   close control of its own; and closing the float fired `chrome.tabs.onRemoved`, so the
   undo prompt announced a tab closure the user never made and offered to restore it.
   Each was found in the running extension, by a person, weeks apart. The rule that would
@@ -129,12 +129,33 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   overlap and the checkbox painted underneath. jsdom models no painting order at all, and
   the layout harness could not show it either, because its fake tabs carry
   `favIconUrl: ""` and the fallback globe is mostly transparent: an opaque fill showing
-  *through* a favicon looks identical to one sitting *on* it. Two probes that do work:
+  _through_ a favicon looks identical to one sitting _on_ it. Two probes that do work:
   `document.elementFromPoint(x, y)` at the disputed pixel returns whichever element is
   really on top, and for a hidden-by-opacity ancestor you must read the ancestor —
   `opacity` is not inherited as a computed value, so a child of a faded-out wrapper still
   reports `1`. Evidence: `src/lib/Tabs/Tab/TabDisplay.tsx` (`zIndex: 1`),
   `src/lib/Tabs/elements/AudioBadge.tsx`.
+
+- 2026-09-24 — **`tabIndex: -1` keeps a control out of the tab order; it does **not** hide
+  it from a screen reader.** This repo's row model was built on the opposite belief: row
+  controls sit at `tabIndex: -1` and are reached with Left/Right, so a list of twenty tabs
+  costs twenty tab stops rather than eighty. That part is true and measured — 22 stops
+  across 15 rows, none inside them. But axe reports 15 `nested-interactive` violations
+  anyway, because each row is `role="button"` (MUI `ListItemButton`) containing four more
+  buttons, and assistive technology still reaches them. The honest fix is a
+  `grid`/`row`/`gridcell` composite, which changes what the arrow keys mean and touches 11
+  files — so know before starting that "we made them `-1`" is not an answer to this.
+  Evidence: `src/lib/Tabs/elements/rowControls.ts`, axe-core 4.10.2.
+
+- 2026-09-24 — **`manualChunks` buys nothing in a packaged extension.** The 500 kB Vite
+  warning invites splitting, and splitting is cosmetic here: every chunk loads from local
+  disk at startup and the browser parses all of them regardless — there is no network and
+  no caching benefit to win. Measured per package first, which is the part worth copying:
+  `@mui/material` 161 kB, `react-dom` 131, our own code 43, `@dnd-kit/core` 38,
+  `react-hook-form` 24, icons **6** (so the `@mui/icons-material` barrel imports everyone
+  suspects tree-shake fine). The only real lever is deferring code that genuinely is not
+  needed at first paint. Evidence: `vite.config.ts` (`chunkSizeWarningLimit` and the
+  measurement).
 
 ## Codebase Patterns
 
@@ -144,7 +165,7 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   under a stationary pointer makes those controls vanish mid-interaction — it presents as "buttons
   need two clicks" and "clicking the title does nothing", not as a rendering bug. Rare enough to
   ignore in the side panel; constant in the floating window, where activating a tab focuses its
-  window and so triggers the remount on *every* click. `WindowListItem` already syncs its open
+  window and so triggers the remount on _every_ click. `WindowListItem` already syncs its open
   state from `window.focused` in a `useEffect`, so the key was pure cost. Evidence:
   `src/views/TabsView/index.tsx`, `src/lib/Tabs/Window/WindowListItem.tsx:42`.
 
@@ -210,7 +231,7 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   — that opener needs zero new permissions. Rejected the one-click alternative (content
   script on the active tab as the opener, extension page iframed into the PiP window):
   it needs host permissions, which breaks the zero-host-permission claim in `PRIVACY.md`,
-  labels the float with the *host page's* origin in the PiP title bar, and kills the float
+  labels the float with the _host page's_ origin in the PiP title bar, and kills the float
   whenever that page navigates or closes — fatal for an extension whose job is closing and
   switching tabs. Also rejected `chrome.windows.create({ type: "popup" })`: it survives
   everything but is not always-on-top, and `alwaysOnTop` is deliberately not settable from
@@ -229,7 +250,7 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
 - 2026-09-22 — If a second window surface is ever built, **iframe the extension page into
   it rather than re-parenting React DOM across documents**. Moving nodes into another
   document breaks this stack in three places at once: Emotion injects `<style>` into the
-  *opener's* `<head>`, every MUI `Tooltip` (12), `Menu` (9) and `Dialog` (3) portals into
+  _opener's_ `<head>`, every MUI `Tooltip` (12), `Menu` (9) and `Dialog` (3) portals into
   the opener's `document.body`, and notistack's `SnackbarProvider` does the same — so they
   render invisibly in the wrong window. Fixable with an Emotion `CacheProvider` container
   plus `container=` on every portal, but that is a tax on every future component; an
@@ -247,6 +268,31 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   (`{(!isDragging || !over) && …}`). Evidence: `src/lib/Tabs/elements/rowControls.ts`,
   `@dnd-kit/core` 6.1.0.
 
+  - 2026-09-24 — **Superseded: do not use `aria-pressed` for this.** The attribute means
+    "this toggle is on", so the first row control to become a genuine toggle would have
+    switched the arrow keys off. `useDndContext` says exactly the right thing but
+    subscribes every row to a context memoised on `collisions`/`over`, which is
+    recomputed continuously while a drag moves — every row re-rendered on every pointer
+    move. What shipped instead is a module-level flag that `App`'s `DndContext` handlers
+    set on drag start/end/cancel, read at event time rather than subscribed to. Evidence:
+    `src/lib/Tabs/elements/rowControls.ts` (`setRowDragActive`), `src/App.tsx`.
+
+- 2026-09-24 — **MUI's `sx` does not read a bare number as pixels.** Sizing treats a value
+  of 1 or less as a _percentage_ and spacing multiplies by _8_, so the textbook
+  visually-hidden recipe — `width: 1, height: 1, margin: -1` — produced a **99px-tall**
+  absolutely positioned element over the whole top bar, hidden only because the clip
+  happened to cover for it. Measured 99.23px before, 1px after. Write every length in
+  `sx` as a string with units unless you actually want the percentage or the ×8. Evidence:
+  `src/lib/srOnly.ts`.
+
+- 2026-09-24 — **A live region has to be in the DOM before its text is.** Rendering the
+  region and its first message in the same commit is not reliably announced, so the search
+  result count lives in `App` — mounted for the life of the page — rather than in
+  `SearchView`, which unmounts whenever the box is empty. Debounce it too: `polite` queues
+  rather than interrupts, so announcing each keystroke means hearing five stale counts
+  before the one that matters. notistack already carries its own region, so snackbars need
+  nothing. Evidence: `src/App.tsx`.
+
 ## Recurring Errors & Fixes
 
 - 2026-09-23 — **`npm test` passing does not mean the branch builds.** Test files live
@@ -256,6 +302,23 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   code rather than grepping its output: an earlier non-building commit got through
   because a `grep` in an `&&` chain masked the real status. Evidence: `tsconfig.json`
   (`include: ["src"]`), `package.json` (`build: tsc && vite build`).
+
+- 2026-09-24 — **A test fake must clone what it hands out, because `chrome.*` does.** Both
+  fakes returned live references to their fixture arrays, so mutating a fixture made the
+  change look as though it had always been there. That silently defeated a new
+  equality check under test — the harness said `liveUpdate: false` while the unit test for
+  the same behaviour passed for the wrong reason. Neither would have caught it alone.
+  `structuredClone` on the way out of every `query`. Evidence: `src/test/chromeStub.ts`,
+  `harness/fakeChrome.ts`.
+
+- 2026-09-24 — **A test that asserts the _absence_ of something stops testing the day that
+  thing becomes legitimate.** `TabDisplay.test.tsx` proved a hostile tab title could not
+  become markup by asserting the row contained no `<img>` at all — which held only while
+  rows had no images. Moving favicons to `_favicon` gave every row one, and the choice was
+  between deleting the guard and rewriting it. It asserts the _origin_ of every image now,
+  which asks the same question and survives rows legitimately having some. When a test's
+  assertion is "there is no X", write down what makes that true, because it is a
+  precondition, not a property. Evidence: `src/lib/Tabs/Tab/TabDisplay.test.tsx`.
 
 ## Session Notes
 
@@ -301,11 +364,10 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   open from that note: whether a backgrounded opener throttles the float's timers, and
   whether keyboard focus reaches a text field inside the float.
 - 2026-09-22 (closes both 2026-09-22 notes above) — Throttling is answered: see What Works.
-  Still unverified is whether keyboard focus and text entry reach a text field *inside* the
+  Still unverified is whether keyboard focus and text entry reach a text field _inside_ the
   float. Chrome's own Document PiP documentation names text editing and note-taking among the
   target use cases, so it is assumed to work and is tracked as assumption A-8 in
   `specs/ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md`. Verify during
   implementation before relying on the float's search field.
 - 2026-09-22 (closes the note above) — Verified by hand: search works inside the float. Nothing
   from the 2026-09-22 research session is open any more. See What Works.
-
