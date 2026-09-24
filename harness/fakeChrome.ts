@@ -52,10 +52,7 @@ const TITLES: [string, string][] = [
     "Show a speaker badge on tabs that are playing sound by RostK",
     "https://github.com/RostK/conscious-tabs/pull/4",
   ],
-  [
-    "Inbox (1,284) - rkaniuchenko@gmail.com - Gmail",
-    "https://mail.google.com/mail/u/0/#inbox",
-  ],
+  ["Inbox (12) - Gmail", "https://mail.google.com/mail/u/0/#inbox"],
   [
     "Google Calendar - Week of 20 September 2026",
     "https://calendar.google.com/calendar/u/0/r",

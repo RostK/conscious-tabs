@@ -104,13 +104,27 @@ windows) so no personal data appears — driven through its real interactions
 (search typed, tabs selected, the current-tab menu opened, dark theme
 emulated) and composited onto the branded frame:
 
-| File                              | Scene                         |
-| --------------------------------- | ----------------------------- |
-| `store-assets/01-hero.png`        | Hero — the whole panel        |
-| `store-assets/02-search.png`      | Search / filter               |
-| `store-assets/03-multiselect.png` | Multi-select + bulk actions   |
-| `store-assets/04-current-tab.png` | Current-tab quick-action menu |
-| `store-assets/05-dark-mode.png`   | Dark mode                     |
+| File                              | Scene                                        |
+| --------------------------------- | -------------------------------------------- |
+| `store-assets/01-hero.png`        | Hero — the whole panel                       |
+| `store-assets/02-search.png`      | Search / filter                              |
+| `store-assets/03-multiselect.png` | Multi-select + bulk actions                  |
+| `store-assets/04-current-tab.png` | Current-tab quick-action menu                |
+| `store-assets/05-dark-mode.png`   | Dark mode                                    |
+| `store-assets/06-floating.png`    | **Missing** — the float on top of other apps |
+
+**06-floating is the one that cannot be faked, and the one the listing most
+needs.** Floating on top is the capability nobody can guess from a side panel,
+and the only image that argues for it is the float genuinely sitting above
+something that is not a browser — an editor, a document — with the browser
+window visible behind it. Rendering the panel at 400×640 in a tab looks close
+and proves nothing: it has no Picture-in-Picture window chrome, no shadow, and
+nothing behind it to be on top of.
+
+Capture notes for that one: a clean demo profile so the titles are neutral,
+one tab group in view because the colour reads well at that size, and take it
+after the `favicon` permission is live so the rows show real site icons rather
+than the fallback globe.
 
 Optional promo assets (dashboard only, not required):
 
