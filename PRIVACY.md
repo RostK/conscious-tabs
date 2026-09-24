@@ -22,11 +22,11 @@ information is used **only** to render the side-panel interface and to carry out
 the actions you ask for. It is held in memory while the panel is open and is not
 written to any storage or sent anywhere.
 
-One clarification on "nothing leaves your browser": the panel shows each tab's
-favicon by pointing an image element at the icon URL your browser already
-reports for that tab. Loading it may reach that site's own server, though it is
-usually served from your browser's cache. Nothing about you or your other tabs
-is sent with the request.
+Favicons come from your browser's own favicon store, not from the sites
+themselves. Opening the panel therefore contacts nobody: no request leaves your
+machine when the list is drawn. Earlier versions pointed an image element at
+each site's icon URL, which could reach that site's server; that is what the
+`favicon` permission replaces.
 
 ## Permissions and why they are needed
 
@@ -35,6 +35,8 @@ is sent with the request.
   duplicate, reload, move, and close).
 - **tabGroups** — Mirrors and manages Chrome tab groups (collapse, rename,
   recolour, group, and ungroup).
+- **favicon** — Reads the icons your browser has already stored for pages you
+  have visited, so the list can show them without asking the sites for them.
 - **sessions** — Restores a recently closed tab when you use the Undo action.
   Restoration is performed by your browser; the extension does not keep its own
   history of closed tabs.

@@ -48,7 +48,15 @@ export const AudioTabs: FC = () => {
           aria-label="tabs playing sound"
           onClick={(e) => setAnchor(e.currentTarget)}
         >
-          <Badge badgeContent={audioTabs.length} color="error">
+          {/* error.dark rather than the default error.main: on dark the
+              main tone is lightened, and white on it measured 3.68:1 against
+              a 4.5 requirement for text this small. The dark tone reads in
+              both themes and is still unmistakably the alarm colour. */}
+          <Badge
+            badgeContent={audioTabs.length}
+            color="error"
+            sx={{ "& .MuiBadge-badge": { bgcolor: "error.dark" } }}
+          >
             {allMuted ? <VolumeOff /> : <VolumeUp />}
           </Badge>
         </IconButton>
@@ -79,11 +87,7 @@ export const AudioTabs: FC = () => {
               sx={{ maxWidth: 320 }}
             >
               <ListItemIcon>
-                <TabFavicon
-                  key={tab.favIconUrl}
-                  src={tab.favIconUrl}
-                  size={20}
-                />
+                <TabFavicon key={tab.url} pageUrl={tab.url} size={20} />
               </ListItemIcon>
               <ListItemText
                 primaryTypographyProps={{ noWrap: true }}

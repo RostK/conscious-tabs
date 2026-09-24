@@ -89,6 +89,12 @@ export const TabDisplay: FC<{
       onClick={handleActivate}
       onKeyDown={handleRowKeys}
       selected={tab.active}
+      /* The rule guards against autofocus on load stealing a screen
+         reader's place in the document. This is the opposite: it puts
+         focus on the row for the tab the user is already looking at, so
+         the keyboard starts where they are rather than at the top of a
+         list of eighty. */
+      // eslint-disable-next-line jsx-a11y/no-autofocus
       autoFocus={tab.active && focus}
       sx={[{ pt: 0.2, pb: 0.2 }, rowControlsSx]}
     >
@@ -133,7 +139,7 @@ export const TabDisplay: FC<{
           Invisible until the checkbox came to sit over the favicon. */}
       <ListItemAvatar sx={{ minWidth: "36px" }}>
         <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
-          <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} size={26} />
+          <TabFavicon key={tab.url} pageUrl={tab.url} size={26} />
         </AudioBadge>
       </ListItemAvatar>
       <ListItemSecondaryAction>

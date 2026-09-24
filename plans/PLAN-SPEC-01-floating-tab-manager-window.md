@@ -1,41 +1,41 @@
 # PLAN SPEC-01 — Floating tab manager window
 
-|                     |                                                                             |
-| ------------------- | --------------------------------------------------------------------------- |
-| **Plan for**        | [SPEC-01](../specs/ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md) (Status: approved · revised 2026-09-22, 42 ACs, zero open NC) |
-| **Date**            | 2026-09-22                                                                    |
-| **Module**          | `ui-shell`                                                                    |
-| **Status**          | approved (2026-09-22)                                                         |
-| **Execution mode**  | Single-agent, sequential (user decision, 2026-09-22)                          |
-| **Test strategy**   | Introduce Vitest and cover every AC reachable without a real browser (user decision, 2026-09-22) |
-| **Branch**          | `floating-tab-manager`                                                        |
+|                    |                                                                                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Plan for**       | [SPEC-01](../specs/ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md) (Status: approved · revised 2026-09-22, 42 ACs, zero open NC) |
+| **Date**           | 2026-09-22                                                                                                                                   |
+| **Module**         | `ui-shell`                                                                                                                                   |
+| **Status**         | approved (2026-09-22)                                                                                                                        |
+| **Execution mode** | Single-agent, sequential (user decision, 2026-09-22)                                                                                         |
+| **Test strategy**  | Introduce Vitest and cover every AC reachable without a real browser (user decision, 2026-09-22)                                             |
+| **Branch**         | `floating-tab-manager`                                                                                                                       |
 
 ---
 
 ## 0. Progress
 
-| Unit | State | Note |
-| --- | --- | --- |
-| T-0 | **done — gate passed** | A-8 **confirmed**: search works inside the float. The spec's last unverified assumption, and the one that could have sunk the feature. Recorded in `LEARNINGS.md`. |
-| T-1 | **done** | Vitest + jsdom + Testing Library, `chrome.*` stub. 18 tests. |
-| T-2 | **done** | `host.ts` → `"panel" \| "anchor" \| "float"`, AC-28 covered. |
-| T-3 | **done** | `anchor.ts` + `ControlBar`; D-5a and D-5b both covered by tests. |
-| T-4 | **done** | Float state machine (`useSyncExternalStore`, not a context — `ControlBar` and the notice are the only consumers). Placard gone, E-12 guard, D-2a focus heuristic, AC-7 snackbar. |
-| T-5 | partial | Matrix and copy built, including "Stop floating". **`ControlBar` render tests still to write.** |
-| T-5a | **done** | "Back to panel" — new scope, see D-7. |
-| T-6 | **done** | `FloatClosedNotice`, mounted in the sticky AppBar so it cannot be scrolled away. 13 tests over the state machine. |
-| T-7 | **done** | `surfaces.ts` / `bringPanelAlong`, all six call sites. Fixed the live "tab can't be activated from the float" bug. |
-| T-8 | **done — by filtering, not marking** | Both the PiP window and this extension's own pages are dropped from the mirrored list. **Contradicts AC-16**; user decision, see below. |
-| T-9 | **done** | `resolveUserWindow()` + `useUserWindow()`. Fixed **three** call sites, not one: `useActiveTab`, `useAudioTabs` (same defect, not in the spec's table) and the export T-9a needs. |
-| T-9a | **done** | `restore` extracted to `undo/restore.ts` and routed through `resolveUserWindow()`. |
-| T-9b | **done** | `shouldPrompt()`: the anchor defers to its own float (exact), everything else gates on visibility (heuristic). A duplicate UNDO now reports instead of rejecting unhandled. |
-| T-10 | **done** | `onDragCancel` (E-11) + AC-18 empty state. AC-29 / 36 / 38 **measured** at 400x640 in a layout harness — all pass. AC-37, clamping and AC-30/31 still need Chrome. |
-| T-11 | **done** | Brand canvas painted from the first frame in both schemes — measured exact in the harness. AC-27 (float window title) still wants eyes on a real float. |
-| T-12 | **done** | Snackbar surfacing is correct by construction — each surface has its own React root and notistack provider in its own JS realm. Separately, toasts were lifted 64px clear of the fixed control bar, which they had been covering for their full three seconds. Confirmed in the real extension by the user, 2026-09-23. |
-| T-13 | **done** | `manifest.test.ts` guards AC-22 and the AC-23 posture; README and store-listing now describe both new surfaces. Neither policy file appears in the branch diff. |
-| T-14 | **done** — AC-20 confirmed against a real float by RostK, 2026-09-23, with the anchor backgrounded and occluded. | **AC-21 met, measured 2026-09-23:** 79 s idle in a document Chrome reported `hidden` — zero `chrome.tabs.query`, `chrome.tabGroups.query` and `chrome.windows.getAll`, with the list still rendered. Statically there is nothing that could poll: no `setInterval`, `requestAnimationFrame`, `requestIdleCallback` or `chrome.alarms` anywhere in `src/`, and the service worker only calls `setPanelBehavior` once. The only timers are the 10 ms query debounce and one `setTimeout(…, 0)` in `float.ts`, both edge-triggered. **AC-20:** the app half is measured — in the same hidden document, a fired event reached the DOM in 0 ms (title change) and 252 ms (tab close), well inside the 1 s budget. The browser half — a real float staying fresh while the anchor tab is backgrounded and occluded — still needs a real float. |
-| T-15 | **done** | Keyboard walkthrough and screen-reader pass, walked against a real float by RostK, 2026-09-23. AC-30, AC-31, AC-33 and AC-40 all pass. |
-| T-16 | **done bar two** — 14 of 16 edges verified against a real float by RostK, 2026-09-23. **E-1 and E-2 are deferred**, not failed: both need a video Picture-in-Picture up to trigger, and no one set one up. | AC-26 markup-safety tests written; PI-7 discharged by pointing `LEARNINGS.md` at SPEC-01 §1.2 rather than duplicating it. **2026-09-23:** E-4, E-9, E-10, E-12, E-13 and E-16 are now covered by tests rather than intention, E-7 is measured, and writing the E-4/E-9 tests found a real defect — the view announced an empty browser before its first query had resolved. See the sweep table below. |
+| Unit | State                                                                                                                                                                       | Note                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T-0  | **done — gate passed**                                                                                                                                                      | A-8 **confirmed**: search works inside the float. The spec's last unverified assumption, and the one that could have sunk the feature. Recorded in `LEARNINGS.md`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| T-1  | **done**                                                                                                                                                                    | Vitest + jsdom + Testing Library, `chrome.*` stub. 18 tests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| T-2  | **done**                                                                                                                                                                    | `host.ts` → `"panel" \| "anchor" \| "float"`, AC-28 covered.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| T-3  | **done**                                                                                                                                                                    | `anchor.ts` + `ControlBar`; D-5a and D-5b both covered by tests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| T-4  | **done**                                                                                                                                                                    | Float state machine (`useSyncExternalStore`, not a context — `ControlBar` and the notice are the only consumers). Placard gone, E-12 guard, D-2a focus heuristic, AC-7 snackbar.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| T-5  | partial                                                                                                                                                                     | Matrix and copy built, including "Stop floating". **`ControlBar` render tests still to write.**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| T-5a | **done**                                                                                                                                                                    | "Back to panel" — new scope, see D-7.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| T-6  | **done**                                                                                                                                                                    | `FloatClosedNotice`, mounted in the sticky AppBar so it cannot be scrolled away. 13 tests over the state machine.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| T-7  | **done**                                                                                                                                                                    | `surfaces.ts` / `bringPanelAlong`, all six call sites. Fixed the live "tab can't be activated from the float" bug.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| T-8  | **done — by filtering, not marking**                                                                                                                                        | Both the PiP window and this extension's own pages are dropped from the mirrored list. **Contradicts AC-16**; user decision, see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| T-9  | **done**                                                                                                                                                                    | `resolveUserWindow()` + `useUserWindow()`. Fixed **three** call sites, not one: `useActiveTab`, `useAudioTabs` (same defect, not in the spec's table) and the export T-9a needs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| T-9a | **done**                                                                                                                                                                    | `restore` extracted to `undo/restore.ts` and routed through `resolveUserWindow()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| T-9b | **done**                                                                                                                                                                    | `shouldPrompt()`: the anchor defers to its own float (exact), everything else gates on visibility (heuristic). A duplicate UNDO now reports instead of rejecting unhandled.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| T-10 | **done**                                                                                                                                                                    | `onDragCancel` (E-11) + AC-18 empty state. AC-29 / 36 / 38 **measured** at 400x640 in a layout harness — all pass. AC-37, clamping and AC-30/31 still need Chrome.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| T-11 | **done**                                                                                                                                                                    | Brand canvas painted from the first frame in both schemes — measured exact in the harness. AC-27 (float window title) still wants eyes on a real float.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| T-12 | **done**                                                                                                                                                                    | Snackbar surfacing is correct by construction — each surface has its own React root and notistack provider in its own JS realm. Separately, toasts were lifted 64px clear of the fixed control bar, which they had been covering for their full three seconds. Confirmed in the real extension by the user, 2026-09-23.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| T-13 | **done**                                                                                                                                                                    | `manifest.test.ts` guards AC-22 and the AC-23 posture; README and store-listing now describe both new surfaces. Neither policy file appears in the branch diff.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| T-14 | **done** — AC-20 confirmed against a real float by RostK, 2026-09-23, with the anchor backgrounded and occluded.                                                            | **AC-21 met, measured 2026-09-23:** 79 s idle in a document Chrome reported `hidden` — zero `chrome.tabs.query`, `chrome.tabGroups.query` and `chrome.windows.getAll`, with the list still rendered. Statically there is nothing that could poll: no `setInterval`, `requestAnimationFrame`, `requestIdleCallback` or `chrome.alarms` anywhere in `src/`, and the service worker only calls `setPanelBehavior` once. The only timers are the 10 ms query debounce and one `setTimeout(…, 0)` in `float.ts`, both edge-triggered. **AC-20:** the app half is measured — in the same hidden document, a fired event reached the DOM in 0 ms (title change) and 252 ms (tab close), well inside the 1 s budget. The browser half — a real float staying fresh while the anchor tab is backgrounded and occluded — still needs a real float. |
+| T-15 | **done**                                                                                                                                                                    | Keyboard walkthrough and screen-reader pass, walked against a real float by RostK, 2026-09-23. AC-30, AC-31, AC-33 and AC-40 all pass.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| T-16 | **done** — 16 of 16 edges verified against a real float by RostK: 14 on 2026-09-23, and **E-1 / E-2 on 2026-09-24**, against a synthetic video PiP rather than a live site. | AC-26 markup-safety tests written; PI-7 discharged by pointing `LEARNINGS.md` at SPEC-01 §1.2 rather than duplicating it. **2026-09-23:** E-4, E-9, E-10, E-12, E-13 and E-16 are now covered by tests rather than intention, E-7 is measured, and writing the E-4/E-9 tests found a real defect — the view announced an empty browser before its first query had resolved. See the sweep table below.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 **A Document Picture-in-Picture window IS a window to `chrome.windows.getAll()`** — observed in
 the running build, 2026-09-22, contradicting an assertion I had made confidently in the opposite
@@ -48,11 +48,11 @@ destroyed the float.
 `windowType: "normal"`, reasoning that a floating widget would not be a normal window. Measured
 against a live float, it is:
 
-| | Real window | The float |
-| --- | --- | --- |
-| `type` | `normal` | `normal` |
-| `alwaysOnTop` | `false` | **`true`** |
-| size · tabs | 1622x1006 · 17 | 414x681 · 1 (`about:blank`) |
+|               | Real window    | The float                   |
+| ------------- | -------------- | --------------------------- |
+| `type`        | `normal`       | `normal`                    |
+| `alwaysOnTop` | `false`        | **`true`**                  |
+| size · tabs   | 1622x1006 · 17 | 414x681 · 1 (`about:blank`) |
 
 `alwaysOnTop` is **exact rather than heuristic**: `chrome.windows.create()` is forbidden from
 setting it for anti-phishing reasons — NG-6, the very restriction that forces this feature's
@@ -84,11 +84,11 @@ and **New window** drop to icon buttons with tooltips and `aria-label`s. The sur
 itself then took three passes — labelled button, menu everywhere, menu in the panel only — before
 landing back on a labelled button with honest copy. Settled state:
 
-| Host | Logo | Surface controls |
-| --- | --- | --- |
-| Side panel | decorative | **Open full view** — names the destination, not a capability it lacks |
-| Anchor tab | decorative | **Float on top** / **Stop floating**, **Back to panel** as buttons |
-| Float | decorative | **Open full view** — closes the float and raises the anchor window (AC-43) |
+| Host       | Logo       | Surface controls                                                           |
+| ---------- | ---------- | -------------------------------------------------------------------------- |
+| Side panel | decorative | **Open full view** — names the destination, not a capability it lacks      |
+| Anchor tab | decorative | **Float on top** / **Stop floating**, **Back to panel** as buttons         |
+| Float      | decorative | **Open full view** — closes the float and raises the anchor window (AC-43) |
 
 **Sequencing deviation, deliberate:** T-2 and T-3 were built **before** T-0 rather than after. The
 plan assumed T-0 could be run against the spike, but the spike only reaches the float through a
@@ -119,14 +119,14 @@ existing code in five places:
    an ordinary closable row** — a self-destruct path (AC-16, E-4).
 3. `useActiveTab` resolves its host window with `chrome.windows.getCurrent()`, which returns the
    extension's own window outside the panel (AC-17).
-4. `SyncPrompt.restore()` makes the *same* mistake with `chrome.windows.getLastFocused()`, so
+4. `SyncPrompt.restore()` makes the _same_ mistake with `chrome.windows.getLastFocused()`, so
    pressing UNDO from the float can teleport the user onto the extension's own tab — and it
    subscribes per-document, so one closed tab raises an undo prompt in every open surface (T-9a,
    T-9b). Neither is in the spec's cross-module table; both were found by falsifying this plan.
 5. The spike turns the opener into an imperative DOM "placard". SPEC-01 deletes that whole idea:
    the anchor tab keeps the full view, and float open/closed becomes React state (AC-9, §1.3).
 
-Framing correction carried into T-10: the spec calls §5.7 a *width* problem, but the side panel
+Framing correction carried into T-10: the spec calls §5.7 a _width_ problem, but the side panel
 already ships at roughly 400 px wide. The genuinely new constraint is the float's **640 px of
 height**, against ~162 px of fixed chrome.
 
@@ -134,16 +134,16 @@ height**, against ~162 px of fixed chrome.
 
 Commit `fe82082` is on this branch and builds. SPEC-01 §1.3 supersedes part of it.
 
-| Spike artefact | Disposition |
-| --- | --- |
-| `src/lib/host.ts` — `?host=` allow-list with panel fallback | **Keep the mechanism.** Rename the middle host `"window"` to `"anchor"` (T-2). |
-| `src/lib/float.ts` — synchronous `requestWindow()` in the click handler | **Keep — load-bearing.** C-3: any `await` first burns the activation token. |
-| `src/lib/float.ts` — extension-origin iframe fill (`fillFloat`) | **Keep.** A-3 / LEARNINGS: re-parenting breaks Emotion's `<style>` injection, 24 MUI portals and notistack at once. |
-| `src/lib/float.ts` — `showPlacard` / `hidePlacard`, `#root` hiding | **Delete.** There is no placard (AC-9). |
-| `float.ts` — `canFloat()` gated on the popup window | **Change.** True in the anchor tab. |
-| `ControlBar` — `handlePopOut` calling `windows.create({type:"popup"})` | **Rewrite.** Find-or-create an anchor **tab** (AC-2, AC-13). |
-| `ControlBar` — `handleCRXWindow` find-or-create over an extension tab | **Reuse as the basis** for the above; it already has the right semantics. |
-| `ControlBar` — icon-only pop-out, tooltip "Open in a separate window" | **Rewrite.** Never names the floating payoff; a tooltip does not reach keyboard or touch (AC-39, AC-40). |
+| Spike artefact                                                          | Disposition                                                                                                         |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/host.ts` — `?host=` allow-list with panel fallback             | **Keep the mechanism.** Rename the middle host `"window"` to `"anchor"` (T-2).                                      |
+| `src/lib/float.ts` — synchronous `requestWindow()` in the click handler | **Keep — load-bearing.** C-3: any `await` first burns the activation token.                                         |
+| `src/lib/float.ts` — extension-origin iframe fill (`fillFloat`)         | **Keep.** A-3 / LEARNINGS: re-parenting breaks Emotion's `<style>` injection, 24 MUI portals and notistack at once. |
+| `src/lib/float.ts` — `showPlacard` / `hidePlacard`, `#root` hiding      | **Delete.** There is no placard (AC-9).                                                                             |
+| `float.ts` — `canFloat()` gated on the popup window                     | **Change.** True in the anchor tab.                                                                                 |
+| `ControlBar` — `handlePopOut` calling `windows.create({type:"popup"})`  | **Rewrite.** Find-or-create an anchor **tab** (AC-2, AC-13).                                                        |
+| `ControlBar` — `handleCRXWindow` find-or-create over an extension tab   | **Reuse as the basis** for the above; it already has the right semantics.                                           |
+| `ControlBar` — icon-only pop-out, tooltip "Open in a separate window"   | **Rewrite.** Never names the floating payoff; a tooltip does not reach keyboard or touch (AC-39, AC-40).            |
 
 Dropping the `?host=window` value is safe: the popup surface was never shipped and exists only on
 this unmerged branch.
@@ -154,14 +154,14 @@ The spec deliberately left these to the plan. Each is a decision, not a discover
 
 - **D-1 — Side-panel affordance is a visible labelled button.** `<Button startIcon={<PictureInPictureAlt/>}>Float on top</Button>`,
   alongside the existing labelled "New tab" / "New window". Adopts PI-8. AC-40 would technically
-  accept an icon with a strong `aria-label`, but AC-39 requires a *sighted, non-hovering* user to
+  accept an icon with a strong `aria-label`, but AC-39 requires a _sighted, non-hovering_ user to
   learn the payoff, and an icon cannot do that. The float never renders this control, so §5.7's
   400 px budget does not constrain it — but the 320 px side panel does, which is why T-5 carries an
   explicit narrow-width check.
 - **D-2 — "Evicted" is not distinguishable from "user closed the float", so we do not pretend to
   distinguish them.** Chrome fires `pagehide` on the float for eviction, for the float's own close
   button, and for our return control alike, and exposes no reason. The plan therefore tracks only
-  *who initiated*: a close we called ourselves goes back to the anchor silently; a close we did not
+  _who initiated_: a close we called ourselves goes back to the anchor silently; a close we did not
   initiate raises the AC-34 named state. That is a superset of eviction, satisfies AC-34's wording
   ("explaining that the floating window was closed" — it does not claim to know why), and never
   mislabels a user's own close as an eviction.
@@ -192,7 +192,7 @@ The spec deliberately left these to the plan. Each is a decision, not a discover
   host `panel` **while being an ordinary browser tab**. Under a naive reading of AC-3, clicking
   "Float on top" there would run `window.close()` and close a real tab out from under the user.
   Discriminator: `chrome.tabs.getCurrent()` resolves to a tab in a tab and to `undefined` in the
-  side panel. It is async, but it runs *after* the hand-off, so C-3 does not apply. Such a tab
+  side panel. It is async, but it runs _after_ the hand-off, so C-3 does not apply. Such a tab
   should also upgrade itself to `?host=anchor` via `history.replaceState` — which changes the URL
   without a navigation, so it cannot trip C-6 — rather than sit in the wrong host forever.
   **The condition is a conjunction, not the `getCurrent()` check alone:** that call also returns
@@ -203,11 +203,11 @@ The spec deliberately left these to the plan. Each is a decision, not a discover
   `handleCRXWindow` takes `crxTabs[0]` from an unordered query. A user can already have two
   extension tabs open, and after this feature both would offer a float control — the second float
   evicting the first through C-5's one-PiP-per-browser limit. `openAnchorTab()` therefore prefers
-  an existing tab that is *already* `?host=anchor` over a bare one, and the extra tabs are left
+  an existing tab that is _already_ `?host=anchor` over a bare one, and the extra tabs are left
   alone rather than closed: closing a user's tabs uninvited is worse than the duplication. AC-13
-  binds what *we* create, which this satisfies.
+  binds what _we_ create, which this satisfies.
 - **D-8 — one labelled button, not a menu. Superseded its own first version.**
-  *(User decision, 2026-09-22, revised the same day.)* First attempt: a labelled "Float on top"
+  _(User decision, 2026-09-22, revised the same day.)_ First attempt: a labelled "Float on top"
   button, rejected because it promises something the click does not do — floating cannot start in
   the panel (C-1). Second: every surface action behind a menu on the logo, which fixed the honesty
   and the width but **cost a third click on a two-click floor**. C-1 plus C-3 make two clicks the
@@ -218,13 +218,13 @@ The spec deliberately left these to the plan. Each is a decision, not a discover
   the second step. Width was never really the constraint once New tab and New window became icons
   — measured at 320px the button is 114px and the bar stays one row.
 - **D-7 — a manual "Back to panel", because the spec left the return trip with no door.**
-  *(User decision, 2026-09-22, in response to "closing PiP or navigating away should open side
-  panel, or not?")* The answer to the literal question is **no**, twice over: reopening the panel
+  _(User decision, 2026-09-22, in response to "closing PiP or navigating away should open side
+  panel, or not?")_ The answer to the literal question is **no**, twice over: reopening the panel
   when the float closes would leave two live copies of the manager, since the anchor tab is already
   showing the full view; and on the eviction path there is no user gesture to spend, so
   `chrome.sidePanel.open()` would simply throw (C-10). Navigating away cannot do it at all — the
   document is being destroyed. But the question exposed a real gap: from the anchor tab there was
-  **no route back** except knowing the toolbar icon opens the panel. NG-11 forbids *automatic*
+  **no route back** except knowing the toolbar icon opens the panel. NG-11 forbids _automatic_
   restoration, so an explicit control does not contradict it.
   Shape: a **"Back to panel"** button in the anchor tab that opens the panel and closes the anchor
   tab — the exact mirror of the outbound hand-off, preserving "exactly one copy" (G-2). **Hidden
@@ -237,7 +237,7 @@ The spec deliberately left these to the plan. Each is a decision, not a discover
 
 ## 4. Task units
 
-Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logic) · `verify`
+Tracks: `ui` (React/MUI surface) · `backend` (chrome.\* integration, module logic) · `verify`
 (manual or tooling, no production code).
 
 ### Phase 0 — De-risk and tooling
@@ -258,8 +258,8 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
      depends on, and confirming it costs one glance.
   2. **Does the float survive the anchor being backgrounded, and does the list stay live?** This is
      AC-20 in miniature, five phases before T-14 would find out.
-- **DoD:** A-8 recorded as confirmed or refuted in `LEARNINGS.md` under *What Works* / *What
-  Doesn't Work*. **If refuted, stop and re-open SPEC-01** — the feature's value changes materially.
+- **DoD:** A-8 recorded as confirmed or refuted in `LEARNINGS.md` under _What Works_ / _What
+  Doesn't Work_. **If refuted, stop and re-open SPEC-01** — the feature's value changes materially.
   Same for an empty list in the float, which would invalidate A-3's whole approach.
 - **ACs:** A-8, AC-31 (early signal), AC-30 (early signal), AC-8 (early signal), AC-20 (early signal)
 
@@ -294,7 +294,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   shape — add the tests it never had).
 - **DoD:** `?host=anchor` gives anchor; `?host=float` gives float; absent, `?host=window`, and
   `?host=<garbage>` all give panel. Unit tests cover all five.
-- **ACs:** **AC-28** *(Verify: unit)*
+- **ACs:** **AC-28** _(Verify: unit)_
 
 #### T-3 · Anchor tab entry point
 
@@ -316,7 +316,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   making another; invoking from an extension page **in a tab** focuses/keeps that tab and closes
   nothing. Unit tests on the find-or-create branch and on the close discriminator, against the
   chrome stub.
-- **ACs:** **AC-2** *(manual)*, **AC-3** *(manual + unit on the discriminator)*, **AC-13** *(manual + unit on the helper)*, E-16
+- **ACs:** **AC-2** _(manual)_, **AC-3** _(manual + unit on the discriminator)_, **AC-13** _(manual + unit on the helper)_, E-16
 
 ### Phase 2 — Float lifecycle
 
@@ -337,30 +337,30 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   **re-render**, never remount, `App` — otherwise the user's search text dies with every float.
 - **DoD:** opening and closing the float leaves the anchor tab's full manager untouched throughout;
   a typed search query survives open then close; nothing manipulates `#root`.
-- **ACs:** **AC-6** *(manual)*, **AC-7** *(unit on the failure path + manual)*, **AC-8** *(unit/manual)*, **AC-9** *(manual)*, **AC-10** *(manual)*, **AC-11** *(manual)*, **AC-12** *(manual)*, **AC-35** *(manual)*, E-12
+- **ACs:** **AC-6** _(manual)_, **AC-7** _(unit on the failure path + manual)_, **AC-8** _(unit/manual)_, **AC-9** _(manual)_, **AC-10** _(manual)_, **AC-11** _(manual)_, **AC-12** _(manual)_, **AC-35** _(manual)_, E-12
 
 #### T-5 · ControlBar affordance matrix and discoverability copy
 
 - **Track:** ui · **Files:** `src/lib/ControlBar/index.tsx`
 - **Scope:** the full matrix, per D-1 —
 
-  | host | float state | control |
-  | --- | --- | --- |
-  | `panel` | — | **"Float on top"** labelled button, calls `openAnchorTab()` |
-  | `anchor` | API absent | *(none)* |
-  | `anchor` | `closed` | **"Float on top"**, calls `open()` |
-  | `anchor` | `open` | **"Stop floating"**, calls `close()` |
-  | `float` | any | *(none)* |
+  | host     | float state | control                                                     |
+  | -------- | ----------- | ----------------------------------------------------------- |
+  | `panel`  | —           | **"Float on top"** labelled button, calls `openAnchorTab()` |
+  | `anchor` | API absent  | _(none)_                                                    |
+  | `anchor` | `closed`    | **"Float on top"**, calls `open()`                          |
+  | `anchor` | `open`      | **"Stop floating"**, calls `close()`                        |
+  | `float`  | any         | _(none)_                                                    |
 
 - **Copy note:** the open-state control was "Return here" in the first draft. AC-33 requires any
-  control that destroys the float to *say so*, and "Return here" describes where you end up, not
+  control that destroys the float to _say so_, and "Return here" describes where you end up, not
   what it costs — a user could easily read it as "focus the anchor tab, leave the float running".
   "Stop floating" names the destruction, which is the point.
 - **Pitfall:** verify the third labelled button does not overflow the bottom bar at **320 px**
   side-panel width; if it does, demote "New window" to an icon rather than dropping the new label,
   which is the only discovery mechanism the product has (§5.8).
 - **DoD:** unit tests assert the rendered control set for all five rows, by accessible name.
-- **ACs:** **AC-1** *(unit)*, **AC-4** *(unit + manual)*, **AC-5** *(unit)*, **AC-14** *(unit)*, **AC-33** *(unit)*, **AC-39** *(unit + manual)*, **AC-40** *(unit + manual)*
+- **ACs:** **AC-1** _(unit)_, **AC-4** _(unit + manual)_, **AC-5** _(unit)_, **AC-14** _(unit)_, **AC-33** _(unit)_, **AC-39** _(unit + manual)_, **AC-40** _(unit + manual)_
 
 #### T-6 · Float-closed notice
 
@@ -374,7 +374,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   tab" button. Gate it on `document.hasFocus()` being false a tick after `pagehide`.
 - **DoD:** starting a video PiP while the float is up produces the notice; "Float again" restores
   the float in one click; **Chrome's "Back to tab" button produces no notice at all**.
-- **ACs:** **AC-34** *(manual)*, E-1
+- **ACs:** **AC-34** _(manual)_, E-1
 
 ### Phase 3 — What a second surface breaks
 
@@ -389,7 +389,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   ones to miss.
 - **DoD:** clicking a tab from the float focuses that browser window and opens no side panel. Unit
   tests on the helper for all three hosts.
-- **ACs:** **AC-15** *(unit + manual)*
+- **ACs:** **AC-15** _(unit + manual)_
 
 #### T-8 · Anchor row: marked and non-closable
 
@@ -404,7 +404,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   `WindowListItem` renders a close-window control (`closeWindow(window.id)`) for every window,
   including the one holding the anchor tab. Guarding the row while leaving that button one click
   away is a half-fix: the float dies either way, and the user's intent ("tidy up this window") is
-  just as innocent. AC-16 does not reach it — it says *row* — so this is a plan-level addition:
+  just as innocent. AC-16 does not reach it — it says _row_ — so this is a plan-level addition:
   mark the anchor's **window** row as the one holding the floating window, and require the same
   deliberateness as any other window close. Removing window-close outright is **not** proposed;
   closing a window full of tabs is a legitimate thing to want, and E-3/E-9 already accept that it
@@ -412,7 +412,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
 - **DoD:** with the float up, the anchor row is findable, marked, has no close affordance, and
   cannot be caught by select-all then close; its window row is marked too. Unit tests on the row's
   control set and on the selection exclusion.
-- **ACs:** **AC-16** *(unit + manual)*, E-4, E-9
+- **ACs:** **AC-16** _(unit + manual)_, E-4, E-9
 
 #### T-9 · `useActiveTab` follows the last-focused normal window
 
@@ -430,7 +430,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
 - **DoD:** with the float up, switching between two browser windows moves the current-tab card with
   the focus, and the extension's own anchor tab never appears there. Unit tests on the resolution
   function.
-- **ACs:** **AC-17** *(unit + manual)*
+- **ACs:** **AC-17** _(unit + manual)_
 
 #### T-9a · Undo restore must not yank the user to the extension's own tab
 
@@ -439,16 +439,16 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   six `sidePanel.open` call sites plus `useActiveTab` as everything the per-window host model
   touches. It is **seven**: `SyncPrompt.restore()` opens with
   `chrome.windows.getLastFocused()` and `chrome.tabs.query({ active: true, windowId })`, then — after
-  restoring — re-focuses that window and re-activates that tab, under the comment *"Restoring steals
-  focus/activation; put the user back where they were."* Run from the float, "where they were" can
+  restoring — re-focuses that window and re-activates that tab, under the comment _"Restoring steals
+  focus/activation; put the user back where they were."_ Run from the float, "where they were" can
   resolve to **the anchor tab**, so pressing UNDO teleports the user onto the extension's own page.
   Same root cause as AC-17, different file, and nothing in the spec would have caught it.
 - **Scope:** route both calls through T-9's exported `resolveUserWindow()` so "where they were"
   means the user's last real browser window, never ours.
 - **DoD:** close a tab from the float, press UNDO; the tab comes back and focus stays where the user
   left it. Unit test on the resolution, with the stub reporting the anchor's window as last-focused.
-- **ACs:** **AC-17** *(the spirit of it — "never show/treat the extension's own anchor tab as the
-  user's current tab")*, NFR-6
+- **ACs:** **AC-17** _(the spirit of it — "never show/treat the extension's own anchor tab as the
+  user's current tab")_, NFR-6
 
 #### T-9b · One undo prompt per closure, not one per open surface
 
@@ -469,17 +469,17 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   surface the user is actually looking at" is what NFR-6 asks for anyway.
 - **Built as (a) plus an exact rule in front of it.** Visibility alone only shrinks the problem: the
   float's own iframe always reports itself visible, and so does a side panel in an unfocused window.
-  But the *by-design* duplicate is anchor + float, and the anchor **knows** whether its float is up —
+  But the _by-design_ duplicate is anchor + float, and the anchor **knows** whether its float is up —
   so it defers outright, no heuristic needed. Visibility then covers the rest. What survives is E-5:
   a user who deliberately reopens the side panel while floating can still get two prompts. That is
   rare, user-created, and closing it would need either `chrome.storage` (AC-23 forbids it) or
-  cross-document runtime messaging — a lot of machinery for a duplicate toast. The *operation*
+  cross-document runtime messaging — a lot of machinery for a duplicate toast. The _operation_
   duplication is defused separately: a spent session id makes the second UNDO reject, which is now
   reported rather than left as an unhandled rejection.
 - **Rejected: `document.hasFocus()`.** Tempting, since exactly one document has focus — but when a
   tab is closed from Chrome's own tab strip, none of ours does, and the prompt would disappear in
   precisely the case it is most useful.
-- **ACs:** **AC-19** *(manual)*, E-5
+- **ACs:** **AC-19** _(manual)_, E-5
 
 ### Phase 4 — The float at 400 x 640
 
@@ -503,31 +503,32 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
 - **Pitfall:** `SelectionToolbar` uses MUI `Grid` with `sm={6}` — at 400 px everything is `xs`, so
   the toolbar collapses to the full-width branch. Check it there, not at panel width.
 - **Pitfall:** `CurrentTab` is the most obvious candidate to collapse at float height, but it is not
-  free to drop — it is the surface AC-17 is *about*. If it has to go, that is a spec conversation,
+  free to drop — it is the surface AC-17 is _about_. If it has to go, that is a spec conversation,
   not a layout tweak.
 - **DoD:** every listed action performed from a real float at 400 x 640, with a tab count large
   enough to scroll.
 - **Measured, 2026-09-22, in `harness/` at exactly 400x640** — the arithmetic above was close but
   the real numbers are these:
 
-  | | Idle | Selection active |
-  | --- | --- | --- |
-  | Top bar (search + current tab) | 100px | 100px |
-  | Bottom bar | 57px | 125px |
-  | **List** | **483px ≈ 9.7 rows** | **415px ≈ 8.3 rows** |
+  |                                | Idle                 | Selection active     |
+  | ------------------------------ | -------------------- | -------------------- |
+  | Top bar (search + current tab) | 100px                | 100px                |
+  | Bottom bar                     | 57px                 | 125px                |
+  | **List**                       | **483px ≈ 9.7 rows** | **415px ≈ 8.3 rows** |
 
   `scrollWidth` stayed at 400 in every state — idle, selecting, dialog open, searching — so
   **AC-29 passes**. **AC-36 passes**: Deselect / Group / Window / Close all fit on one line, and
   eight rows remain visible beside them. **AC-38 passes outright** and its fallback is not needed:
   the group dialog is 287x185 with all nine colours on a single unwrapped row. Search filters
   correctly at this width.
+
 - **Clamping (C-7) does not bite**: `requestWindow({400, 640})` gave a 401x641 content area.
 - **Three float-only interaction bugs, all one cause.** Reported from the real float: the current
   tab card misaligned with the list, select/close needing a second click, and clicking a row's
-  *text* doing nothing while its background worked. The harness reproduced only the misalignment
+  _text_ doing nothing while its background worked. The harness reproduced only the misalignment
   (6px, now fixed). The other two were a volatile React list key — see `LEARNINGS.md` — and both
   went when it did.
-- **AC-37 / E-11 confirmed in the real float:** dragging works *inside* the float and reorders;
+- **AC-37 / E-11 confirmed in the real float:** dragging works _inside_ the float and reorders;
   releasing outside the window cleanly does nothing, with no stranded overlay. **D-4 holds** —
   keeping drag was right, and the "omit the affordances" branch of AC-37 is not needed. Note the
   layout harness cannot test this: the browser pane only offers an instant A-to-B drag, with none
@@ -535,7 +536,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   ever starts there regardless of whether the code works.
 - **Still needs a real float:** AC-30 / AC-31 (keyboard focus) and AC-18's empty state, which the
   harness fixtures cannot reach.
-- **ACs:** **AC-18** *(manual)*, **AC-29** *(manual)*, **AC-36** *(manual)*, **AC-37** *(manual)*, **AC-38** *(manual)*, E-6, E-7, E-11
+- **ACs:** **AC-18** _(manual)_, **AC-29** _(manual)_, **AC-36** _(manual)_, **AC-37** _(manual)_, **AC-38** _(manual)_, E-6, E-7, E-11
 
 #### T-11 · Theme delivery and no unstyled flash
 
@@ -545,7 +546,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   a `prefers-color-scheme` rule, and set the float document's own background in `fillFloat` before
   the iframe is appended.
 - **Found on building it: the plan named the wrong flash.** `:root` already sets
-  `color-scheme: light dark`, so the iframe never flashed *white* in dark mode — it flashed the
+  `color-scheme: light dark`, so the iframe never flashed _white_ in dark mode — it flashed the
   UA's own default until CssBaseline mounted, a smaller two-step. The bad one is the **float's own
   document**: created blank with no `color-scheme` at all, so the PiP window paints white in
   **both** themes until the iframe inside it loads. It is dressed before the frame is appended.
@@ -557,7 +558,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   **empty window**. It is optional-called now: a cosmetic colour lookup must never be able to cost
   the user the content.
 - **DoD:** open the float in both themes; no white flash, and the float matches the side panel.
-- **ACs:** **AC-32** *(measured + manual)*, **AC-27** *(manual — inherited from C-11, guard against regression)*
+- **ACs:** **AC-32** _(measured + manual)_, **AC-27** _(manual — inherited from C-11, guard against regression)_
 
 #### T-12 · Snackbars land in the surface the user is looking at
 
@@ -567,7 +568,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   anchor tab, where the failed request happened.
 - **DoD:** an action taken from the float shows its snackbar in the float; a forced float-open
   rejection shows its message in the anchor.
-- **ACs:** **AC-7** *(manual half)*, NFR-6
+- **ACs:** **AC-7** _(manual half)_, NFR-6
 
 ### Phase 5 — Guards, docs, and the sweep
 
@@ -579,7 +580,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   (AC-22); README feature list and store-listing description updated to name both the anchor tab
   and the float (AC-25).
 - **AC-23 is not honestly a unit test.** A source scan for `chrome.storage` / `localStorage` /
-  `IndexedDB` is a lint rule wearing a test's clothes: it proves only that *our* code does not
+  `IndexedDB` is a lint rule wearing a test's clothes: it proves only that _our_ code does not
   write, and says nothing about MUI, notistack, dnd-kit or react-hook-form. Keep the scan as a
   cheap guard against our own regressions, but the criterion is met by the **manual** half —
   inspect Application → Storage after a full float session and assert it is empty.
@@ -588,7 +589,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   `store-assets/privacy-policy.html` are the two that silently go stale.
 - **DoD:** `PRIVACY.md` and `store-assets/privacy-policy.html` appear **nowhere** in this branch's
   final diff.
-- **ACs:** **AC-22** *(unit)*, **AC-23** *(unit + manual)*, **AC-24** *(guard)*, **AC-25** *(manual)*
+- **ACs:** **AC-22** _(unit)_, **AC-23** _(unit + manual)_, **AC-24** _(guard)_, **AC-25** _(manual)_
 
 #### T-14 · Responsiveness and idle cost
 
@@ -596,14 +597,14 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
 - **Scope:** with the anchor tab backgrounded, confirm the float reflects tab open / close / move /
   group changes within 1 s (AC-20); idle the float 60 s and confirm no periodic `chrome.tabs.query`
   wake-ups (AC-21).
-- **Note:** **A-7 is already closed.** The 2026-09-22 re-probe measured a *tab* opener at
+- **Note:** **A-7 is already closed.** The 2026-09-22 re-probe measured a _tab_ opener at
   `visibilityState: "hidden"` for 102.1 s with -0.1 s hidden-only drift, and the float's own iframe
   realm — where the shipped React actually runs — reporting `visible` at 0.0 s drift. SPEC-01 §13
   still lists A-7 as pending because it was written before that run; this plan treats it as closed,
   and T-14 is confirmation in the real app rather than discovery.
 - **Note:** AC-21 should pass by construction — `useUpdateEvents` is purely event-driven, with a
   10 ms debounce and no interval anywhere. Confirm, do not build.
-- **ACs:** **AC-20** *(manual — app half measured, browser half outstanding)*, **AC-21** *(**met**, measured 2026-09-23)*
+- **ACs:** **AC-20** _(manual — app half measured, browser half outstanding)_, **AC-21** _(**met**, measured 2026-09-23)_
 - **Measured 2026-09-23, harness at 401x641 with the page hidden:**
   - AC-21 — counters wrapped around `chrome.tabs.query`, `chrome.tabGroups.query` and
     `chrome.windows.getAll`; 79 s with no interaction produced **0, 0, 0**. A first run read 10
@@ -625,7 +626,7 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
   float's controls (AC-30); typing filters the list using the keyboard alone (AC-31); every control
   new to this feature has an accessible name stating its effect, and anything that destroys the
   float says so (AC-33); the AC-39 payoff copy reaches a screen reader with no hover (AC-40).
-- **ACs:** **AC-30** *(manual)*, **AC-31** *(manual)*, **AC-33** *(unit + manual SR pass)*, **AC-40** *(unit + manual)*
+- **ACs:** **AC-30** _(manual)_, **AC-31** _(manual)_, **AC-33** _(unit + manual SR pass)_, **AC-40** _(unit + manual)_
 
 #### T-16 · Edge-case sweep, markup safety, LEARNINGS
 
@@ -637,29 +638,29 @@ Tracks: `ui` (React/MUI surface) · `backend` (chrome.* integration, module logi
 - **Note:** AC-26 should pass by construction — a scan found no `dangerouslySetInnerHTML`, no
   `href=`, and no `window.open` anywhere in `src/`. React escapes by default and every title goes
   through `ListItemText primary=`. This is a regression guard, not a fix.
-- **ACs:** **AC-26** *(unit)*, **AC-12** *(manual, E-3 / E-8 / E-14 / E-15)*, **AC-19** *(manual, E-5)*
+- **ACs:** **AC-26** _(unit)_, **AC-12** _(manual, E-3 / E-8 / E-14 / E-15)_, **AC-19** _(manual, E-5)_
 
 **Sweep, 2026-09-23.** Where each edge actually stands. "Test" means it fails if the behaviour
 regresses; each new one below was falsified against a deliberately broken build before being kept.
 
-| Edge | State | Evidence |
-| --- | --- | --- |
-| E-1 · video PiP evicts ours | **needs a real float** | Requires a second PiP; `float.test.ts` covers the notice it should raise, not the eviction. |
-| E-2 · ours evicts video PiP | **needs a real float** | Same. |
-| E-3 · anchor or its window closed | **needs a real float** | Browser-owned lifetime. |
-| E-4 · anchor / float as a row | **test** | `TabsView.test.tsx` — the list leaves out our own pages, and the float's window (normal by every field but `alwaysOnTop`). |
-| E-5 · panel and float both open | **part test** | `shouldPrompt.test.ts` covers the undo half; two live copies still wants eyes. |
-| E-6 · Chrome clamps the size | **observed** | 400x640 requested, 401x641 given (T-0). |
-| E-7 · smaller monitor | **measured** | Harness at 280, 320, 401 and 1100 px wide: no horizontal scroll, search present (181 px at the narrowest), every selection button inside the edge, titles ellipsize. |
-| E-8 · extension reloaded | **needs a real float** | Invalidates the opener document. |
-| E-9 · nothing left to mirror | **test, and fixed** | `TabsView.test.tsx`. The message was also being shown before the first query resolved — see below. |
-| E-10 · hostile titles | **test** | `TabDisplay.test.tsx` — markup, control characters, RTL override, empty, 3000-word. |
-| E-11 · drag released outside | **needs a real float** | `onDragCancel` built at T-10, untested — dnd-kit in jsdom is not worth the fidelity it would buy. |
-| E-12 · double activation | **test** | `float.test.ts` — "ignores a second activation while one is already open". |
-| E-13 · another profile holds PiP | **test** | `float.test.ts` — the refusal path surfaces a message (AC-7). |
-| E-14 · anchor navigated away | **needs a real float** | Browser-owned lifetime. |
-| E-15 · anchor dragged to another window | **needs a real float** | Browser-owned lifetime. |
-| E-16 · pop-out from another window | **test** | `anchor.test.ts` — focuses the existing anchor and its window rather than creating a second. |
+| Edge                                    | State                  | Evidence                                                                                                                                                                                                                           |
+| --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E-1 · video PiP evicts ours             | **passed 2026-09-24**  | `float.test.ts` covers the notice, not the eviction that raises it — so this is the only evidence Chrome's `pagehide` arrives at all, and that the focus heuristic reads it as an eviction rather than a close the user asked for. |
+| E-2 · ours evicts video PiP             | **passed 2026-09-24**  | Ours takes the slot; the video PiP goes without a prompt or an error.                                                                                                                                                              |
+| E-3 · anchor or its window closed       | **needs a real float** | Browser-owned lifetime.                                                                                                                                                                                                            |
+| E-4 · anchor / float as a row           | **test**               | `TabsView.test.tsx` — the list leaves out our own pages, and the float's window (normal by every field but `alwaysOnTop`).                                                                                                         |
+| E-5 · panel and float both open         | **part test**          | `shouldPrompt.test.ts` covers the undo half; two live copies still wants eyes.                                                                                                                                                     |
+| E-6 · Chrome clamps the size            | **observed**           | 400x640 requested, 401x641 given (T-0).                                                                                                                                                                                            |
+| E-7 · smaller monitor                   | **measured**           | Harness at 280, 320, 401 and 1100 px wide: no horizontal scroll, search present (181 px at the narrowest), every selection button inside the edge, titles ellipsize.                                                               |
+| E-8 · extension reloaded                | **needs a real float** | Invalidates the opener document.                                                                                                                                                                                                   |
+| E-9 · nothing left to mirror            | **test, and fixed**    | `TabsView.test.tsx`. The message was also being shown before the first query resolved — see below.                                                                                                                                 |
+| E-10 · hostile titles                   | **test**               | `TabDisplay.test.tsx` — markup, control characters, RTL override, empty, 3000-word.                                                                                                                                                |
+| E-11 · drag released outside            | **needs a real float** | `onDragCancel` built at T-10, untested — dnd-kit in jsdom is not worth the fidelity it would buy.                                                                                                                                  |
+| E-12 · double activation                | **test**               | `float.test.ts` — "ignores a second activation while one is already open".                                                                                                                                                         |
+| E-13 · another profile holds PiP        | **test**               | `float.test.ts` — the refusal path surfaces a message (AC-7).                                                                                                                                                                      |
+| E-14 · anchor navigated away            | **needs a real float** | Browser-owned lifetime.                                                                                                                                                                                                            |
+| E-15 · anchor dragged to another window | **needs a real float** | Browser-owned lifetime.                                                                                                                                                                                                            |
+| E-16 · pop-out from another window      | **test**               | `anchor.test.ts` — focuses the existing anchor and its window rather than creating a second.                                                                                                                                       |
 
 **The defect the sweep found.** The E-9 test passed against a build with the list filter disabled,
 which it should not have — so it was passing for the wrong reason. It was: `TabsView` rendered
@@ -708,7 +709,7 @@ AC-15, AC-16, AC-17, AC-22, AC-23, AC-26, AC-28, AC-33, AC-39, AC-40.
 
 **Manual only — and honestly so.** Document Picture-in-Picture cannot be driven from jsdom: there
 is no `documentPictureInPicture`, no second document, no always-on-top window, and no way to
-simulate eviction by another PiP request. Every AC about the float *actually existing* — AC-2,
+simulate eviction by another PiP request. Every AC about the float _actually existing_ — AC-2,
 AC-3, AC-6, AC-8 through AC-12, AC-18 through AC-21, AC-25, AC-27, AC-29 through AC-32, and AC-34
 through AC-38 — is verified against a loaded unpacked build. These become a numbered checklist in
 the PR description, keyed to AC ids.
@@ -719,31 +720,31 @@ test can ever cover it. It is a human click, every time.
 
 ## 7. Risks
 
-| # | Risk | Mitigation |
-| --- | --- | --- |
-| R-1 | A refactor slips an `await` in front of `requestWindow()` and the float silently stops opening (C-3). | Comment at the call site (carried from the spike), T-4's DoD, and AC-6 as a standing manual check. |
-| R-2 | A-8 fails and keyboard entry does not reach the float's search field. | T-0 runs **before** any rewrite, against code that already works. Failure re-opens the spec rather than wasting the build. |
-| R-3 | The anchor tab is an ordinary tab with no lifetime protection (A-4); users will close or navigate it. | AC-16 removes the in-manager path; AC-33 names the consequence on the controls; E-14 is accepted, not solved. |
-| R-4 | Adding a test runner to a repo with none is scope adjacent to the feature, not part of it. | Deliberate user decision. Kept to one config file, one stub and one setup file; `vitest.config.ts` stays separate from the CRXJS build config. |
-| R-5 | The third labelled button overflows the 320 px side panel. | Checked explicitly in T-5, with a named fallback (demote "New window" to an icon) rather than sacrificing the discovery copy. |
-| R-6 | Both privacy-policy copies drift if a permission sneaks in. | AC-22 is a test; the DoD is that neither policy file appears in the final diff. |
-| R-7 | `useTabsStructure` is instantiated 2–3 times concurrently (a view, `SelectionToolbar`, `useActiveTab`), each with its own listeners, so **one** tab event fans out to 4–6 `chrome.tabs.query` / `tabGroups.query` calls. | Not an AC-21 breach — that criterion is scoped to *idle* — but it is the thing most likely to put AC-20's 1 s budget at risk on a large tab set, and it is pre-existing rather than introduced here. Measure in T-14 before optimising; do not refactor speculatively. |
-| R-8 | T-0 verifies A-8 through the **spike's popup-window** opener, not the anchor tab the feature will actually ship. | Valid as a proxy for AC-31, since the float's content is the same extension iframe either way. Weaker for AC-30 ("focus lands inside the float on open"), which could plausibly differ by opener type — so AC-30 is re-checked against the real anchor in T-15 rather than being signed off at T-0. |
+| #   | Risk                                                                                                                                                                                                                     | Mitigation                                                                                                                                                                                                                                                                                          |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R-1 | A refactor slips an `await` in front of `requestWindow()` and the float silently stops opening (C-3).                                                                                                                    | Comment at the call site (carried from the spike), T-4's DoD, and AC-6 as a standing manual check.                                                                                                                                                                                                  |
+| R-2 | A-8 fails and keyboard entry does not reach the float's search field.                                                                                                                                                    | T-0 runs **before** any rewrite, against code that already works. Failure re-opens the spec rather than wasting the build.                                                                                                                                                                          |
+| R-3 | The anchor tab is an ordinary tab with no lifetime protection (A-4); users will close or navigate it.                                                                                                                    | AC-16 removes the in-manager path; AC-33 names the consequence on the controls; E-14 is accepted, not solved.                                                                                                                                                                                       |
+| R-4 | Adding a test runner to a repo with none is scope adjacent to the feature, not part of it.                                                                                                                               | Deliberate user decision. Kept to one config file, one stub and one setup file; `vitest.config.ts` stays separate from the CRXJS build config.                                                                                                                                                      |
+| R-5 | The third labelled button overflows the 320 px side panel.                                                                                                                                                               | Checked explicitly in T-5, with a named fallback (demote "New window" to an icon) rather than sacrificing the discovery copy.                                                                                                                                                                       |
+| R-6 | Both privacy-policy copies drift if a permission sneaks in.                                                                                                                                                              | AC-22 is a test; the DoD is that neither policy file appears in the final diff.                                                                                                                                                                                                                     |
+| R-7 | `useTabsStructure` is instantiated 2–3 times concurrently (a view, `SelectionToolbar`, `useActiveTab`), each with its own listeners, so **one** tab event fans out to 4–6 `chrome.tabs.query` / `tabGroups.query` calls. | Not an AC-21 breach — that criterion is scoped to _idle_ — but it is the thing most likely to put AC-20's 1 s budget at risk on a large tab set, and it is pre-existing rather than introduced here. Measure in T-14 before optimising; do not refactor speculatively.                              |
+| R-8 | T-0 verifies A-8 through the **spike's popup-window** opener, not the anchor tab the feature will actually ship.                                                                                                         | Valid as a proxy for AC-31, since the float's content is the same extension iframe either way. Weaker for AC-30 ("focus lands inside the float on open"), which could plausibly differ by opener type — so AC-30 is re-checked against the real anchor in T-15 rather than being signed off at T-0. |
 
 ## 8. Traceability — all 40 acceptance criteria
 
-| AC | Unit(s) | AC | Unit(s) | AC | Unit(s) | AC | Unit(s) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| AC-1 | T-5 | AC-11 | T-4 | AC-21 | T-14 | AC-31 | T-0, T-15 |
-| AC-2 | T-3 | AC-12 | T-4, T-16 | AC-22 | T-13 | AC-32 | T-11 |
-| AC-3 | T-3 | AC-13 | T-3 | AC-23 | T-13 | AC-33 | T-5, T-15 |
-| AC-4 | T-5 | AC-14 | T-5 | AC-24 | T-13 | AC-34 | T-6 |
-| AC-5 | T-5 | AC-15 | T-7 | AC-25 | T-13 | AC-35 | T-4 |
-| AC-6 | T-4 | AC-16 | T-8 | AC-26 | T-16 | AC-36 | T-10 |
-| AC-7 | T-4, T-12 | AC-17 | T-9 | AC-27 | T-11 | AC-37 | T-10 |
-| AC-8 | T-0, T-4 | AC-18 | T-10 | AC-28 | T-2 | AC-38 | T-10 |
-| AC-9 | T-4, T-5 | AC-19 | T-9b, T-16 | AC-29 | T-10 | AC-39 | T-5 |
-| AC-10 | T-4 | AC-20 | T-0, T-14 | AC-30 | T-0, T-15 | AC-40 | T-5, T-15 |
+| AC    | Unit(s)   | AC    | Unit(s)    | AC    | Unit(s)   | AC    | Unit(s)   |
+| ----- | --------- | ----- | ---------- | ----- | --------- | ----- | --------- |
+| AC-1  | T-5       | AC-11 | T-4        | AC-21 | T-14      | AC-31 | T-0, T-15 |
+| AC-2  | T-3       | AC-12 | T-4, T-16  | AC-22 | T-13      | AC-32 | T-11      |
+| AC-3  | T-3       | AC-13 | T-3        | AC-23 | T-13      | AC-33 | T-5, T-15 |
+| AC-4  | T-5       | AC-14 | T-5        | AC-24 | T-13      | AC-34 | T-6       |
+| AC-5  | T-5       | AC-15 | T-7        | AC-25 | T-13      | AC-35 | T-4       |
+| AC-6  | T-4       | AC-16 | T-8        | AC-26 | T-16      | AC-36 | T-10      |
+| AC-7  | T-4, T-12 | AC-17 | T-9        | AC-27 | T-11      | AC-37 | T-10      |
+| AC-8  | T-0, T-4  | AC-18 | T-10       | AC-28 | T-2       | AC-38 | T-10      |
+| AC-9  | T-4, T-5  | AC-19 | T-9b, T-16 | AC-29 | T-10      | AC-39 | T-5       |
+| AC-10 | T-4       | AC-20 | T-0, T-14  | AC-30 | T-0, T-15 | AC-40 | T-5, T-15 |
 
 AC-17 additionally covers **T-9a**, whose defect the spec's own cross-module table missed.
 
@@ -755,12 +756,12 @@ of their own: the first is E-4's hazard one level up, the second is a pre-existi
 this feature promotes from rare to routine. Both are recorded here rather than silently built or
 silently dropped — if either is unwanted, cutting it is a scope decision, not a bug.
 
-## 9. Open question for the user
+## 9. Open question for the user — resolved 2026-09-24
 
 **Q-1 — the float and the anchor tab do not share their search box, and the spec never says whether
 they should.** They are two separate documents with two separate React roots, so `search` in
 `App.tsx` exists twice. AC-11 says closing the float must leave the anchor "without losing the
-user's current search text", which is satisfied for text typed *in the anchor* — but a user who
+user's current search text", which is satisfied for text typed _in the anchor_ — but a user who
 types a filter **in the float** and then closes it lands on an anchor showing an unfiltered list,
 and will reasonably call that losing their search.
 
@@ -778,6 +779,16 @@ Three ways out, none free:
 Recommendation: **(2)**, folded into T-4. It is the option that makes AC-38's "finish this on a
 wider surface" instruction actually pleasant to follow. Flagging rather than deciding, because
 this is a product call the spec did not make.
+
+**Resolved 2026-09-24 — option (2), built.** The float reports its filter as it changes and the
+anchor adopts it when the float goes. One departure from the sketch above: the hand-off does not
+happen on `pagehide`. Sending from a realm that is being torn down is a race the message can lose,
+and an eviction gives no warning at all — so the anchor keeps the last thing it heard rather than
+asking for it at the end. The value is cleared on read, so a later float that never reports cannot
+inherit a stale filter. Nothing is stored (NG-9) and the text never reaches a URL.
+
+Still asymmetric, deliberately: opening a float does **not** carry the anchor's search into it.
+That is option (3), which nothing has asked for.
 
 ## 10. Explicitly out of scope
 

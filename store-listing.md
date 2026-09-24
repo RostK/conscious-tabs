@@ -15,7 +15,7 @@ Conscious Tabs — calm tab manager
 ## Summary / short description (≤132 chars)
 
 ```
-A quieter way to handle tab overload. Find, tidy, group, and close every open tab from one calm side panel.
+A quieter way to handle tab overload. Find, tidy, group, mute, and close every open tab — from the side panel or floating on top.
 ```
 
 > This matches the `description` field in `manifest.json`.
@@ -41,11 +41,13 @@ What you can do
 
 • Drag and drop — reorder tabs and groups, or move them between windows.
 
-• Quiet the noise — spot which tabs are playing sound and mute them from the toolbar.
+• Quiet the noise — see at a glance which tabs are playing sound. Mute one from its own row, or silence them all from the toolbar.
 
 • Undo closes — bring a tab back from a snackbar, restored via your browser's session history.
 
 • Float it on top — open Conscious Tabs in a tab, then float it into a small always-on-top window that stays visible over your other apps. Triage your tabs without switching back to the browser, and get your full browser width back while you do it.
+
+• Reach it all from the keyboard — Tab steps between rows, the arrow keys reach the controls on the row you're on, and every button announces the tab, group, or window it acts on rather than just "Close".
 
 • Fits your browser — follows your system light / dark theme and sits natively in the side panel.
 
@@ -66,6 +68,8 @@ A tab manager that lets you find, organise, and close your open tabs from the br
 - **tabs** — To list, search, activate, mute, pin, duplicate, reload, move, and close your open tabs.
 - **tabGroups** — To mirror and manage Chrome tab groups (collapse, rename, recolour, ungroup).
 - **sessions** — To restore recently closed tabs via the Undo action.
+- **favicon** — To show each tab's icon from the icons your browser has already
+  stored, so that drawing the list sends no request to the sites you have open.
 
 ## Screenshots
 
@@ -81,15 +85,15 @@ browser frame) to fill the 1280×800 canvas.
 Recommended set, in order:
 
 1. **Hero — the whole panel.** The tab list with the current-tab panel pinned at
-   the top and one tab group expanded. Caption: *"Every open tab, calm and in one place."*
+   the top and one tab group expanded. Caption: _"Every open tab, calm and in one place."_
 2. **Search.** A query typed in, list filtered to matching tabs. Caption:
-   *"Find any tab by title or URL — across every window."*
+   _"Find any tab by title or URL — across every window."_
 3. **Multi-select + bulk action.** A few tabs checked with the selection toolbar
-   showing. Caption: *"Select and tidy in bulk — close, group, or move."*
+   showing. Caption: _"Select and tidy in bulk — close, group, or move."_
 4. **Current-tab quick actions.** The current-tab panel with its menu open
-   (mute / pin / duplicate / move). Caption: *"Manage the tab you're on without scrolling."*
+   (mute / pin / duplicate / move). Caption: _"Manage the tab you're on without scrolling."_
 5. **Dark mode.** The same hero view in system dark theme. Caption:
-   *"Follows your system light and dark theme."*
+   _"Follows your system light and dark theme."_
 
 ### Ready-to-upload assets
 
@@ -100,15 +104,16 @@ windows) so no personal data appears — driven through its real interactions
 (search typed, tabs selected, the current-tab menu opened, dark theme
 emulated) and composited onto the branded frame:
 
-| File | Scene |
-| --- | --- |
-| `store-assets/01-hero.png` | Hero — the whole panel |
-| `store-assets/02-search.png` | Search / filter |
-| `store-assets/03-multiselect.png` | Multi-select + bulk actions |
+| File                              | Scene                         |
+| --------------------------------- | ----------------------------- |
+| `store-assets/01-hero.png`        | Hero — the whole panel        |
+| `store-assets/02-search.png`      | Search / filter               |
+| `store-assets/03-multiselect.png` | Multi-select + bulk actions   |
 | `store-assets/04-current-tab.png` | Current-tab quick-action menu |
-| `store-assets/05-dark-mode.png` | Dark mode |
+| `store-assets/05-dark-mode.png`   | Dark mode                     |
 
 Optional promo assets (dashboard only, not required):
+
 - Small promo tile **440×280**, marquee **1400×560** — use the paper background
   with the plum logo and the summary line.
 

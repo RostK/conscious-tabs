@@ -72,17 +72,18 @@
     memory while the panel is open and is not written to any storage or sent
     anywhere.</p>
 
-    <p>One clarification on &ldquo;nothing leaves your browser&rdquo;: the panel
-    shows each tab's favicon by pointing an image element at the icon URL your
-    browser already reports for that tab. Loading it may reach that site's own
-    server, though it is usually served from your browser's cache. Nothing about
-    you or your other tabs is sent with the request.</p>
+    <p>Favicons come from your browser's own favicon store, not from the sites
+    themselves. Opening the panel therefore contacts nobody: no request leaves
+    your machine when the list is drawn. Earlier versions pointed an image
+    element at each site's icon URL, which could reach that site's server; that
+    is what the <strong>favicon</strong> permission replaces.</p>
 
     <h2>Permissions and why they are needed</h2>
     <ul>
       <li><strong>sidePanel</strong> — Renders the extension's interface in the browser side panel.</li>
       <li><strong>tabs</strong> — Lists, searches, and acts on your open tabs (activate, mute, pin, duplicate, reload, move, and close).</li>
       <li><strong>tabGroups</strong> — Mirrors and manages Chrome tab groups (collapse, rename, recolour, group, and ungroup).</li>
+      <li><strong>favicon</strong> — Reads the icons your browser has already stored for pages you have visited, so the list can show them without asking the sites for them.</li>
       <li><strong>sessions</strong> — Restores a recently closed tab when you use the Undo action. Restoration is performed by your browser; the extension does not keep its own history of closed tabs.</li>
     </ul>
 

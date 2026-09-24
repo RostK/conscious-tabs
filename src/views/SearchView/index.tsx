@@ -1,11 +1,14 @@
 import { Box, Typography } from "@mui/material";
-import { FC, useCallback } from "react";
+import { FC, useCallback, useEffect, useMemo } from "react";
 
 import { Tabs } from "../../lib/Tabs";
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 
-export const SearchView: FC<{ search: string }> = ({ search }) => {
+export const SearchView: FC<{
+  search: string;
+  onMatches: (count: number) => void;
+}> = ({ search, onMatches }) => {
   const filterTabs = useCallback(
     ({ title, url }: chrome.tabs.Tab): boolean =>
       Boolean(
@@ -16,6 +19,22 @@ export const SearchView: FC<{ search: string }> = ({ search }) => {
   );
 
   const loaded = useTabsStructure({ filter: filterTabs });
+
+  // Reported upward rather than announced here, because this component is
+  // unmounted whenever the search box is empty — and a live region that
+  // appears at the same moment its text does is not reliably announced. The
+  // region lives in App, mounted for the life of the page.
+  const matches = useMemo(
+    () =>
+      (loaded ?? []).reduce(
+        (total, item) => total + (item.type === "group" ? item.tabs.length : 1),
+        0,
+      ),
+    [loaded],
+  );
+  useEffect(() => {
+    if (loaded) onMatches(matches);
+  }, [loaded, matches, onMatches]);
   const tabsStructure = loaded ?? [];
   const windows = useWindowsStructure();
 

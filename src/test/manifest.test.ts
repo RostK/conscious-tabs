@@ -12,14 +12,39 @@ import manifest from "../../manifest.json";
  * published policy false, so this is a guard rather than a description.
  */
 describe("manifest", () => {
-  // AC-22.
-  it("requests exactly four permissions and no more", () => {
+  // SPEC-03 AC-6, which supersedes SPEC-01 AC-22: four became five when
+  // favicons moved to the browser's own store. The fifth was bought
+  // deliberately and is documented in all five places SPEC-01 AC-24 names —
+  // see the test below, which is the thing that keeps them agreeing.
+  it("requests exactly five permissions and no more", () => {
     expect(manifest.permissions).toEqual([
       "sidePanel",
       "tabs",
       "tabGroups",
       "sessions",
+      "favicon",
     ]);
+  });
+
+  /**
+   * SPEC-01 AC-24, made executable.
+   *
+   * It was written as a manual checklist for a permission nobody expected to
+   * add. One was added, so the checklist becomes a test: a permission that
+   * appears in the manifest and in none of the published documents is a
+   * privacy policy that has quietly stopped being complete.
+   */
+  it.each([
+    ["PRIVACY.md", "PRIVACY.md"],
+    ["the published privacy policy", "store-assets/privacy-policy.html"],
+    ["README.md", "README.md"],
+    ["the store listing", "store-listing.md"],
+  ])("names every permission in %s", (_label, file) => {
+    const text = readFileSync(join(process.cwd(), file), "utf8");
+    const missing = manifest.permissions.filter(
+      (permission) => !text.includes(permission),
+    );
+    expect(missing).toEqual([]);
   });
 
   it("declares no host permissions", () => {

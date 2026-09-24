@@ -223,6 +223,11 @@ export const GroupListItem: FC<
                 }}
               />
             )}
+            {/* Pointer only, on purpose: the accessible control for this is
+                DragHandle, which carries the role, the tab stop and the
+                keyboard half. Giving this div its own role would announce a
+                second control for the same action. */}
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
             <div ref={setNodeRefDraggable} onMouseDown={onMouseDown}>
               <OuterDropzone>
                 <GroupDisplay

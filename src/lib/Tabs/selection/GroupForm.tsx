@@ -71,6 +71,12 @@ export const GroupForm: FC<{
               ? `Change group "${group.title}"`
               : "Add tabs to new group"}
           </DialogContentText>
+          {/* The dialog has to take focus, or the keyboard is left behind it on
+              the page it covers. It used to land on OK, which is the one
+              control in here nobody opened the dialog to reach — a keyboard or
+              screen-reader user arrived at "confirm" rather than at the field
+              they came to fill. Selecting the text makes the rename case work
+              by typing, since the field arrives holding the old name. */}
           <FormInputText
             name="title"
             control={control}
@@ -78,6 +84,11 @@ export const GroupForm: FC<{
             size="small"
             margin="dense"
             fullWidth
+            // eslint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
+            onFocus={(event) => {
+              event.target.select();
+            }}
             rules={{ required: true }}
           />
           <FormGroupColour
@@ -90,7 +101,7 @@ export const GroupForm: FC<{
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" autoFocus color="primary" variant="contained">
+          <Button type="submit" color="primary" variant="contained">
             OK
           </Button>
         </DialogActions>
