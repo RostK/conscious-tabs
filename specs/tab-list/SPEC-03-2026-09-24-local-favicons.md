@@ -5,7 +5,7 @@
 | **Spec ID**    | SPEC-03                                                                                                                       |
 | **Date**       | 2026-09-24                                                                                                                    |
 | **Module**     | `tab-list` (`src/lib/Tabs/elements/TabFavicon.tsx`, `src/lib/Tabs/elements/TabAvatarsDisplay.tsx`, `src/lib/Tabs/AudioTabs/`) |
-| **Status**     | approved                                                                                                                         |
+| **Status**     | **implemented 2026-09-24** — AC-4 confirmed against a real browser by RostK                                                   |
 | **Supersedes** | —                                                                                                                             |
 
 ---
@@ -109,6 +109,9 @@ Store reviews permission changes. That is the trade this spec asks for, not a de
   **Verify:** manual — DevTools network panel, filtered to non-extension origins, while opening the
   panel over a window of ordinary tabs. This is the criterion the feature exists for; it is checked
   against a real browser, not a stub.
+  **Result: passed, 2026-09-24, RostK.** No test could have carried this one. The unit tests assert
+  the shape of the URL the code builds; only a real browser shows that nothing else on the page goes
+  and fetches something anyway.
 - **AC-5** _(Must)_ The feature SHALL write nothing to `chrome.storage`, `localStorage`,
   `sessionStorage`, IndexedDB or cookies, preserving SPEC-01 AC-23.
   **Verify:** unit/manual — storage inspection after a session.

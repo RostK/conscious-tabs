@@ -11,7 +11,7 @@ in plans, not here.
 | ------- | ---------- | ------------------------------------- | ---------- | ------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | SPEC-01 | 2026-09-22 | Floating tab manager window           | `ui-shell` | implemented (2026-09-23) | —                            | [ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md](ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md) |
 | SPEC-02 | 2026-09-23 | Tab audio controls                    | `tab-list` | implemented              | —                            | [tab-list/SPEC-02-2026-09-23-tab-audio-controls.md](tab-list/SPEC-02-2026-09-23-tab-audio-controls.md)                   |
-| SPEC-03 | 2026-09-24 | Favicons from the browser's own store | `tab-list` | approved                 | — (supersedes SPEC-01 AC-22) | [tab-list/SPEC-03-2026-09-24-local-favicons.md](tab-list/SPEC-03-2026-09-24-local-favicons.md)                           |
+| SPEC-03 | 2026-09-24 | Favicons from the browser's own store | `tab-list` | implemented (2026-09-24) | — (supersedes SPEC-01 AC-22) | [tab-list/SPEC-03-2026-09-24-local-favicons.md](tab-list/SPEC-03-2026-09-24-local-favicons.md)                           |
 
 ## Status values
 
