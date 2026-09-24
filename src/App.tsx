@@ -12,6 +12,7 @@ import { SearchOffOutlined, SearchOutlined } from "@mui/icons-material";
 import {
   AppBar,
   Box,
+  debounce,
   IconButton,
   InputBase,
   ListItemButton,
@@ -20,7 +21,13 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-import { ComponentProps, useCallback, useContext, useState } from "react";
+import {
+  ComponentProps,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 import { ControlBar } from "./lib/ControlBar";
 import { FloatClosedNotice } from "./lib/FloatClosedNotice.tsx";
@@ -91,6 +98,34 @@ function App() {
   const [dragging, setDragging] = useState<DefaultDrag | null>(null);
 
   const [search, setSearch] = useState("");
+
+  /**
+   * What the list did, for someone who cannot see it do it.
+   *
+   * Typing in the search box silently rewrites the page: rows leave, the count
+   * changes, and a screen reader is told none of it because nothing it was
+   * focused on moved. Closing a tab is already spoken — notistack's snackbar
+   * carries its own live region — so this is the one change of consequence
+   * that happened in silence.
+   *
+   * Debounced because `polite` queues rather than interrupts: announcing every
+   * keystroke means hearing five stale counts before the one that matters.
+   */
+  const [matches, setMatches] = useState<number>();
+  const [announcement, setAnnouncement] = useState("");
+  useEffect(() => {
+    if (!search || matches === undefined) {
+      setAnnouncement("");
+      return;
+    }
+    const say = debounce(() => {
+      setAnnouncement(`${matches} tab${matches === 1 ? "" : "s"} match`);
+    }, 600);
+    say();
+    return () => {
+      say.clear();
+    };
+  }, [search, matches]);
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 10 pixels before activating
     activationConstraint: {
@@ -195,8 +230,14 @@ function App() {
               no main landmark at all, so "skip to content" had nothing to
               skip to and the only way in was from the very top. */}
           <Box component="main">
+            {/* Inside the landmark, and mounted whether or not a search is
+                running — a live region added at the same moment as its text
+                is not reliably read. */}
+            <Box role="status" aria-live="polite" sx={srOnly}>
+              {announcement}
+            </Box>
             {!search && <TabsView />}
-            {search && <SearchView search={search} />}
+            {search && <SearchView search={search} onMatches={setMatches} />}
           </Box>
           <ControlBar />
           <DragOverlay
