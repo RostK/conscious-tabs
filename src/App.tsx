@@ -26,11 +26,20 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import { ControlBar } from "./lib/ControlBar";
+import {
+  getFloatState,
+  reportFloatSearch,
+  subscribeFloat,
+  takeFloatSearch,
+} from "./lib/float";
 import { FloatClosedNotice } from "./lib/FloatClosedNotice.tsx";
+import { getHost } from "./lib/host";
 import { srOnly } from "./lib/srOnly.ts";
 import { AudioTabs } from "./lib/Tabs/AudioTabs";
 import { CurrentTab } from "./lib/Tabs/CurrentTab";
@@ -111,6 +120,47 @@ function App() {
    * Debounced because `polite` queues rather than interrupts: announcing every
    * keystroke means hearing five stale counts before the one that matters.
    */
+  /**
+   * Q-1. The float and the anchor are separate documents, so `search` exists
+   * twice; without this, filtering in the float and closing it dropped you on
+   * an unfiltered anchor. Resolved as the plan recommended — the float reports,
+   * the anchor adopts — rather than by sharing state continuously, which
+   * nothing asked for.
+   */
+  const host = getHost();
+  const reported = useRef(false);
+  useEffect(() => {
+    if (host !== "float") return;
+    // Not on mount: the float opens with an empty box, and reporting that
+    // would hand the anchor an empty search the user never typed, wiping the
+    // one they left behind.
+    if (!reported.current) {
+      reported.current = true;
+      return;
+    }
+    const report = debounce(() => {
+      reportFloatSearch(search);
+    }, 300);
+    report();
+    return () => {
+      report.clear();
+    };
+  }, [host, search]);
+
+  const floating =
+    useSyncExternalStore(subscribeFloat, getFloatState) === "open";
+  const wasFloating = useRef(false);
+  useEffect(() => {
+    if (floating) {
+      wasFloating.current = true;
+      return;
+    }
+    if (!wasFloating.current) return;
+    wasFloating.current = false;
+    const handed = takeFloatSearch();
+    if (handed !== undefined) setSearch(handed);
+  }, [floating]);
+
   const [matches, setMatches] = useState<number>();
   const [announcement, setAnnouncement] = useState("");
   useEffect(() => {

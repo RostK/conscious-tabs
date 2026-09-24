@@ -447,6 +447,79 @@ describe("when the float goes away", () => {
     });
   });
 
+  /**
+   * Q-1. Two documents, two React roots, two `search` states — filtering in
+   * the float and closing it used to leave the anchor unfiltered.
+   */
+  describe("handing the float's search back", () => {
+    const search = (value: string) => ({ type: "float:search", search: value });
+
+    it("gives the anchor what the float last filtered by, once", async () => {
+      const pipWindow = makeFloatWindow();
+      installPiP(() => Promise.resolve(pipWindow));
+      const chrome = installChrome({ currentTab: { id: 7, windowId: 3 } });
+      const float = await loadFloat();
+      float.openFloat();
+      await settle();
+
+      (chrome.runtime.onMessage as unknown as Fireable).fire(search("invoice"));
+      await settle();
+
+      expect(float.takeFloatSearch()).toBe("invoice");
+      // Cleared on read, so a later float that reports nothing cannot inherit
+      // the filter of the one before it.
+      expect(float.takeFloatSearch()).toBeUndefined();
+    });
+
+    // Reported as it changes, not on the way out: a message sent from a realm
+    // that is being torn down may never arrive, and an eviction gives no
+    // warning at all.
+    it("keeps the newest of several reports", async () => {
+      const pipWindow = makeFloatWindow();
+      installPiP(() => Promise.resolve(pipWindow));
+      const chrome = installChrome({ currentTab: { id: 7, windowId: 3 } });
+      const float = await loadFloat();
+      float.openFloat();
+      await settle();
+
+      const fire = (chrome.runtime.onMessage as unknown as Fireable).fire;
+      fire(search("in"));
+      fire(search("inv"));
+      fire(search("invoice"));
+      await settle();
+
+      expect(float.takeFloatSearch()).toBe("invoice");
+    });
+
+    // An emptied search box is a real answer, not an absent one — the user
+    // cleared the filter and should not have it put back.
+    it("treats a cleared box as something to hand over", async () => {
+      const pipWindow = makeFloatWindow();
+      installPiP(() => Promise.resolve(pipWindow));
+      const chrome = installChrome({ currentTab: { id: 7, windowId: 3 } });
+      const float = await loadFloat();
+      float.openFloat();
+      await settle();
+
+      (chrome.runtime.onMessage as unknown as Fireable).fire(search(""));
+      await settle();
+
+      expect(float.takeFloatSearch()).toBe("");
+    });
+
+    // Every realm receives the broadcast; only the one holding a float has an
+    // anchor to hand anything back to.
+    it("is ignored by a realm that holds no float", async () => {
+      const chrome = installChrome({ currentTab: { id: 7, windowId: 3 } });
+      const float = await loadFloat("panel");
+
+      (chrome.runtime.onMessage as unknown as Fireable).fire(search("invoice"));
+      await settle();
+
+      expect(float.takeFloatSearch()).toBeUndefined();
+    });
+  });
+
   it("notifies subscribers on every transition", async () => {
     vi.spyOn(document, "hasFocus").mockReturnValue(false);
     const seen: string[] = [];

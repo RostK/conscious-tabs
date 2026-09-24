@@ -174,13 +174,60 @@ export const requestFullView = (): void => {
     .catch(() => undefined);
 };
 
+/**
+ * The float's filter, handed back to the document that will outlive it (Q-1).
+ *
+ * The two surfaces are separate documents with separate React roots, so
+ * `search` genuinely exists twice. AC-11 asks that closing the float not lose
+ * the user's search, which was true only for text typed in the *anchor*: filter
+ * a list in the float, close it, and you landed on an unfiltered anchor having
+ * apparently lost your place.
+ *
+ * Reported as it changes rather than on the way out. Sending from `pagehide`
+ * was the obvious design and is a race: the float's realm is being torn down,
+ * and a `sendMessage` issued there may never be delivered. An eviction gives
+ * even less warning than a close. So the anchor keeps the last thing it heard
+ * and adopts it when the float goes, which needs nothing to survive teardown.
+ *
+ * In memory, in the extension's own message channel. Nothing is stored (NG-9),
+ * and the text never reaches a URL.
+ */
+const FLOAT_SEARCH = "float:search";
+
+let floatSearch: string | undefined;
+
+/** Called by the float's own copy of the app as the user types. */
+export const reportFloatSearch = (search: string): void => {
+  void chrome.runtime
+    .sendMessage({ type: FLOAT_SEARCH, search })
+    .catch(() => undefined);
+};
+
+/**
+ * The float's last search, handed over once.
+ *
+ * Cleared on read so a later float that never reported cannot inherit a stale
+ * filter from the one before it.
+ */
+export const takeFloatSearch = (): string | undefined => {
+  const value = floatSearch;
+  floatSearch = undefined;
+  return value;
+};
+
 chrome.runtime.onMessage.addListener((message: unknown) => {
-  if ((message as { type?: string } | null)?.type !== RETURN_TO_FULL_VIEW) {
+  const type = (message as { type?: string } | null)?.type;
+
+  // Only the document actually holding a float can answer either of these.
+  // Every other realm — the side panel, the float itself — receives them too.
+  if (!current) return;
+
+  if (type === FLOAT_SEARCH) {
+    floatSearch = String((message as { search?: unknown }).search ?? "");
     return;
   }
-  // Only the document actually holding a float can answer this. Every other
-  // realm — the side panel, the float itself — receives the message too.
-  if (!current) return;
+
+  if (type !== RETURN_TO_FULL_VIEW) return;
   closeFloat();
   void focusSelf();
 });

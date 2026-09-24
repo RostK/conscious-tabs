@@ -756,7 +756,7 @@ of their own: the first is E-4's hazard one level up, the second is a pre-existi
 this feature promotes from rare to routine. Both are recorded here rather than silently built or
 silently dropped — if either is unwanted, cutting it is a scope decision, not a bug.
 
-## 9. Open question for the user
+## 9. Open question for the user — resolved 2026-09-24
 
 **Q-1 — the float and the anchor tab do not share their search box, and the spec never says whether
 they should.** They are two separate documents with two separate React roots, so `search` in
@@ -779,6 +779,16 @@ Three ways out, none free:
 Recommendation: **(2)**, folded into T-4. It is the option that makes AC-38's "finish this on a
 wider surface" instruction actually pleasant to follow. Flagging rather than deciding, because
 this is a product call the spec did not make.
+
+**Resolved 2026-09-24 — option (2), built.** The float reports its filter as it changes and the
+anchor adopts it when the float goes. One departure from the sketch above: the hand-off does not
+happen on `pagehide`. Sending from a realm that is being torn down is a race the message can lose,
+and an eviction gives no warning at all — so the anchor keeps the last thing it heard rather than
+asking for it at the end. The value is cleared on read, so a later float that never reports cannot
+inherit a stale filter. Nothing is stored (NG-9) and the text never reaches a URL.
+
+Still asymmetric, deliberately: opening a float does **not** carry the anchor's search into it.
+That is option (3), which nothing has asked for.
 
 ## 10. Explicitly out of scope
 
