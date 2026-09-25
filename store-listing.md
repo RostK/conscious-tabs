@@ -121,10 +121,16 @@ Picture-in-Picture window chrome, no shadow, and nothing behind it to be on top
 of.
 
 Made 2026-09-25 the same way as the other five — a real capture, composited into
-the branded frame rather than shipped as a raw desktop screenshot. The float was
-photographed on a 3840×2160 display, cropped to the window alone, then placed on
-the dark canvas with the wordmark, headline and subtitle at the same coordinates
-05-dark-mode uses. Rendered at 2× and downscaled, so the type is crisp.
+the branded frame rather than shipped as a raw desktop screenshot. Photographed
+on a 3840×2160 display, then placed on the dark canvas with the wordmark,
+headline and subtitle at the coordinates measured out of 05-dark-mode. Rendered
+at 2× through headless Chrome and downscaled, so the type is crisp.
+
+**The artwork must include whatever the float is sitting on.** A first attempt
+cropped to the float window alone and dropped it on the canvas like the side
+panel in the other five — at which point the headline claimed it floats above
+your other apps while the picture showed it floating above nothing. The editor
+behind it is the evidence, not background.
 
 Four things had to be fixed before the capture was usable, recorded so a retake
 does not rediscover them: close any menu left open in the float; make the window
