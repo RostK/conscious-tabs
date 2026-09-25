@@ -82,18 +82,32 @@ signed-in Gmail with inbox counts, `file:///` paths, private URLs. The side
 panel is narrow, so place the capture on a calm paper/neutral backdrop (or a
 browser frame) to fill the 1280×800 canvas.
 
-Recommended set, in order:
+**The store takes five.** There are six assets in `store-assets/`, so one is held
+back — see below for which and why.
+
+Upload set, in order (position 1 is the thumbnail in search results):
 
 1. **Hero — the whole panel.** The tab list with the current-tab panel pinned at
    the top and one tab group expanded. Caption: _"Every open tab, calm and in one place."_
-2. **Search.** A query typed in, list filtered to matching tabs. Caption:
+2. **Floating on top.** The float above an editor. Caption:
+   _"A small always-on-top window that stays visible over your work."_
+3. **Search.** A query typed in, list filtered to matching tabs. Caption:
    _"Find any tab by title or URL — across every window."_
-3. **Multi-select + bulk action.** A few tabs checked with the selection toolbar
+4. **Multi-select + bulk action.** A few tabs checked with the selection toolbar
    showing. Caption: _"Select and tidy in bulk — close, group, or move."_
-4. **Current-tab quick actions.** The current-tab panel with its menu open
+5. **Current-tab quick actions.** The current-tab panel with its menu open
    (mute / pin / duplicate / move). Caption: _"Manage the tab you're on without scrolling."_
-5. **Dark mode.** The same hero view in system dark theme. Caption:
-   _"Follows your system light and dark theme."_
+
+**Held back: `05-dark-mode.png`.** Not deleted — it is a good asset and the
+decision is easy to reverse — but of the six it earns its slot least. Following
+the system theme is what a browser extension is expected to do, so the image
+argues for something nobody doubts, while floating on top is the one capability
+a reader cannot guess from the description. The set does not lose dark mode
+either: 06-floating was captured in a dark system theme, so the dark palette is
+on display in position 2 while the slot goes to a claim that needed proving.
+
+Floating sits at 2 rather than 5 because it is the difference between this and
+every other tab manager, and few people scroll a listing's screenshot strip.
 
 ### Ready-to-upload assets
 
@@ -110,7 +124,7 @@ emulated) and composited onto the branded frame:
 | `store-assets/02-search.png`      | Search / filter                |
 | `store-assets/03-multiselect.png` | Multi-select + bulk actions    |
 | `store-assets/04-current-tab.png` | Current-tab quick-action menu  |
-| `store-assets/05-dark-mode.png`   | Dark mode                      |
+| `store-assets/05-dark-mode.png`   | Dark mode — **held back**      |
 | `store-assets/06-floating.png`    | The float on top of other apps |
 
 **06-floating is the one that cannot be faked**, which is why it was the last to
