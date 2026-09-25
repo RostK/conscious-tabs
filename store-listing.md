@@ -115,19 +115,23 @@ emulated) and composited onto the branded frame:
 
 **06-floating is the one that cannot be faked**, which is why it was the last to
 exist. Floating on top is the capability nobody can guess from a side panel, and
-the only image that argues for it is the float genuinely sitting above something
-that is not a browser. Rendering the panel at 400×640 in a tab looks close and
-proves nothing: no Picture-in-Picture window chrome, no shadow, and nothing
-behind it to be on top of.
+only a real always-on-top window over a real desktop demonstrates it. Rendering
+the panel at 400×640 in a tab looks close and proves nothing: no
+Picture-in-Picture window chrome, no shadow, and nothing behind it to be on top
+of.
 
-Captured 2026-09-25 from a 3840×2160 display and cropped to 1280×800, so it is
-downscaled rather than stretched. If it is ever retaken, the things that had to
-be fixed between the first attempt and the last one: close any open menu in the
-float, make the window behind it taller than the float so no empty desktop shows
-beneath, keep the manager out of the frame twice (a browser window behind it
-showing the same list reads as the product competing with itself), and turn off
-the editor's breadcrumbs — the file path carries a username, and at 1280 wide it
-is legible.
+Made 2026-09-25 the same way as the other five — a real capture, composited into
+the branded frame rather than shipped as a raw desktop screenshot. The float was
+photographed on a 3840×2160 display, cropped to the window alone, then placed on
+the dark canvas with the wordmark, headline and subtitle at the same coordinates
+05-dark-mode uses. Rendered at 2× and downscaled, so the type is crisp.
+
+Four things had to be fixed before the capture was usable, recorded so a retake
+does not rediscover them: close any menu left open in the float; make the window
+behind it taller than the float, or empty desktop shows beneath; keep a second
+copy of the manager out of frame, since a browser window behind showing the same
+list reads as the product competing with itself; and turn off the editor's
+breadcrumbs — the file path carries a username, and it is legible at 1280 wide.
 
 Optional promo assets (dashboard only, not required):
 
