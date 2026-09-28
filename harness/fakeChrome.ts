@@ -97,9 +97,9 @@ const tabs: chrome.tabs.Tab[] = TITLES.map((entry, i) => {
   return {
     id: 100 + i,
     index: i,
-    // Two windows, and a group inside the first one.
+    // Two windows, and two groups inside the first one.
     windowId: i < 12 ? 1 : 2,
-    groupId: i >= 3 && i <= 6 ? 500 : -1,
+    groupId: i >= 3 && i <= 6 ? 500 : i === 9 || i === 10 ? 501 : -1,
     title,
     url,
     favIconUrl: "",
@@ -139,6 +139,17 @@ const groups: chrome.tabGroups.TabGroup[] = [
     id: 500,
     title: "Reading",
     color: "purple",
+    collapsed: false,
+    windowId: 1,
+  } as chrome.tabGroups.TabGroup,
+  // The long-name case, for the same reason TITLES carries a long tab title:
+  // a group row's controls sit over the right end of its text box, and a name
+  // short enough to stop before them — "Reading" — never shows what happens
+  // there. This one is long enough to reach them at 400px wide.
+  {
+    id: 501,
+    title: "A group name long enough to run under the row's own controls",
+    color: "cyan",
     collapsed: false,
     windowId: 1,
   } as chrome.tabGroups.TabGroup,
