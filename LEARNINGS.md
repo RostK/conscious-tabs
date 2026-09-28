@@ -156,6 +156,19 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   suspects tree-shake fine). The only real lever is deferring code that genuinely is not
   needed at first paint. Evidence: `vite.config.ts` (`chunkSizeWarningLimit` and the
   measurement).
+- 2026-09-28 — **Do not reserve layout space for a control that is `opacity: 0`.** Tab
+  rows padded the `ListItemText` 64px on the right (96px with mute) so the title would
+  clear the absolutely-positioned `ListItemSecondaryAction` — but those controls only
+  appear on hover or focus, so at rest every title in the list ellipsised against ~58px of
+  empty row. It presents as "titles truncate early for no reason", not as a spacing bug.
+  Both obvious repairs lose: reserving on hover reflows the text under the pointer the
+  moment it arrives, and letting the title run underneath needs an opaque fill on each
+  button, which is exactly what used to make them read as white patches stamped over a
+  hovered row (see the comment in `ItemButton`). What works is a `maskImage` gradient
+  applied only while the controls are showing — a mask takes no part in layout, so nothing
+  can reflow, and it fades the tail rather than covering it. Accepted cost: a long title on
+  a hovered row fades where it used to end in an ellipsis. Evidence:
+  `src/lib/Tabs/elements/rowControls.ts:96`, `src/lib/Tabs/Tab/TabDisplay.tsx:108`.
 
 ## Codebase Patterns
 
@@ -209,6 +222,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   same property the model hides with: an override left saying `visibility: visible` after
   the migration did nothing for weeks, and left a group's menu anchored to a control that
   had faded out. Evidence: `src/lib/Tabs/elements/rowControls.ts`.
+- 2026-09-28 — **"Are this row's controls showing?" has two spellings, and they must not
+  be merged.** `rowControlsSx` asks it per control; `revealedRow` — the list
+  `rowTailMaskSx` builds its selectors from — asks it of the row as a whole. They differ
+  deliberately: the row-level list drops `[data-selected]`, because the checkbox that
+  attribute keeps open sits in the row's **left** padding, so a selected row with the
+  pointer elsewhere has nothing on its right to mask. The trap when writing the row-level
+  version is that **`&:has(:focus-visible)` does not match the row itself** — `:has()`
+  only inspects descendants — so a row focused by Tab needs its own `&:focus-visible`, and
+  leaving it out breaks the keyboard path alone, which no pointer test will show. Evidence:
+  `src/lib/Tabs/elements/rowControls.ts:38`.
 
 ## Decisions
 
@@ -292,6 +315,18 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   rather than interrupts, so announcing each keystroke means hearing five stale counts
   before the one that matters. notistack already carries its own region, so snackbars need
   nothing. Evidence: `src/App.tsx`.
+- 2026-09-28 — **Every MUI icon in this app is 12/14 of its documented size.**
+  `typography.fontSize: 12` feeds MUI's `pxToRem`, which is where `MuiSvgIcon` sizes come
+  from. An `IconButton`'s 8px padding does not scale with it, so it is not even a clean
+  ratio: an `IconButton` is **33.1px** wide around a `fontSize="small"` icon and
+  **36.6px** around a default-size one — not the 36 and 40 the MUI docs imply. Both
+  reserved widths in `TabDisplay` were derived from the documented numbers and were 6.3px
+  and 1.7px too wide because of it; worse, a hand-checked diagnosis of those widths read a
+  1.7px **gap** as an 8px **overlap** and prescribed widening what was already too wide.
+  Measure control widths with `getBoundingClientRect()` in the harness, never derive them
+  — including when the arithmetic arrives already "verified". Pairs with the `sx`
+  bare-number note above: MUI's sizing here is twice not what it says on the tin.
+  Evidence: `src/lib/Theme/index.tsx:40`, `src/lib/Tabs/Tab/TabDisplay.tsx:100`.
 
 ## Recurring Errors & Fixes
 
@@ -346,6 +381,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   behind by a migration. The harness is worth keeping and worth distrusting: it renders
   the real components, but its fake favicons are transparent and its fake chrome has no
   PiP window, so an empty result there means "not reproducible here", never "not a bug".
+- 2026-09-28 — Post-0.1.0 polish: tab titles truncating early in the list. Measuring
+  first was the whole job — the diagnosis handed in had the right direction and the wrong
+  arithmetic in both branches, and one browser probe settled it. Checked the other three
+  row types and left all three alone, each differing for a reason (a `Chip` that sizes to
+  its content, favicon avatars that already stop short, and a card whose controls are
+  in-flow and always visible) — but `GroupDisplay` has the mirror defect: nothing reserves
+  or masks there, so a long group name's chip runs ~88px under its controls. Left for its
+  own change. https://github.com/RostK/conscious-tabs/pull/8
 
 ## Open Questions
 
