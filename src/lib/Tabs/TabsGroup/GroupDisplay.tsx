@@ -81,7 +81,7 @@ export const GroupDisplay: FC<{
             // dragging for no reason.
             sx={{ maxWidth: itemAction ? "calc(100% - 96px)" : undefined }}
             style={{
-              backgroundColor: `color-mix(in srgb, ${group.color} 30%, transparent`,
+              backgroundColor: `color-mix(in srgb, ${group.color} 30%, transparent)`,
             }}
           />
         }

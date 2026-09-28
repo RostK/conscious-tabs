@@ -53,6 +53,12 @@ describe("a group name long enough to reach the row's controls", () => {
   // The drag overlay renders this row with no controls at all. Reserving room
   // for them there would truncate the very name being dragged, which is the
   // mirror of the bug above rather than a fix for it.
+  //
+  // Asserts the width it should have, not the absence of the one it should
+  // not: `not.toBe("calc(100% - 96px)")` passes for every other value too,
+  // including a half-width reserve, so it would not notice the defect it is
+  // here to catch. `100%` is `MuiChip-root`'s own rule showing through once
+  // the `sx` contributes nothing.
   it("reserves nothing on a row that has no controls", () => {
     const { container } = render(
       <GroupDisplay
@@ -60,9 +66,7 @@ describe("a group name long enough to reach the row's controls", () => {
       />,
     );
 
-    expect(getComputedStyle(chipOf(container)).maxWidth).not.toBe(
-      "calc(100% - 96px)",
-    );
+    expect(getComputedStyle(chipOf(container)).maxWidth).toBe("100%");
   });
 
   // A short name never reached the controls, which is why this went unnoticed;

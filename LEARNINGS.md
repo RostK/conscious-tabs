@@ -338,6 +338,7 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   Measure control widths with `getBoundingClientRect()` in the harness, never derive them
   — including when the arithmetic arrives already "verified". Pairs with the `sx`
   bare-number note above: MUI's sizing here is twice not what it says on the tin.
+  Evidence: `src/lib/Theme/index.tsx:40`, `src/lib/Tabs/Tab/TabDisplay.tsx:100`.
 
   - 2026-09-28 (the trap left after you start measuring) — **measure the container, not
     the buttons.** `edge="end"` is a `-12px` right margin, so a
@@ -371,7 +372,6 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   the wrong one, add a second entry on a free port to the worktree's own
   `.claude/launch.json`, which is untracked and per-worktree, so it never reaches a PR.
   Evidence: `vite.harness.config.ts:12`.
-  Evidence: `src/lib/Theme/index.tsx:40`, `src/lib/Tabs/Tab/TabDisplay.tsx:100`.
 
 ## Recurring Errors & Fixes
 
