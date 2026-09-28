@@ -338,6 +338,39 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   Measure control widths with `getBoundingClientRect()` in the harness, never derive them
   — including when the arithmetic arrives already "verified". Pairs with the `sx`
   bare-number note above: MUI's sizing here is twice not what it says on the tin.
+
+  - 2026-09-28 (the trap left after you start measuring) — **measure the container, not
+    the buttons.** `edge="end"` is a `-12px` right margin, so a
+    `ListItemSecondaryAction`'s own width is 12px _less_ than its children add up to: a
+    group row's three controls span 100.3px but the container reports **88.3px**, and
+    88.3 is the number to reserve against, because it is where the leftmost control
+    actually starts. Summing `getBoundingClientRect()` over the buttons is still
+    measuring, and still wrong by 12px. Evidence:
+    `src/lib/Tabs/TabsGroup/GroupListItem.tsx:147`, `src/lib/Tabs/Tab/TabDisplay.tsx:104`.
+
+- 2026-09-28 — **jsdom _does_ resolve a static `sx` rule, so "is this style applied at
+  all" is unit-testable.** Emotion injects its `<style>` into the test document and
+  `getComputedStyle(el).maxWidth` comes back as the literal `calc(100% - 96px)`. Worth
+  writing down because `TabDisplay.test.tsx` says jsdom "would not resolve that cascade",
+  which is true of the thing it was said about — a _state-dependent_ rule where
+  `.itemAction { opacity: 0 }` has to be arbitrated against `[data-selected]` — and not
+  true of a plain unconditional rule. So: a rule's **presence and any prop-level
+  condition on it** can be guarded in jsdom; whether the value is _big enough_ cannot,
+  since nothing is laid out and the same test passes at 10px. Say which of the two a
+  style test is doing. Evidence: `src/lib/Tabs/TabsGroup/GroupDisplay.test.tsx:48`.
+
+- 2026-09-28 — **A layout harness already answering on :5200 may belong to a different
+  worktree.** The harness is pinned with `strictPort: true`, and this repo is worked on
+  in several `.claude/worktrees/*` at once, so a sibling session's server answers and
+  looks entirely normal — a whole row was measured against another branch's code before
+  anything gave it away. Since measuring is the method here (see the note above), this
+  produces confident numbers for code that is not under change, which is worse than not
+  measuring. Check which tree is being served before trusting anything:
+  `performance.getEntriesByType('resource').map(e => e.name)` — vite serves
+  out-of-root files as `/@fs/<absolute path>`, so the worktree is in the URL. If it is
+  the wrong one, add a second entry on a free port to the worktree's own
+  `.claude/launch.json`, which is untracked and per-worktree, so it never reaches a PR.
+  Evidence: `vite.harness.config.ts:12`.
   Evidence: `src/lib/Theme/index.tsx:40`, `src/lib/Tabs/Tab/TabDisplay.tsx:100`.
 
 ## Recurring Errors & Fixes
