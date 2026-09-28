@@ -19,6 +19,7 @@ import { ItemButton } from "../elements/ItemButton.tsx";
 import {
   rowControlProps,
   rowControlsSx,
+  rowTailMaskSx,
   selectedProps,
   useRowKeys,
 } from "../elements/rowControls.ts";
@@ -96,7 +97,15 @@ export const TabDisplay: FC<{
          list of eighty. */
       // eslint-disable-next-line jsx-a11y/no-autofocus
       autoFocus={tab.active && focus}
-      sx={[{ pt: 0.2, pb: 0.2 }, rowControlsSx]}
+      /* The two widths are measured, not read off MUI's defaults. This
+         theme sets typography.fontSize 12, which scales every icon by 12/14,
+         so close and mute are 36.6px wide and the drag handle 33.1px rather
+         than the 40 and 36 the defaults give — which is how the numbers this
+         replaces came to be 6px and 2px too big. Close carries edge="end",
+         whose -12px margin comes off the total: drag + close is 57.7, and
+         94.3 with mute. Rounded up, so the fade finishes before the first
+         icon on either kind of row. */
+      sx={[{ pt: 0.2, pb: 0.2 }, rowControlsSx, rowTailMaskSx(noisy ? 96 : 60)]}
     >
       {/* Beside the favicon, in the row's left padding — not in its slot.
           Selection persists, and a persistent checkbox that took the favicon's
@@ -165,13 +174,13 @@ export const TabDisplay: FC<{
           <Close />
         </ItemButton>
       </ListItemSecondaryAction>
+      {/* No right padding. It was reserved for the actions, which are
+          absolutely positioned — but they are invisible until the row is
+          hovered or focused, so at rest every title ellipsised against 58px of
+          empty row. `rowTailMaskSx` on the row above takes the tail away only
+          while they are actually showing, which costs no layout and so cannot
+          reflow the text the way reserving on hover would. */}
       <ListItemText
-        // The actions are absolutely positioned, so without this the title
-        // runs underneath them and they need an opaque fill to stay legible —
-        // which is what made them look like patches on a hovered row. Reserved
-        // permanently rather than on hover, so revealing them never reflows
-        // the text.
-        sx={{ pr: noisy ? "96px" : "64px" }}
         primaryTypographyProps={{ noWrap: true }}
         secondaryTypographyProps={{ noWrap: true }}
         primary={tab.title}

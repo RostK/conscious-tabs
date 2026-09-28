@@ -24,6 +24,25 @@ export const rowControlProps = {
 } as const;
 
 /**
+ * The row states in which a hidden control is showing, asked of the row rather
+ * than of the control.
+ *
+ * `rowControlsSx` below asks the same question, but per control, and its list
+ * is deliberately not this one: it adds `[data-selected]`, which keeps a
+ * ticked checkbox up after the pointer has left, and it reveals a focused
+ * control by naming the control rather than the row. Both differences matter
+ * to `rowTailMaskSx`, which has to know whether anything is showing *on the
+ * right* — the checkbox sits in the row's left padding, so a selected row with
+ * the pointer elsewhere has nothing over there to mask.
+ */
+const revealedRow = [
+  "&:hover",
+  "&:focus-visible",
+  "&:has(:focus-visible)",
+  "&:has(.itemAction:focus)",
+];
+
+/**
  * Put on the row itself. Handles both shapes this codebase uses: controls
  * marked directly (tab rows) and controls wrapped in a `.itemAction` div
  * (group and window rows), which is why `:focus-within` is in the list — the
@@ -52,6 +71,35 @@ export const rowControlsSx = {
     pointerEvents: "auto",
   },
 };
+
+/**
+ * Fades a row's text out where its controls will appear.
+ *
+ * The controls are absolutely positioned, so something has to keep the text
+ * out from under them. Reserving padding — which is what the tab row did —
+ * spends that width whether or not anything is occupying it, and they are
+ * `opacity: 0` until the row is hovered or focused: every title in a list of
+ * eighty was ellipsising against fifty-eight pixels of nothing.
+ *
+ * Reserving on hover instead would reflow the text the moment the pointer
+ * arrived, and letting the title run underneath needs an opaque fill on each
+ * button to stay legible — the fill that used to make them read as white
+ * patches stamped over a hovered row. A mask is neither: it takes no part in
+ * layout, so nothing moves, and it takes the tail away rather than covering
+ * it. The cost is that a long title on a hovered row fades out where it used
+ * to end in an ellipsis.
+ *
+ * `controls` is the width the row's controls occupy, measured from the right
+ * edge of its text. The gradient is fully transparent by then, so no title is
+ * ever half-legible behind an icon; the 24px before it are the ramp.
+ */
+export const rowTailMaskSx = (controls: number) => ({
+  [revealedRow.map((state) => `${state} .MuiListItemText-root`).join(", ")]: {
+    maskImage: `linear-gradient(to right, #000 calc(100% - ${
+      controls + 24
+    }px), transparent calc(100% - ${controls}px))`,
+  },
+});
 
 /** Spread onto a control that must stay visible while it is switched on. */
 export const selectedProps = (selected: boolean) =>
