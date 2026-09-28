@@ -1,5 +1,5 @@
 import { Button, debounce } from "@mui/material";
-import { closeSnackbar, enqueueSnackbar } from "notistack";
+import { closeSnackbar, enqueueSnackbar, SnackbarKey } from "notistack";
 import { FC, useEffect } from "react";
 
 import { useKeepTabsLoaded, wasListedTab } from "../useTabsStructure.ts";
@@ -9,9 +9,50 @@ import { shouldPrompt } from "./shouldPrompt.ts";
 // chrome.sessions only retains the most recently closed entries.
 const MAX_RESTORE = chrome.sessions.MAX_SESSION_RESULTS;
 
+/**
+ * How long a prompt stays on screen — and therefore how long a further closure
+ * still counts as part of the same one. `PromptProvider` hands this to
+ * notistack and the merge window below reuses it, so the two cannot drift.
+ */
+export const PROMPT_DURATION = 3000;
+
 // A closed entry is either a single tab or a whole window of tabs.
 const tabCountOf = (session: chrome.sessions.Session): number =>
   session.window ? session.window.tabs?.length ?? 1 : 1;
+
+/**
+ * The prompt currently on screen, and how many tabs it speaks for.
+ *
+ * Chrome fires `onRemoved` once per tab and the gaps between them are not
+ * bounded: a page with a `beforeunload` handler, or a renderer that is merely
+ * busy, can arrive hundreds of milliseconds after its neighbour. Closing nine
+ * tabs with one click therefore split across the 200ms burst window and
+ * produced two notices — "3 tabs closed", then "6 tabs closed" — the first of
+ * which offered to undo a third of what the user had just done.
+ *
+ * Widening the burst window does not fix that. It only moves where the split
+ * lands, and it delays the ordinary one-tab prompt to pay for it. So the split
+ * is absorbed afterwards instead: while a prompt is still up, the next burst
+ * rewrites it rather than queueing behind it, and the rewritten prompt counts
+ * — and restores — every tab of the burst so far.
+ *
+ * The window is the prompt's own lifetime, which is a rule the user can see:
+ * a closure joins the notice they can still press UNDO on. Hovering a snackbar
+ * pauses its timer, so a hovered prompt can outlive this and the next burst
+ * gets a notice of its own — which is the behaviour from before this merge
+ * existed, and the right thing to fall back to.
+ */
+let liveCount = 0;
+let liveId: SnackbarKey | undefined;
+let expiry: ReturnType<typeof setTimeout> | undefined;
+
+/** The prompt is spent: expired, undone, or its surface is going away. */
+const forget = () => {
+  if (expiry !== undefined) clearTimeout(expiry);
+  expiry = undefined;
+  liveCount = 0;
+  liveId = undefined;
+};
 
 const prompt = async (closedCount: number) => {
   if (closedCount === 0) return;
@@ -24,25 +65,32 @@ const prompt = async (closedCount: number) => {
   });
   if (recentSessions.length === 0) return;
 
+  // Everything below this line runs synchronously, so two bursts cannot both
+  // read the same starting total and one of them lose its tabs.
+  const total = liveCount + closedCount;
+
   // Take the newest entries that cover this burst, counting tabs (not entries)
   // so a coalesced window session is credited for all of its tabs.
   const toRestore: chrome.sessions.Session[] = [];
   let restorable = 0;
   for (const session of recentSessions) {
-    if (restorable >= closedCount) break;
+    if (restorable >= total) break;
     toRestore.push(session);
     restorable += tabCountOf(session);
   }
-  restorable = Math.min(restorable, closedCount);
+  restorable = Math.min(restorable, total);
 
   const label =
-    closedCount === 1
+    total === 1
       ? "Tab closed"
-      : restorable < closedCount
-        ? `${closedCount} tabs closed (${restorable} restorable)`
-        : `${closedCount} tabs closed`;
+      : restorable < total
+        ? `${total} tabs closed (${restorable} restorable)`
+        : `${total} tabs closed`;
 
-  enqueueSnackbar(label, {
+  // Replaced rather than stacked: with maxSnack=1 a second notice waits its
+  // turn instead, and the user reads both halves of one closure in sequence.
+  if (liveId !== undefined) closeSnackbar(liveId);
+  liveId = enqueueSnackbar(label, {
     action: (snackbarId) => (
       <Button
         variant="text"
@@ -58,6 +106,9 @@ const prompt = async (closedCount: number) => {
               variant: "error",
             });
           }
+          // Spent either way. A later closure starts its own count rather than
+          // offering these session ids a second time.
+          forget();
           closeSnackbar(snackbarId);
         }}
       >
@@ -65,6 +116,9 @@ const prompt = async (closedCount: number) => {
       </Button>
     ),
   });
+  if (expiry !== undefined) clearTimeout(expiry);
+  liveCount = total;
+  expiry = setTimeout(forget, PROMPT_DURATION);
 };
 
 // chrome.tabs.onRemoved fires once per tab; accumulate a burst and prompt once.
@@ -93,9 +147,11 @@ export const SyncPrompt: FC = () => {
       chrome.tabs.onRemoved.removeListener(handleRemove);
       // The burst belongs to this surface. Left running, it prompts from a
       // document the user has already left — and, in tests, from the case
-      // after the one that started it.
+      // after the one that started it. The same goes for the prompt it would
+      // have merged into.
       burstCount = 0;
       flush.clear();
+      forget();
     };
   }, []);
   return <></>;

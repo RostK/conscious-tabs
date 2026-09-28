@@ -157,6 +157,17 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   needed at first paint. Evidence: `vite.config.ts` (`chunkSizeWarningLimit` and the
   measurement).
 
+- 2026-09-28 — **A debounce is not burst detection: `chrome.tabs.onRemoved` gaps are
+  unbounded.** Closing nine tabs with one click raised two notices, "3 tabs closed" and
+  then "6 tabs closed", because the per-tab events straddled the 200ms window. Chrome
+  does not pace those events — a page with a `beforeunload` handler, or a renderer that is
+  simply busy, lands hundreds of milliseconds after its neighbour — so no wait value
+  separates "still arriving" from "finished"; widening it only moves the split and delays
+  the ordinary one-tab prompt to pay for it. What works is absorbing the split afterwards:
+  while the notice is still on screen, the next burst rewrites it with the running total
+  instead of queueing behind it. Evidence: `src/lib/Tabs/undo/SyncPrompt.tsx` (`liveCount`,
+  `forget`).
+
 ## Codebase Patterns
 
 - 2026-09-22 — **Never put a volatile flag in a React list key here.** The window rows were keyed
