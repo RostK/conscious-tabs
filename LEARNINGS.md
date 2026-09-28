@@ -169,6 +169,18 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   can reflow, and it fades the tail rather than covering it. Accepted cost: a long title on
   a hovered row fades where it used to end in an ellipsis. Evidence:
   `src/lib/Tabs/elements/rowControls.ts:96`, `src/lib/Tabs/Tab/TabDisplay.tsx:108`.
+- 2026-09-28 (the limit of the note above) — **`rowTailMaskSx` is for plain text, not for
+  a filled element.** The group row has the mirror defect — nothing reserved at all, so a
+  long name's `Chip` ran 88.3px under the drag handle, the menu and the close button —
+  but the mask cannot fix it. It fades the whole `.MuiListItemText-root`, and there that
+  box holds a tinted pill: the gradient takes the background and the rounded right edge
+  with it, so the chip appears to dissolve wherever the controls are. Plain text has
+  nothing to dissolve, which is the entire reason it works on a tab row. So the group row
+  reserves after all — `max-width: calc(100% - 96px)` on the chip, and only when there
+  are controls, since the drag overlay renders the same row without any. Accepted cost,
+  and it is the one the note above rejects for tab rows: a long group name ellipsises
+  early even at rest. The general rule is that the choice follows what is being truncated,
+  not which row it is. Evidence: `src/lib/Tabs/TabsGroup/GroupDisplay.tsx:58`.
 
 ## Codebase Patterns
 
@@ -328,6 +340,39 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   bare-number note above: MUI's sizing here is twice not what it says on the tin.
   Evidence: `src/lib/Theme/index.tsx:40`, `src/lib/Tabs/Tab/TabDisplay.tsx:100`.
 
+  - 2026-09-28 (the trap left after you start measuring) — **measure the container, not
+    the buttons.** `edge="end"` is a `-12px` right margin, so a
+    `ListItemSecondaryAction`'s own width is 12px _less_ than its children add up to: a
+    group row's three controls span 100.3px but the container reports **88.3px**, and
+    88.3 is the number to reserve against, because it is where the leftmost control
+    actually starts. Summing `getBoundingClientRect()` over the buttons is still
+    measuring, and still wrong by 12px. Evidence:
+    `src/lib/Tabs/TabsGroup/GroupListItem.tsx:147`, `src/lib/Tabs/Tab/TabDisplay.tsx:104`.
+
+- 2026-09-28 — **jsdom _does_ resolve a static `sx` rule, so "is this style applied at
+  all" is unit-testable.** Emotion injects its `<style>` into the test document and
+  `getComputedStyle(el).maxWidth` comes back as the literal `calc(100% - 96px)`. Worth
+  writing down because `TabDisplay.test.tsx` says jsdom "would not resolve that cascade",
+  which is true of the thing it was said about — a _state-dependent_ rule where
+  `.itemAction { opacity: 0 }` has to be arbitrated against `[data-selected]` — and not
+  true of a plain unconditional rule. So: a rule's **presence and any prop-level
+  condition on it** can be guarded in jsdom; whether the value is _big enough_ cannot,
+  since nothing is laid out and the same test passes at 10px. Say which of the two a
+  style test is doing. Evidence: `src/lib/Tabs/TabsGroup/GroupDisplay.test.tsx:48`.
+
+- 2026-09-28 — **A layout harness already answering on :5200 may belong to a different
+  worktree.** The harness is pinned with `strictPort: true`, and this repo is worked on
+  in several `.claude/worktrees/*` at once, so a sibling session's server answers and
+  looks entirely normal — a whole row was measured against another branch's code before
+  anything gave it away. Since measuring is the method here (see the note above), this
+  produces confident numbers for code that is not under change, which is worse than not
+  measuring. Check which tree is being served before trusting anything:
+  `performance.getEntriesByType('resource').map(e => e.name)` — vite serves
+  out-of-root files as `/@fs/<absolute path>`, so the worktree is in the URL. If it is
+  the wrong one, add a second entry on a free port to the worktree's own
+  `.claude/launch.json`, which is untracked and per-worktree, so it never reaches a PR.
+  Evidence: `vite.harness.config.ts:12`.
+
 ## Recurring Errors & Fixes
 
 - 2026-09-23 — **`npm test` passing does not mean the branch builds.** Test files live
@@ -389,6 +434,18 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   in-flow and always visible) — but `GroupDisplay` has the mirror defect: nothing reserves
   or masks there, so a long group name's chip runs ~88px under its controls. Left for its
   own change. https://github.com/RostK/conscious-tabs/pull/8
+- 2026-09-28 (closes the note above) — Fixed the group row, and the interesting part was
+  that the obvious move — reuse `rowTailMaskSx`, which had just landed for tab rows — is
+  wrong here, for a reason visible only by looking: the mask fades a filled pill's tint
+  and rounded edge along with its text. Measuring first paid again. The controls span
+  88.3px, not the 100.3px the three buttons actually occupy, because `edge="end"` takes
+  12px back off the container; the number that matters is the one the row's own boxes
+  report, not any arithmetic over icon sizes. The harness had no group name long enough
+  to reach the controls — "Reading" stops 148px short — so the bug could not be seen
+  there at all until the fixture gained one, which is the same gap the long tab title was
+  added to close. Also found and left alone: the drag overlay renders `GroupDisplay` with
+  no controls, so the reservation is conditional; `TabDisplay` had the same shape and the
+  mask made it moot.
 
 ## Open Questions
 

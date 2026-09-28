@@ -101,6 +101,43 @@ export const rowTailMaskSx = (controls: number) => ({
   },
 });
 
+/**
+ * Keeps a row's text short of its controls by reserving the width instead.
+ *
+ * The counterpart to `rowTailMaskSx`, for a row whose text box holds something
+ * *filled* rather than plain text — `GroupDisplay`'s `Chip`. A mask fades the
+ * whole `.MuiListItemText-root`, which on that row takes the pill's tint and
+ * its rounded right edge along with the label and leaves the chip dissolving
+ * wherever the controls appear. Handing the space back at rest is no better:
+ * a pill that resizes as the pointer arrives redraws itself under it, where
+ * plain text merely re-ellipsises.
+ *
+ * So this one spends the width permanently, and accepts exactly the cost the
+ * mask exists to avoid — the name ellipsises early on a row at rest. Which of
+ * the two a row wants follows what is being truncated, not which row it is.
+ *
+ * Applied to the element that is actually too wide, not to the row: the chip's
+ * own `max-width: 100%` is what fills the text box, so that is what has to be
+ * capped.
+ *
+ * `controls` is the width they occupy, measured from the right edge of the
+ * text — the secondary action's *own* width, never the sum of its buttons.
+ * `edge="end"` is a -12px margin, so the container comes out 12px narrower
+ * than its children add up to (88.3 against 100.3 on a group row), and it is
+ * the container's left edge that says where the leftmost control starts. The
+ * 8px on top keeps a rounded edge off the first control's hover fill.
+ *
+ * **Below `controls + 8` of text box there is nothing left to reserve and the
+ * element collapses to zero** — measured at a 250px row, where the box is
+ * 94.9px and the group name disappears completely. Deliberately not floored:
+ * any floor big enough to keep the name readable puts it back under the
+ * controls, which is the defect this exists to prevent. A row that narrow has
+ * to drop something, and choosing what is not this function's call.
+ */
+export const rowTailReserveSx = (controls: number) => ({
+  maxWidth: `calc(100% - ${controls + 8}px)`,
+});
+
 /** Spread onto a control that must stay visible while it is switched on. */
 export const selectedProps = (selected: boolean) =>
   selected ? { "data-selected": true } : {};
