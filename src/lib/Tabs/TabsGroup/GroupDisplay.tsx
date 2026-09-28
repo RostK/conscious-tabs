@@ -25,8 +25,16 @@ export const GroupDisplay: FC<{
   const rowKeys = useRowKeys();
   const handleClick = useCallback<MouseEventHandler>(
     async (e) => {
+      // A modifier click selects, and only selects. Without the return it also
+      // fell through to the toggle below, so ctrl-clicking a group to select
+      // its tabs collapsed the group out from under the pointer — and
+      // ctrl-clicking again to deselect expanded it. TabDisplay has this same
+      // branch and has always returned here; the two rows disagreed about what
+      // a modifier click means, which is the kind of thing only a diff read or
+      // a second pair of eyes catches.
       if (e.ctrlKey || e.metaKey) {
-        onCtrlClick && onCtrlClick(e);
+        onCtrlClick?.(e);
+        return;
       }
       await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
     },
