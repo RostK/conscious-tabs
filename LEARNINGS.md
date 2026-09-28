@@ -156,6 +156,31 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   suspects tree-shake fine). The only real lever is deferring code that genuinely is not
   needed at first paint. Evidence: `vite.config.ts` (`chunkSizeWarningLimit` and the
   measurement).
+- 2026-09-28 — **Do not reserve layout space for a control that is `opacity: 0`.** Tab
+  rows padded the `ListItemText` 64px on the right (96px with mute) so the title would
+  clear the absolutely-positioned `ListItemSecondaryAction` — but those controls only
+  appear on hover or focus, so at rest every title in the list ellipsised against ~58px of
+  empty row. It presents as "titles truncate early for no reason", not as a spacing bug.
+  Both obvious repairs lose: reserving on hover reflows the text under the pointer the
+  moment it arrives, and letting the title run underneath needs an opaque fill on each
+  button, which is exactly what used to make them read as white patches stamped over a
+  hovered row (see the comment in `ItemButton`). What works is a `maskImage` gradient
+  applied only while the controls are showing — a mask takes no part in layout, so nothing
+  can reflow, and it fades the tail rather than covering it. Accepted cost: a long title on
+  a hovered row fades where it used to end in an ellipsis. Evidence:
+  `src/lib/Tabs/elements/rowControls.ts:96`, `src/lib/Tabs/Tab/TabDisplay.tsx:108`.
+- 2026-09-28 (the limit of the note above) — **`rowTailMaskSx` is for plain text, not for
+  a filled element.** The group row has the mirror defect — nothing reserved at all, so a
+  long name's `Chip` ran 88.3px under the drag handle, the menu and the close button —
+  but the mask cannot fix it. It fades the whole `.MuiListItemText-root`, and there that
+  box holds a tinted pill: the gradient takes the background and the rounded right edge
+  with it, so the chip appears to dissolve wherever the controls are. Plain text has
+  nothing to dissolve, which is the entire reason it works on a tab row. So the group row
+  reserves after all — `max-width: calc(100% - 96px)` on the chip, and only when there
+  are controls, since the drag overlay renders the same row without any. Accepted cost,
+  and it is the one the note above rejects for tab rows: a long group name ellipsises
+  early even at rest. The general rule is that the choice follows what is being truncated,
+  not which row it is. Evidence: `src/lib/Tabs/TabsGroup/GroupDisplay.tsx:58`.
 
 - 2026-09-28 — **A debounce is not burst detection: `chrome.tabs.onRemoved` gaps are
   unbounded.** Closing nine tabs with one click raised two notices, "3 tabs closed" and
@@ -220,6 +245,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   same property the model hides with: an override left saying `visibility: visible` after
   the migration did nothing for weeks, and left a group's menu anchored to a control that
   had faded out. Evidence: `src/lib/Tabs/elements/rowControls.ts`.
+- 2026-09-28 — **"Are this row's controls showing?" has two spellings, and they must not
+  be merged.** `rowControlsSx` asks it per control; `revealedRow` — the list
+  `rowTailMaskSx` builds its selectors from — asks it of the row as a whole. They differ
+  deliberately: the row-level list drops `[data-selected]`, because the checkbox that
+  attribute keeps open sits in the row's **left** padding, so a selected row with the
+  pointer elsewhere has nothing on its right to mask. The trap when writing the row-level
+  version is that **`&:has(:focus-visible)` does not match the row itself** — `:has()`
+  only inspects descendants — so a row focused by Tab needs its own `&:focus-visible`, and
+  leaving it out breaks the keyboard path alone, which no pointer test will show. Evidence:
+  `src/lib/Tabs/elements/rowControls.ts:38`.
 
 ## Decisions
 
@@ -303,6 +338,51 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   rather than interrupts, so announcing each keystroke means hearing five stale counts
   before the one that matters. notistack already carries its own region, so snackbars need
   nothing. Evidence: `src/App.tsx`.
+- 2026-09-28 — **Every MUI icon in this app is 12/14 of its documented size.**
+  `typography.fontSize: 12` feeds MUI's `pxToRem`, which is where `MuiSvgIcon` sizes come
+  from. An `IconButton`'s 8px padding does not scale with it, so it is not even a clean
+  ratio: an `IconButton` is **33.1px** wide around a `fontSize="small"` icon and
+  **36.6px** around a default-size one — not the 36 and 40 the MUI docs imply. Both
+  reserved widths in `TabDisplay` were derived from the documented numbers and were 6.3px
+  and 1.7px too wide because of it; worse, a hand-checked diagnosis of those widths read a
+  1.7px **gap** as an 8px **overlap** and prescribed widening what was already too wide.
+  Measure control widths with `getBoundingClientRect()` in the harness, never derive them
+  — including when the arithmetic arrives already "verified". Pairs with the `sx`
+  bare-number note above: MUI's sizing here is twice not what it says on the tin.
+  Evidence: `src/lib/Theme/index.tsx:40`, `src/lib/Tabs/Tab/TabDisplay.tsx:100`.
+
+  - 2026-09-28 (the trap left after you start measuring) — **measure the container, not
+    the buttons.** `edge="end"` is a `-12px` right margin, so a
+    `ListItemSecondaryAction`'s own width is 12px _less_ than its children add up to: a
+    group row's three controls span 100.3px but the container reports **88.3px**, and
+    88.3 is the number to reserve against, because it is where the leftmost control
+    actually starts. Summing `getBoundingClientRect()` over the buttons is still
+    measuring, and still wrong by 12px. Evidence:
+    `src/lib/Tabs/TabsGroup/GroupListItem.tsx:147`, `src/lib/Tabs/Tab/TabDisplay.tsx:104`.
+
+- 2026-09-28 — **jsdom _does_ resolve a static `sx` rule, so "is this style applied at
+  all" is unit-testable.** Emotion injects its `<style>` into the test document and
+  `getComputedStyle(el).maxWidth` comes back as the literal `calc(100% - 96px)`. Worth
+  writing down because `TabDisplay.test.tsx` says jsdom "would not resolve that cascade",
+  which is true of the thing it was said about — a _state-dependent_ rule where
+  `.itemAction { opacity: 0 }` has to be arbitrated against `[data-selected]` — and not
+  true of a plain unconditional rule. So: a rule's **presence and any prop-level
+  condition on it** can be guarded in jsdom; whether the value is _big enough_ cannot,
+  since nothing is laid out and the same test passes at 10px. Say which of the two a
+  style test is doing. Evidence: `src/lib/Tabs/TabsGroup/GroupDisplay.test.tsx:48`.
+
+- 2026-09-28 — **A layout harness already answering on :5200 may belong to a different
+  worktree.** The harness is pinned with `strictPort: true`, and this repo is worked on
+  in several `.claude/worktrees/*` at once, so a sibling session's server answers and
+  looks entirely normal — a whole row was measured against another branch's code before
+  anything gave it away. Since measuring is the method here (see the note above), this
+  produces confident numbers for code that is not under change, which is worse than not
+  measuring. Check which tree is being served before trusting anything:
+  `performance.getEntriesByType('resource').map(e => e.name)` — vite serves
+  out-of-root files as `/@fs/<absolute path>`, so the worktree is in the URL. If it is
+  the wrong one, add a second entry on a free port to the worktree's own
+  `.claude/launch.json`, which is untracked and per-worktree, so it never reaches a PR.
+  Evidence: `vite.harness.config.ts:12`.
 
 ## Recurring Errors & Fixes
 
@@ -357,6 +437,26 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   behind by a migration. The harness is worth keeping and worth distrusting: it renders
   the real components, but its fake favicons are transparent and its fake chrome has no
   PiP window, so an empty result there means "not reproducible here", never "not a bug".
+- 2026-09-28 — Post-0.1.0 polish: tab titles truncating early in the list. Measuring
+  first was the whole job — the diagnosis handed in had the right direction and the wrong
+  arithmetic in both branches, and one browser probe settled it. Checked the other three
+  row types and left all three alone, each differing for a reason (a `Chip` that sizes to
+  its content, favicon avatars that already stop short, and a card whose controls are
+  in-flow and always visible) — but `GroupDisplay` has the mirror defect: nothing reserves
+  or masks there, so a long group name's chip runs ~88px under its controls. Left for its
+  own change. https://github.com/RostK/conscious-tabs/pull/8
+- 2026-09-28 (closes the note above) — Fixed the group row, and the interesting part was
+  that the obvious move — reuse `rowTailMaskSx`, which had just landed for tab rows — is
+  wrong here, for a reason visible only by looking: the mask fades a filled pill's tint
+  and rounded edge along with its text. Measuring first paid again. The controls span
+  88.3px, not the 100.3px the three buttons actually occupy, because `edge="end"` takes
+  12px back off the container; the number that matters is the one the row's own boxes
+  report, not any arithmetic over icon sizes. The harness had no group name long enough
+  to reach the controls — "Reading" stops 148px short — so the bug could not be seen
+  there at all until the fixture gained one, which is the same gap the long tab title was
+  added to close. Also found and left alone: the drag overlay renders `GroupDisplay` with
+  no controls, so the reservation is conditional; `TabDisplay` had the same shape and the
+  mask made it moot.
 
 ## Open Questions
 
