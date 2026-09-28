@@ -49,6 +49,13 @@ export const TabAvatarsDisplay: FC<{ tabsStructure: TabsStructure }> = ({
           sx={{ background: "lightgray", width: 26, height: 26 }}
           key={tab.id}
           src={faviconUrl(tab.url, 26)}
+          // MUI puts this straight on the <img>, and without it emits a bare
+          // `<img src>` — six `image-alt` violations of impact `critical` on a
+          // window row, because the row already names every tab it summarises.
+          // The empty string is the assertion that this picture adds nothing a
+          // listener is missing, which is what a favicon beside its own title
+          // is. `TabFavicon` has always carried it; this is the other one.
+          alt=""
         >
           <ArticleOutlined />
         </Avatar>
