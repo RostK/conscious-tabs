@@ -135,6 +135,8 @@ reasonable.
 | C-9  | The `commands` manifest key is **not a permission** and adds **no install warning**. It appears in neither Chrome's permissions list nor its permission-warning guidance, and `src/test/manifest.test.ts` asserts only on `manifest.permissions`. **SPEC-01 AC-24 therefore does not fire.** _(No primary source addresses Web Store **re-review** triggers either way; that is unknown, not "no".)_ | https://developer.chrome.com/docs/extensions/reference/permissions-list · https://developer.chrome.com/docs/extensions/develop/concepts/permission-warnings                          |
 | C-10 | `suggested_key` constraints: at most **four** suggested shortcuts per extension; every chord must include `Ctrl` or `Alt`; **`Ctrl+Alt` combinations are forbidden** (AltGr); `global` scope is limited to `Ctrl+Shift+[0..9]`; OS and Chrome shortcuts always win and cannot be overridden; **a chord another extension already holds silently fails to register** rather than erroring; users remap at `chrome://extensions/shortcuts`; and `chrome.commands.getAll()` reports `shortcut` as an **empty string** when a command is unassigned. | https://developer.chrome.com/docs/extensions/reference/api/commands                                                                                                                 |
 | C-11 | `documentPictureInPicture.requestWindow()` is exposed only on a **top-level `Window`** and throws `NotAllowedError` without transient activation. A service worker has no `window`, and relaying through `runtime.sendMessage` does not transfer activation. **No command can open the float** — this is architectural, not a limitation to work around. | https://developer.mozilla.org/en-US/docs/Web/API/DocumentPictureInPicture/requestWindow · C-4                                                                                       |
+| C-12 | **Chrome exposes no API to ask whether the side panel is open, and none to move focus into an open one.** There is no `sidePanel.isOpen()` and no `sidePanel.focus()` — the API surface is `open`, `setOptions`, `getOptions`, `setPanelBehavior`, `getPanelBehavior`. Combined with C-2 (no `close()`), the panel is a surface this extension can create but cannot interrogate or steer. That `sidePanel.open()` on an already-open panel leaves it open is **expected behaviour, not documented behaviour**. | https://developer.chrome.com/docs/extensions/reference/api/sidePanel · C-2 (w3c/webextensions#521) |
+| C-13 | `chrome.commands.onCommand` **passes the active tab to the listener**: `CommandEvent extends chrome.events.Event<(command: string, tab: chrome.tabs.Tab) => void>`. So `tab.windowId` and `tab.url` are both in hand **before the first statement runs**. This is what makes AC-36's operative reading safe — there is nothing to await in order to know which window to open in, or whether the active tab is one of our own pages (AC-39). | `node_modules/@types/chrome/index.d.ts:1264` (`onCommand` declared at `:1278`), verified in this working tree 2026-09-29 |
 
 C-3 and C-8 together are what makes item 1 buildable at all: the gesture constraint is met, and the
 codebase already has a user-visible failure path for the case where the open is refused anyway.
@@ -174,8 +176,25 @@ autoFocus={tab.active && focus}
 
 with the comment _"it puts focus on the row for the tab the user is already looking at, so the
 keyboard starts where they are rather than at the top of a list of eighty."_ `SearchView` passes
-`focus={false}`, so this only fires in `TabsView` — i.e. **exactly when the search box is empty,
-which is exactly when the app opens**.
+`focus={false}`, so this was believed to fire only in `TabsView` — i.e. **exactly when the search
+box is empty, which is exactly when the app opens**.
+
+**It is worse than that, and this is a live defect rather than a forward risk.** Verified
+2026-09-29: `SearchView:60` passes `focus={false}` only to the top-level `Tabs`, and `Tabs` forwards
+it to `TabListItem` for loose tabs — but `GroupListItem.tsx:271` renders
+`<TabListItem group={group} tab={tab} key={tab.id} />` **with no `focus` prop at all**, and
+`GroupListItem` never mentions `focus` anywhere, so it cannot forward what it never receives.
+`TabListItem` spreads its remaining props into `TabDisplay`, whose signature defaults
+`focus = true` (`TabDisplay.tsx:34`). So **every tab inside a group already autofocuses when it is
+the active tab — including in search results**, which `SearchView` renders with `expandedGroups`.
+The `focus={false}` that was supposed to keep search quiet reaches only the tabs that are not in a
+group.
+
+That matters twice over. It means item 2 is not introducing a conflict so much as walking into one
+that already exists; and it is the argument for **deleting the `focus` prop outright** rather than
+threading it correctly — a prop that has been silently wrong at one of its two call sites is a prop
+whose contract nobody can see. §1.8's precedence rule 2 says "withdrawn, not outrun" for exactly
+this reason.
 
 Item 2 asks for focus to land in the search field on open. That is a **second claim on initial
 focus in the same render**, and the two would race by DOM order rather than by decision. This is
@@ -342,11 +361,17 @@ worse than one that focuses it.
   **Verify:** manual on a clean profile per §5.1's state table; unit — the handler resolves to the
   side panel and to no other surface.
 - **AC-3** _(Must)_ WHEN the command fires and a surface of the app is **already open in the focused
-  window**, the system SHALL focus that surface and SHALL NOT open a second copy, close it, or
-  reopen it — and SHALL do so identically on every repeat.
-  **Verify:** unit — the handler's branch for the already-open state; manual — fire the command
-  three times in a row from each surface per §5.1's state table and assert the state after each.
-  _(No toggle: C-2, there is no `chrome.sidePanel.close()`.)_
+  window**, that surface SHALL be left **intact** — no second copy, no close, no reopen — and the
+  outcome SHALL be identical on every repeat.
+  **Verify:** manual — fire the command three times in a row from each state in §5.1's table and
+  assert the surface is unchanged after each; unit — the handler issues no close, no duplicate open,
+  and no surface-destroying call. _(**Deliberately says "intact", not "focused".** C-12: Chrome
+  exposes no API to ask whether the side panel is open, and none to move focus into an open one, so
+  a focus clause here could be neither satisfied nor verified. What is testable is that nothing is
+  disturbed. No toggle either: C-2, there is no `chrome.sidePanel.close()`. Note the honest status
+  of the premise — that `sidePanel.open()` on an already-open panel leaves it open is **expected
+  behaviour, not documented behaviour**, which is why the manual sweep **observes** it rather than a
+  unit test asserting it.)_
 - **AC-4** _(Must)_ The command SHALL declare a non-empty, user-facing `description` in the
   manifest, so that it is named and rebindable at `chrome://extensions/shortcuts`.
   **Verify:** unit — assert the description is non-empty and is not the command's internal id;
@@ -377,7 +402,8 @@ worse than one that focuses it.
   **Verify:** unit — force `sidePanel.open()` to reject; assert the anchor tab is opened or focused.
   _(C-3: the open can fail and the codebase already has a user-visible failure path for it. C-5: the
   anchor tab has no platform precondition — `chrome.tabs.create` needs no gesture, so this fallback
-  is still reachable after the activation has been spent by the failed call.)_
+  is still reachable after the activation has been spent by the failed call. **The cost of this
+  fallback on a repeat press is accepted, not overlooked — see R-1.**)_
 - **AC-9** _(Must)_ The command SHALL NOT create a second anchor tab when one already exists; the
   find-or-create contract of `openAnchorTab` SHALL be preserved, including its preference for a
   real `?host=anchor` tab over a bare extension page.
@@ -394,10 +420,14 @@ worse than one that focuses it.
 - **AC-11** _(Must)_ Exactly **one** element SHALL receive initial focus when a surface mounts: the
   **search field**, and `TabDisplay`'s `autoFocus` SHALL be withdrawn in that render rather than
   left to lose a race.
-  **Verify:** unit — mount the app with an active tab present in `TabsView`; assert
+  **Verify:** unit — mount with an active tab in `TabsView`, **and again with the active tab inside
+  a group**, and **again in `SearchView` with the active tab inside a group**; in each case assert
   `document.activeElement` is the search field **and** that the active tab's row never called
   `focus()` at all. _(§1.8. Asserting only the end state would pass while both still fired, which is
-  the bug this criterion exists to prevent.)_
+  the bug this criterion exists to prevent. The two in-group fixtures are not hypothetical: today
+  `GroupListItem.tsx:271` passes no `focus` prop, so `TabDisplay`'s `focus = true` default already
+  applies to every grouped tab **including in search results** — the criterion must close the
+  existing leak, not only the new one.)_
 - **AC-12** _(Must)_ WHEN a surface's document **first receives focus**, the caret SHALL be in the
   search field and the next character the user types SHALL appear in it, with no intervening key
   press.
@@ -557,15 +587,20 @@ ever covers rows the user can see.**
   another extension already holds **fails silently**, and a cleared one looks identical. Both
   present as `""`, so one criterion covers both. This is state-derived and permanent, not a
   dismissible hint, so NG-4 and SPEC-01 NG-12 are not implicated — nothing is remembered.)_
-- **AC-36** _(Must)_ `chrome.sidePanel.open()` SHALL be the **first synchronous statement** in the
-  command listener — before any `await`, any `runtime.sendMessage` round trip, and any other
-  asynchronous work.
-  **Verify:** unit/static — assert no `await` and no message call precedes it in the listener body;
-  a test that fails if the call is not the first statement. _(C-8. This is invisible in review and
-  fatal at runtime: the activation is spent by whatever runs first, and the open then rejects with
-  no user-facing symptom beyond "the key did nothing". It killed the same design in
-  issues.chromium.org/issues/355266358 and chrome-extensions-samples#1001. **The `windowId` the call
-  needs must therefore be obtained without an await** — a planning constraint, not a free choice.)_
+- **AC-36** _(Must)_ No `await`, no `.then()` continuation, no `chrome.runtime.sendMessage`, and no
+  other `chrome.*` call SHALL precede `chrome.sidePanel.open()` in the command listener. A purely
+  synchronous guard over the `tab` argument the event already supplies (C-13) is permitted.
+  **Verify:** unit — assert `chrome.sidePanel.open`'s `mock.invocationCallOrder` is **lower than
+  every other `chrome.*` mock's** in the listener; static — a source check over the listener body
+  that fails on an `await`, a `.then()`, or any other `chrome.*` call before the open, as the loud
+  backstop for the case where a new call is added and no mock exists for it yet.
+  _(C-8. **This is the operative reading, not "the first statement".** What protects the transient
+  activation is that nothing *spends* it beforehand; a synchronous `if` over `tab.url` does not, and
+  the literal reading would have made this criterion and AC-39 mutually exclusive. C-13 is what makes
+  that safe — `tab.windowId` and `tab.url` arrive with the event, so there is nothing to await. The
+  failure this prevents is invisible in review and fatal at runtime: the open rejects with no
+  user-facing symptom beyond "the key did nothing". It killed the same design in
+  issues.chromium.org/issues/355266358 and chrome-extensions-samples#1001.)_
 - **AC-37** _(Must)_ The manifest's `suggested_key` SHALL satisfy C-10 — it SHALL contain `Ctrl`
   (or `Command`/`MacCtrl` on macOS) or `Alt`, SHALL NOT be a `Ctrl+Alt` combination, and SHALL NOT
   be any of Chrome's own chords.
@@ -593,9 +628,10 @@ ever covers rows the user can see.**
   **Verify:** unit — with the focused window's active tab an extension page, no `sidePanel.open()`
   is issued and the existing page is focused; and a test asserting that whichever branch is taken,
   the user ends on a working surface. _(`surfaces.ts:14`. Deliberately `Should` with a stated
-  escape: AC-36 forbids awaiting anything before the open, so this refinement is only available if
-  the active tab is knowable synchronously. A degraded extra copy is a far better failure than a
-  dead key.)_
+  escape, because this refinement is only available if the active tab is knowable synchronously.
+  **C-13 says it is** — `onCommand` hands the listener the active tab, so `isOwnPage(tab.url)` is a
+  synchronous guard and AC-36 expressly permits it. The escape hatch is therefore not expected to
+  fire; it is retained because a degraded extra copy is a far better failure than a dead key.)_
 
 ---
 
@@ -607,7 +643,7 @@ ever covers rows the user can see.**
 | **E-2**  | Command fires while the **anchor tab exists in a different window**                   | `openAnchorTab` focuses it and raises its window (`anchor.ts:51-59`). It must not create a second one (AC-9).                                                                                   |
 | **E-3**  | Command fires with **no normal browser window** open (Chrome alive in the background) | `resolveUserWindow()` can return `undefined` (`surfaces.ts:110`). The command must still produce a working surface or fail visibly — not throw into a background worker where nobody sees it.   |
 | **E-4**  | Command fires while the user is on a **privileged page** (`chrome://extensions`, the Web Store) | Must behave the same as anywhere else. C-8 makes the command itself a qualifying gesture regardless of the page, and the side panel is per-**window**, not per-tab — but this is the state most likely to surprise, so AC-38's manual pass covers it. |
-| **E-5**  | Command fires **twice in rapid succession**                                           | Exactly one surface results, and no error toast. `float.ts`'s `requesting` flag (`float.ts:87-97`) is the precedent for why this is a real failure and not a theoretical one.                   |
+| **E-5**  | Command fires **twice in rapid succession**                                           | The open surface is left intact (AC-3) and no error toast appears. `float.ts`'s `requesting` flag (`float.ts:87-97`) is the precedent for why this is a real failure and not a theoretical one. **If the second open rejects, AC-8's fallback opens an anchor tab — accepted, see R-1**, and this is the state the manual sweep watches. |
 | **E-6**  | The suggested key is **already bound by the OS or another application**               | Chrome never sees the key. Nothing in the app may depend on the command ever firing (AC-7).                                                                                                    |
 | **E-7**  | The user **cleared** the shortcut at `chrome://extensions/shortcuts`                   | Identical to E-6 from the app's side. Every existing entry point still works.                                                                                                                  |
 | **E-8**  | Surface opens with **zero tabs to show**                                              | `TabsView` renders "No other tabs are open." Focus still lands somewhere real and named — never on a detached or removed node.                                                                  |
@@ -634,10 +670,13 @@ ever covers rows the user can see.**
   reports `shortcut: ""` from `getAll()` (C-10), rather than failing the manifest or the install.
   Verified by AC-7's manual pass.
 - **A-4** A command event **does** carry the user activation `chrome.sidePanel.open()` requires
-  (C-8) — **provided the call is the first synchronous statement in the listener** (AC-36).
-  **Planning constraint:** the `windowId` that call needs must therefore be obtained without an
-  await. If that proves impossible, AC-8's anchor-tab fallback becomes the primary path; it is
-  reachable after a spent activation because `chrome.tabs.create` needs none.
+  (C-8) — **provided nothing spends it first**: no `await`, no `.then()`, no `sendMessage`, no other
+  `chrome.*` call before the open (AC-36). The `windowId` that call needs must therefore be obtained
+  without an await, and **C-13 satisfies that by leaving nothing to await** — `onCommand` passes the
+  active tab to the listener, so `tab.windowId` and `tab.url` are both already in hand. A purely
+  synchronous guard over them is permitted and is what AC-39 relies on. AC-8's anchor-tab fallback
+  remains the path when the open rejects anyway; it is reachable after a spent activation because
+  `chrome.tabs.create` needs none.
 - **A-5** The float is reachable only from the anchor tab, synchronously, inside a real in-document
   gesture (C-4, C-11). **No command can open it** — architectural, per NG-9.
 - **D-1** Depends on **SPEC-01** — the three surfaces, AC-23 (no storage), AC-24 (five-file
@@ -655,6 +694,23 @@ ever covers rows the user can see.**
   written against SPEC-04's post-rework structure rather than today's.
 - **D-4** `src/test/manifest.test.ts` is the executable form of the permission and storage
   constraints and is expected to pass **unmodified** except for the `commands` assertion AC-1 adds.
+
+### 7.1 Accepted risks
+
+Decisions to **live with** a known cost, recorded so nobody re-litigates them — or quietly "fixes"
+one and weakens the criterion it came from.
+
+- **R-1 — a repeat press whose open rejects changes the user's surface.** AC-8's fallback is
+  "if `sidePanel.open()` rejects, open or focus the anchor tab". Combined with AC-3, that means a
+  **second** press in a state where the panel is already open, if the open rejects for any reason,
+  lands the user in an anchor tab they did not ask for — a double-press becomes a change of surface.
+  **Accepted, 2026-09-29, rather than weakening AC-8**, on two grounds: `openAnchorTab` is
+  find-or-create and never opens a second one (C-5, AC-9), so the blast radius is one tab that the
+  user can close or hand back from ("Back to panel"); and the alternative — making the fallback
+  conditional on some notion of "was it already open" — is unbuildable, because C-12 says there is
+  no API to ask. **Observation point:** the manual sweep presses the key three times from each of
+  §5.1's states specifically so this is watched for rather than discovered in the field (AC-3's
+  manual verification, E-5).
 
 ---
 
@@ -711,7 +767,8 @@ ever covers rows the user can see.**
 | `src/lib/surfaces.ts`                                                           | `bringPanelAlong` already gates `sidePanel.open()` on `getHost() === "panel"`; a command firing from the worker has **no host**, so it cannot reuse that helper unchanged. `resolveUserWindow()` is what a command would need to answer "which window's panel", and it can return `undefined` (E-3). |
 | `src/lib/host.ts`                                                               | `getHost()` reads `window.location.search` — it does not exist in the worker. Any "which surface is open" question asked from the command handler needs a different answer than the one every in-page caller uses.                                                                                  |
 | `src/App.tsx`                                                                   | Owns `search`, the `Search`/`StyledInputBase` field (lines 249-272), the float↔anchor hand-off (lines 130-162) and the polite live region (lines 282-291). Items 2 and 3 both land here: AC-12, AC-15, AC-16, AC-24.                                                                                |
-| `src/lib/Tabs/Tab/TabDisplay.tsx`                                               | `autoFocus={tab.active && focus}` (line 99) is the **competing initial-focus claim** (§1.8, AC-11). Its select control (lines 124-144) is the per-row checkbox item 3 must keep (AC-22).                                                                                                             |
+| `src/lib/Tabs/Tab/TabDisplay.tsx`                                               | `autoFocus={tab.active && focus}` (line 99) is the **competing initial-focus claim** (§1.8, AC-11), and its `focus = true` default (line 34) is what carries the leak below into search results. Its select control (lines 124-144) is the per-row checkbox item 3 must keep (AC-22).                |
+| `src/lib/Tabs/TabsGroup/GroupListItem.tsx`, `src/lib/Tabs/Tab/TabListItem.tsx`  | **The live half of §1.8.** `GroupListItem.tsx:271` renders `<TabListItem group={group} tab={tab} key={tab.id} />` with no `focus` prop, and the file never mentions `focus` at all — so it cannot forward what it never receives. `TabListItem` spreads the rest into `TabDisplay`, which defaults it to `true`. `SearchView`'s `focus={false}` therefore never reaches a grouped tab. AC-11's two in-group fixtures exist for this. |
 | `src/lib/Tabs/elements/rowControls.ts`                                          | `rowControlProps` (`tabIndex: -1`), `useRowKeys`' `←`/`→` walk and the `dragActive` flag. AC-26, AC-29, AC-30 all pin its present behaviour. Any new key binding must be added **outside** this walk, not by widening it.                                                                            |
 | `src/lib/Tabs/selection/SelectionContext.tsx`                                   | The reducer's action union is the contract keyboard selection must dispatch into (AC-20). Its `chrome.runtime` broadcast is the cross-surface path (E-13, E-15), and its unvalidated `handleMessage` is named in §11.                                                                               |
 | `src/lib/Tabs/selection/SelectionToolbar.tsx`                                   | Appears only when `selected.length` is non-zero and is the payoff for item 3. Must act identically on a keyboard-built selection (AC-20).                                                                                                                                                           |
@@ -738,6 +795,15 @@ ever covers rows the user can see.**
   `README.md` and `store-listing.md` but nowhere in the product (§1.4); and per-window and per-group
   select-all **already are** keyboard-reachable, so the missing pieces are ranges and whole-list
   select-all specifically (§1.5).
+- **Second working-tree verification, 2026-09-29**, during planning of group A — source of C-13 and
+  of §1.8's live-defect finding:
+  - `node_modules/@types/chrome/index.d.ts:1264` —
+    `CommandEvent extends chrome.events.Event<(command: string, tab: chrome.tabs.Tab) => void>`,
+    with `onCommand` declared at `:1278`. The active tab arrives with the event.
+  - `src/lib/Tabs/TabsGroup/GroupListItem.tsx:271` renders `TabListItem` with **no `focus` prop**,
+    and the file never mentions `focus`; `src/lib/Tabs/Tab/TabListItem.tsx:19` spreads the rest into
+    `TabDisplay`, whose signature defaults `focus = true` (`TabDisplay.tsx:34`). `SearchView:60`'s
+    `focus={false}` therefore never reaches a grouped tab.
 - SPEC-01 (surfaces, the gesture constraints C-1…C-8, AC-23, AC-24, NG-3, **NG-10 and its
   disposition PI-5**), SPEC-03 (the fifth permission and the five-file mirror made executable),
   SPEC-04 (the keyboard walk, the tab-stop budget, selection semantics) — approved 2026-09-29.
@@ -840,14 +906,14 @@ All thirteen clarifications are closed. Recorded with their reasoning so nobody 
 
 | id (was)                                      | Decision                                                                                                                                                                                                                                                                                                                                     | Why, and what it forced                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **DEC-1, DEC-2** (was NC-1, NC-2)             | **One custom command that opens the side panel, or focuses the UI where it already is. No toggle.** Per-state behaviour in §5.1's table.                                                                                                                                                                                                      | The side panel is the default, fully-featured home (SPEC-01 G-4), and C-8 makes it reachable from a command. No toggle: there is no `chrome.sidePanel.close()` (C-2), and a key that destroys a surface is worse than one that focuses it. Across windows the user is **not** teleported — side panels are per-window and SPEC-01 **G-2** already accepts one copy per window, so `openAnchorTab`'s focus-and-raise (`anchor.ts:51-59`) is deliberately not reused. → AC-2, AC-3, AC-39 |
+| **DEC-1, DEC-2** (was NC-1, NC-2)             | **One custom command that opens the side panel, or focuses the UI where it already is. No toggle.** Per-state behaviour in §5.1's table.                                                                                                                                                                                                      | The side panel is the default, fully-featured home (SPEC-01 G-4), and C-8 makes it reachable from a command. No toggle: there is no `chrome.sidePanel.close()` (C-2), and a key that destroys a surface is worse than one that focuses it. Across windows the user is **not** teleported — side panels are per-window and SPEC-01 **G-2** already accepts one copy per window, so `openAnchorTab`'s focus-and-raise (`anchor.ts:51-59`) is deliberately not reused. **Amended 2026-09-29 (§15 A-1):** "focuses the UI where it already is" is specced as **leaves it intact**, because C-12 says Chrome offers no way to ask whether the panel is open or to move focus into it — a focus clause would be neither satisfiable nor verifiable. → AC-2, AC-3, AC-39 |
 | **DEC-3** (was NC-3)                          | **`Ctrl+Shift+K` / `Command+Shift+K`**, with the whole rejected field and its reasons recorded in §1.7a.                                                                                                                                                                                                                                      | C-10 leaves a narrow field: a required `Ctrl`/`Alt`, no `Ctrl+Alt`, Chrome's own chords unavailable, and `Ctrl+Shift+[0..9]` left for the `global`-scope commands that actually need it. The suggestion is not a guarantee — a chord another extension holds fails **silently** — so both failure modes are specced rather than assumed away. → AC-37, AC-7, AC-35                                                                                                     |
 | **DEC-4** (was NC-4)                          | **A custom command name, not the reserved `_execute_action`.**                                                                                                                                                                                                                                                                               | `_execute_action` dispatches no `onCommand` event, which removes exactly the branch DEC-1 and DEC-2 need. `openPanelOnActionClick: true` already covers the icon click, so the two paths stay distinct and neither has to serve both. **Recorded because `_execute_action` looks simpler and someone will propose it again** — and because `_execute_side_panel`, which looks like the obvious answer, does not exist (§10). → AC-1                                     |
-| **DEC-5** (was NC-5)                          | **Focus the search field — specced behind a measurement gate**, and keyed to "the document first receives focus" rather than to mount. The initial-focus race is resolved in §1.8: the field wins, `TabDisplay`'s `autoFocus` is **withdrawn rather than outrun**, and the active tab's row stays the entry point into the list, one `↓` away. | Side-panel focus-on-open is unverified and looks unreliable (§10). A criterion written against mount would be untestably true in jsdom and false in Chrome. The fallback is stated in advance rather than discovered in the field: record the shortfall as a platform limitation, and never fake focus. → AC-11, AC-12, AC-14, AC-38                                                                                                                                   |
+| **DEC-5** (was NC-5)                          | **Focus the search field — specced behind a measurement gate**, and keyed to "the document first receives focus" rather than to mount. The initial-focus race is resolved in §1.8: the field wins, `TabDisplay`'s `autoFocus` is **withdrawn rather than outrun**, and the active tab's row stays the entry point into the list, one `↓` away. | Side-panel focus-on-open is unverified and looks unreliable (§10). A criterion written against mount would be untestably true in jsdom and false in Chrome. The fallback is stated in advance rather than discovered in the field: record the shortfall as a platform limitation, and never fake focus. **Amended 2026-09-29 (§15 A-4):** the collision is not only a forward risk — `GroupListItem.tsx:271` passes no `focus` prop, so grouped tabs already autofocus in search results today. That is the case for **deleting** the prop rather than threading it, and AC-11 gained two in-group fixtures. → AC-11, AC-12, AC-14, AC-38                                              |
 | **DEC-6…DEC-9** (was NC-6, NC-7, NC-8, NC-10) | **`Shift`+`↑`/`↓` extends a range; plain arrows stay unbound. `Ctrl`/`Cmd`+`A` selects all while focus is in the list, and the search field keeps it as select-all-text. "All" means the filtered result, not the whole browser. A range covers only the rows the user can see — a collapsed group it spans over is not included.**            | One principle does all four jobs: **G-8, selection covers only what the user can see.** Selecting eighty invisible tabs from a three-row filtered list is how someone closes what they meant to keep, and the same reasoning excludes a collapsed group a range sweeps over. AC-19 states the collapsed case **explicitly, because the opposite is a defensible reading** and someone will assume it. `Shift`+arrow both moves and extends, so none of this touches SPEC-04's walk (NG-6). → AC-17, AC-18, AC-19, AC-23 |
 | **DEC-10** (was NC-9)                         | **Reuse `App.tsx`'s existing debounced polite region; announce the running total, at the existing debounce.**                                                                                                                                                                                                                                 | A delta — "6 added" — is meaningless to someone who has lost count, which is exactly the user the announcement exists for. A second live region would queue against the first; a second debounce would be a second timing to keep in step with the first. → AC-24                                                                                                                                                                                                     |
 | **DEC-11** (was NC-11)                        | **The `commands` key is not a permission and adds no install warning. SPEC-01 AC-24 does not fire.**                                                                                                                                                                                                                                          | C-9, from Chrome's permissions list and permission-warning guidance. The five-file mirror stays untouched. AC-5 is **retained** as the guard that confirms this on a real install rather than trusting it, because no test that reads `manifest.json` can see an install warning. Web Store **re-review** triggers are addressed by no primary source — unknown, not "no". → AC-5, AC-6, NG-3                                                                            |
-| **DEC-12** (was NC-12)                        | **A command event does carry the activation `chrome.sidePanel.open()` requires — provided the call is the first synchronous statement in the listener.**                                                                                                                                                                                      | C-8. The proviso is the whole decision: it is invisible in code review, fatal at runtime, and has already killed this exact design twice in public (issues.chromium.org/issues/355266358, chrome-extensions-samples#1001). It also constrains planning — the `windowId` must be obtained without an await — and it is why AC-8's anchor-tab fallback exists at all. → AC-36, AC-8, A-4                                                                                  |
+| **DEC-12** (was NC-12)                        | **A command event does carry the activation `chrome.sidePanel.open()` requires — provided the call is the first synchronous statement in the listener.**                                                                                                                                                                                      | C-8. The proviso is the whole decision: it is invisible in code review, fatal at runtime, and has already killed this exact design twice in public (issues.chromium.org/issues/355266358, chrome-extensions-samples#1001). **Amended 2026-09-29 (§15 A-2):** the proviso is specced as **"nothing spends the activation first"** — no `await`, no `.then()`, no `sendMessage`, no other `chrome.*` call — not as the literal "first statement", which would have made AC-36 and AC-39 mutually exclusive. C-13 is what makes the operative reading safe: the event hands the listener the active tab, so there is nothing to await. → AC-36, AC-39, AC-8, A-4, C-13                       |
 | **DEC-13** (was NC-13)                        | **Deferred to PI-8**, with the door explicitly left open.                                                                                                                                                                                                                                                                                    | SPEC-01 NG-12 forbids a _dismissible_ hint, because remembering the dismissal needs storage (SPEC-01 AC-23) — it does **not** forbid a permanent affordance. PI-8 records which shapes would be acceptable so a future spec does not start from zero. The part that is **not** deferred is AC-35: telling the user the shortcut is unbound is required now, and is derived from live state rather than remembered. → AC-33 (Could), AC-35, PI-8                          |
 
 ### 13.1 What is still unmeasured, and deliberately so
@@ -879,5 +945,24 @@ Group per §1.9: **A** ships now, **B** waits for SPEC-04 to be implemented.
 | Documentation & discoverability          | AC-32 (A), AC-35 (A), AC-33 (B, Could — deferred to PI-8)    | A + B |
 | Security of a global entry point         | AC-10, AC-25, AC-34                                          | A + B |
 | Inherited and re-asserted                | AC-6, AC-21, AC-22, AC-26, AC-27, AC-29, AC-30               | A + B |
-| Platform constraints made executable     | AC-5 (C-9), AC-36 (C-8), AC-37 (C-10); NG-9 (C-11)           | **A** |
+| Platform constraints made executable     | AC-5 (C-9), AC-36 (C-8, C-13), AC-37 (C-10), AC-3 (C-2, C-12); NG-9 (C-11) | **A** |
 | Measured, not derived                    | AC-31, AC-38 — see §13.1                                     | A + B |
+| Accepted risks                           | R-1 (§7.1), against AC-8 and AC-3; observed by the manual sweep | **A** |
+
+---
+
+## 15. Amendment log — 2026-09-29
+
+Four changes after approval, all from planning group A. User-decided; the spec was already
+`approved`, so each is recorded here rather than folded in silently.
+
+| #       | Change                                                                                                                                                                                                                                                                                                                                | Why                                                                                                                                                                                                                                                                                       |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A-1** | **AC-3: "focus that surface" → "leave it intact".** New constraint **C-12**.                                                                                                                                                                                                                                                          | Chrome exposes no API to ask whether the panel is open and none to move focus into one, so the focus clause could be neither satisfied nor verified. "Intact" is testable. The premise that `open()` on an open panel leaves it open is expected, not documented — so the sweep observes it. |
+| **A-2** | **AC-36: literal → operative reading.** No `await`, no `.then()`, no `sendMessage`, no other `chrome.*` call before `sidePanel.open()`; a synchronous guard over the event's `tab` is permitted. `Verify:` now asserts `mock.invocationCallOrder`, with a static source check as backstop. New constraint **C-13**. **AC-39 unchanged.** | As written, AC-36 and AC-39 were mutually exclusive: AC-39's guard *is* a statement. The operative reading names what actually protects the activation. C-13 makes it safe — `onCommand` hands the listener the active tab, so there is nothing to await.                                   |
+| **A-3** | **AC-8 unchanged; risk recorded as R-1** in the new §7.1.                                                                                                                                                                                                                                                                             | The fallback means a repeat press whose open rejects opens an anchor tab the user did not ask for. Accepted rather than weakening AC-8: `openAnchorTab` is find-or-create so the blast radius is one tab, and C-12 makes the conditional alternative unbuildable.                           |
+| **A-4** | **§1.8 records a live defect**, not only a forward risk; AC-11 gained two in-group fixtures; §9 gained a `GroupListItem` / `TabListItem` row.                                                                                                                                                                                          | `GroupListItem.tsx:271` passes no `focus` prop and never mentions `focus`, so `TabDisplay`'s `focus = true` default already autofocuses grouped tabs — including in search results. Strengthens the case for deleting the prop rather than threading it.                                    |
+
+**Status is unchanged at `approved`.** None of these opens a question: A-1 and A-2 make two criteria
+verifiable that were not, A-3 records a decision without changing a criterion, and A-4 adds a
+verified fact and test coverage for it.
