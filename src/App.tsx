@@ -40,6 +40,7 @@ import {
 } from "./lib/float";
 import { FloatClosedNotice } from "./lib/FloatClosedNotice.tsx";
 import { getHost } from "./lib/host";
+import { ShortcutNotice } from "./lib/ShortcutNotice.tsx";
 import { srOnly } from "./lib/srOnly.ts";
 import { AudioTabs } from "./lib/Tabs/AudioTabs";
 import { CurrentTab } from "./lib/Tabs/CurrentTab";
@@ -314,6 +315,7 @@ function App() {
             </Toolbar>
             <CurrentTab />
             <FloatClosedNotice />
+            <ShortcutNotice />
           </AppBar>
           {/* The list is the page's content. Without this the document had
               no main landmark at all, so "skip to content" had nothing to

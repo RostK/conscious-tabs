@@ -4,6 +4,7 @@ import { join, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import manifest from "../../manifest.json";
+import { OPEN_COMMAND } from "../lib/commands.ts";
 
 /**
  * The zero-host-permission, stores-nothing posture is a product promise, not
@@ -86,7 +87,10 @@ describe("the keyboard shortcut", () => {
    * is one fewer available later.
    */
   it("declares one command, and not a reserved one", () => {
-    expect(names).toEqual(["open-conscious-tabs"]);
+    // Compared against the constant the worker and the notice both use, so a
+    // rename that misses one of the three places fails here instead of
+    // silently unbinding the shortcut.
+    expect(names).toEqual([OPEN_COMMAND]);
     names.forEach((name) => {
       expect(name.startsWith("_execute")).toBe(false);
     });

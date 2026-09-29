@@ -1,7 +1,5 @@
 import { openAnchorTab } from "../lib/anchorTab.ts";
-
-/** The command declared in `manifest.json`. */
-export const OPEN_COMMAND = "open-conscious-tabs";
+import { OPEN_COMMAND } from "../lib/commands.ts";
 
 /**
  * The extension's own origin, captured at import rather than per command.
