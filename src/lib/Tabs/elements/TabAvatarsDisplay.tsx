@@ -48,7 +48,7 @@ export const TabAvatarsDisplay: FC<{ tabsStructure: TabsStructure }> = ({
         <Avatar
           sx={{ background: "lightgray", width: 26, height: 26 }}
           key={tab.id}
-          src={faviconUrl(tab.url, 26)}
+          src={faviconUrl(tab.url, 26, tab.favIconUrl)}
           // MUI puts this straight on the <img>, and without it emits a bare
           // `<img src>` — six `image-alt` violations of impact `critical` on a
           // window row, because the row already names every tab it summarises.

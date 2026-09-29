@@ -154,10 +154,12 @@ export const GroupListItem: FC<
     );
   }, [handleDelete, group.title, setActivatorNodeRef, attributes, onKeyDown]);
 
-  const isSelected = useMemo(
-    () => !group.tabs.find(({ id }) => id && !selected.includes(id)),
-    [group.tabs, selected],
-  );
+  // Through a Set, for the same reason as the window row: `includes` is a scan
+  // and this runs it once per tab in the group, per render.
+  const isSelected = useMemo(() => {
+    const chosen = new Set(selected);
+    return !group.tabs.find(({ id }) => id && !chosen.has(id));
+  }, [group.tabs, selected]);
   const handleSelectButton = useCallback<MouseEventHandler>(
     (e) => {
       e.preventDefault();

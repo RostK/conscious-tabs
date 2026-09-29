@@ -18,9 +18,26 @@
  * is attacker-influenced and routinely contains `&` and `#`, either of which
  * silently truncates a hand-joined query (SPEC-03 E-6).
  */
+/**
+ * A short, stable stand-in for a long icon URL.
+ *
+ * `favIconUrl` is often a `data:` URL running to kilobytes, and it goes into a
+ * query string here, so it is hashed rather than carried. djb2: not a security
+ * primitive and not used as one — the only question asked of it is "is this
+ * different from last time".
+ */
+const token = (value: string): string => {
+  let hash = 5381;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) + hash + value.charCodeAt(index)) | 0;
+  }
+  return (hash >>> 0).toString(36);
+};
+
 export const faviconUrl = (
   pageUrl: string | undefined,
   size: number,
+  browserIcon?: string,
 ): string | undefined => {
   if (!pageUrl) return undefined;
   const endpoint = new URL(chrome.runtime.getURL("/_favicon/"));
@@ -29,5 +46,20 @@ export const faviconUrl = (
   // display a blurrier icon than the remote one this replaced, making a privacy
   // win look like a downgrade (SPEC-03 AC-2).
   endpoint.searchParams.set("size", String(size * 2));
+  /*
+   * The cache key, and the reason this parameter exists.
+   *
+   * `_favicon` is keyed by page URL, and a page URL stops changing the moment
+   * a navigation settles. A tab navigated a second ago asks for an icon Chrome
+   * has not catalogued yet, gets the default globe, and the browser caches
+   * that answer against this exact request URL — so when Chrome acquires the
+   * real icon a moment later, nothing here changes and the row keeps the
+   * globe. Varying the URL with the site's own icon is what makes the second
+   * answer a different request.
+   *
+   * The value is a hash of `favIconUrl` and that URL is never fetched: this is
+   * a change signal, not a source. Fetching it is what SPEC-03 removed.
+   */
+  if (browserIcon) endpoint.searchParams.set("v", token(browserIcon));
   return endpoint.toString();
 };

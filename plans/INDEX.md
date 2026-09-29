@@ -9,10 +9,14 @@ lives in [`../specs/`](../specs/INDEX.md), not here.
 | Spec ID | Date       | Feature                     | Status            | Execution     | File                                                                                       |
 | ------- | ---------- | --------------------------- | ----------------- | ------------- | ------------------------------------------------------------------------------------------ |
 | SPEC-01 | 2026-09-22 | Floating tab manager window | done              | single-agent  | [PLAN-SPEC-01-floating-tab-manager-window.md](PLAN-SPEC-01-floating-tab-manager-window.md) |
+| SPEC-05 | 2026-09-29 | Keyboard entry and focus (group A) | approved (2026-09-29) | single-agent  | [PLAN-SPEC-05-keyboard-entry-and-focus.md](PLAN-SPEC-05-keyboard-entry-and-focus.md)         |
 
-**Companion document.** [MANUAL-SWEEP-SPEC-01.md](MANUAL-SWEEP-SPEC-01.md) — the checks a real
+**Companion documents.** [MANUAL-SWEEP-SPEC-01.md](MANUAL-SWEEP-SPEC-01.md) — the checks a real
 floating window has to answer, which no test can: the browser-owned parts of T-14, T-15 and T-16,
-ordered so one float session covers them.
+ordered so one float session covers them. [MANUAL-SWEEP-SPEC-05.md](MANUAL-SWEEP-SPEC-05.md) — the
+install warning, the shortcut itself, and where focus lands in each surface: what only a real
+Chrome on a clean profile can answer, ordered so the one that could invalidate the design is
+answered first.
 
 ## Status values
 

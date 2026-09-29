@@ -23,7 +23,7 @@ import {
 } from "../elements/rowControls.ts";
 import { SelectionContext } from "../selection";
 import { Tabs } from "../Tabs.tsx";
-import { TabItem, TabsStructure } from "../types.ts";
+import { TabsStructure } from "../types.ts";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
 import { WindowDisplay } from "./WindowDisplay.tsx";
 
@@ -32,11 +32,14 @@ export const WindowListItem: FC<{
   tabsStructure: TabsStructure;
   single: boolean;
 }> = ({ single, window, tabsStructure }) => {
-  const flatTabs = useMemo(() => {
-    return tabsStructure.reduce((acc, item) => {
-      return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
-    }, [] as TabItem[]);
-  }, [tabsStructure]);
+  // flatMap, not a reduce that spreads: spreading the accumulator copies
+  // everything gathered so far on every item, which is quadratic in the number
+  // of rows for a result that is the same list either way.
+  const flatTabs = useMemo(
+    () =>
+      tabsStructure.flatMap((item) => (item.type === "group" ? item.tabs : item)),
+    [tabsStructure],
+  );
   const [isOpen, setIsOpen] = useState(window.focused);
   const handleOpen = useCallback(() => {
     setIsOpen((state) => !state);
@@ -80,10 +83,12 @@ export const WindowListItem: FC<{
     );
   }, [handleCloseWindow, flatTabs.length]);
 
-  const isSelected = useMemo(
-    () => !flatTabs.find(({ id }) => id && !selected.includes(id)),
-    [flatTabs, selected],
-  );
+  // Through a Set: `includes` on an array is a scan, and this asks it once per
+  // tab in the window, on every render of every window row.
+  const isSelected = useMemo(() => {
+    const chosen = new Set(selected);
+    return !flatTabs.find(({ id }) => id && !chosen.has(id));
+  }, [flatTabs, selected]);
   const handleSelectButton = useCallback<MouseEventHandler>(
     (e) => {
       e.preventDefault();
