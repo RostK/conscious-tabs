@@ -5,7 +5,7 @@
 | **Plan for**       | [SPEC-04](../specs/tab-list/SPEC-04-2026-09-28-accessible-rows.md) (Status: approved 2026-09-29, 37 ACs, zero open NC)                                 |
 | **Date**           | 2026-09-29                                                                                                                                             |
 | **Module**         | `tab-list`, with edges into `ui-shell` (`src/App.tsx`)                                                                                                 |
-| **Status**         | awaiting approval — §8 lists four criteria that cannot be met as written; settle those before building                                                  |
+| **Status**         | approved (2026-09-29) — §8's two blocking criteria were decided by the user and the spec is amended to match; the other two need nothing                |
 | **Execution mode** | Single-agent, sequential (user decision, 2026-09-29 — precedent PLAN-SPEC-01, PLAN-SPEC-05)                                                             |
 | **Test strategy**  | Vitest for everything reachable without a browser, plus [MANUAL-SWEEP-SPEC-04.md](MANUAL-SWEEP-SPEC-04.md) for what is not (user decision, 2026-09-29)  |
 | **Branch**         | `accessible-rows`, cut from **`keyboard-entry-and-focus`** — not from `main`. See §1.1.                                                                  |
@@ -190,14 +190,24 @@ discovery.
   is a **string** passed to the `aria-label` prop — never an `aria-labelledby` id, never a selector,
   never markup (AC-24, §11). `host` is derived with `URL(...).hostname` inside a `try`, falling back
   to the raw string; it is text either way and reaches no sink.
-- **D-8 — The group row's chevron is rendered unconditionally.** Today it is gated on
-  `expanded === undefined` (`GroupListItem.tsx:183`), so in `SearchView` — which passes
-  `expandedGroups` (`SearchView/index.tsx:58`) — a group row has **no** chevron at all. Under this
-  shape the chevron *is* the primary action, so without it a search-result group row would have no
-  keyboard way to do what clicking its body does (AC-32, NG-2). It is rendered always, reflecting
-  `group.collapsed`. This makes a control **permanently visible that was not** — which NG-5 permits
-  only "where a structural change forces a control to become permanently visible", and this is that
-  case. It is a visible change to the search results and T-8/T-10 re-measure the row at 400 px.
+- **D-8 — The chevron's render gate does not change; a search-result group row has no primary
+  action.** *(Decided by the user 2026-09-29; this decision was reversed from the draft plan, and
+  the reasoning that produced the earlier version is kept below because it is the argument someone
+  will re-make.)* Today the chevron is gated on `expanded === undefined`
+  (`GroupListItem.tsx:183`), so in `SearchView` — which passes `expandedGroups`
+  (`SearchView/index.tsx:58`) — a group row has no chevron. The draft plan rendered it always,
+  reasoning that the chevron *is* the primary action and a row without one fails AC-32.
+
+  The premise was wrong. AC-32 requires the primary action to do **what clicking the row body does
+  today**, and in search results that is *nothing*: groups are force-expanded, so the row's collapse
+  click has no visible effect. A row whose body does nothing has nothing to mirror. Inventing a
+  control to satisfy the criterion would add an affordance the product does not have, make a control
+  permanently visible that is not today, and let people collapse groups inside search results — a
+  behaviour change nobody asked for.
+
+  So: the gate at `:183` **stays**. In the tab list a group row's toolbar begins with the chevron as
+  its primary action; in search results it begins at the select-all control, and AC-32 carries the
+  carve-out saying why. Nothing about the search results changes visually, which also retires R-5.
 - **D-9 — `useRowKeys` drops the row from its own stop list.** `rowControls.ts:176-179` builds
   `[row, ...row.querySelectorAll("[data-row-control]")]`. The row is no longer focusable, so index 0
   can never match `document.activeElement` and Left from the first control would call `focus()` on a
@@ -414,8 +424,9 @@ harness, no production code).
     gains `{...rowPrimaryProps}`, `aria-expanded={!group.collapsed}` and
     `aria-label={`${group.collapsed ? "Expand" : "Collapse"} group ${group.title || ""}`.trim()}`,
     an `onClick` that does what the row's click does (`chrome.tabGroups.update(id, { collapsed:
-    !collapsed })`) and stops propagation, **and is rendered unconditionally** — the
-    `expanded === undefined &&` gate at `:183` goes (D-8);
+    !collapsed })`) and stops propagation. **The `expanded === undefined &&` gate at `:183` stays**
+    (D-8): where there is no chevron there is no row-body action to mirror, and the toolbar begins
+    at the select-all control instead;
   - `GroupListItem.tsx:127-155` (`itemAction`) — order becomes **MoreVert → Close → DragHandle**,
     with `edge="end"` moving from the Close button (`:147`) to the handle.
 - **Pitfall — `expanded` still gates the children, only not the button.** `:270-274` renders the
@@ -563,7 +574,7 @@ harness, no production code).
     (AC-23);
   - **re-measure in the harness** at the float's ~400 px: the tab row's secondary-action container
     (60 px silent / 96 px noisy, `TabDisplay.tsx:106`) and the group row's (88.3 px,
-    `GroupDisplay.tsx:90`) after the reorder and after D-8's always-visible chevron. Record the
+    `GroupDisplay.tsx:90`) after the reorder. Record the
     readings in §C of the sweep; change the constants and their tests **together** if they moved.
 - **Pitfall — measure the container, not the buttons** (LEARNINGS 2026-09-28). `edge="end"` is a
   −12 px margin, so a group row's three controls span 100.3 px while the container reports 88.3, and
@@ -662,7 +673,7 @@ each one's failure cheapest to diagnose.
 | R-2 | A screen reader reports the wrong "item n of N" because the `listitem`s are three `div`s deep inside the `list`. | T-3 step 4. Fallback named in T-1: explicit `aria-posinset`/`aria-setsize`, with the memo cost accepted. |
 | R-3 | A MUI upgrade reverses `ButtonBase`'s prop precedence and the rows silently go back to `role="button"`. | T-2 asserts the rendered `role` and `tabindex` directly. That test is the alarm. |
 | R-4 | The AC-30 reorder moves a measured control width, and the mask/reserve constants go stale silently — they are only visible as "titles truncate early". | T-8's harness re-measure. Change the constant and its test together or neither. |
-| R-5 | D-8's always-visible group chevron clips or overlaps at the float's ~400 px, where the group row already reserves 88.3 px on the right. | T-8 (harness) and T-10 (real float). This is the one place NG-5's exception is being used. |
+| R-5 | ~~D-8's always-visible group chevron clips at the float's ~400 px.~~ **Retired 2026-09-29** — D-8 was reversed and the chevron's render gate is unchanged, so no control becomes permanently visible and NG-5's exception is not used at all. The reorder's own width changes are still measured in T-8. |
 | R-6 | A new per-row prop defeats the row memo and the list goes back to 500 ms per keystroke at 80 tabs. | D-6, and the per-unit DoD that `TabListItem.tsx` stays out of the diff. |
 | R-7 | The branch is cut from `main` instead of `keyboard-entry-and-focus`, so `TabDisplay` still has `focus`/`autoFocus` and SPEC-05 group A is silently reverted on merge. | §1.1. Check `git log keyboard-entry-and-focus..HEAD` before the first commit. |
 | R-8 | SPEC-05 **group B** is blocked on this spec and is written against this row structure (PLAN-SPEC-05 §9). Any late change to the walk order or the control census invalidates criteria that have not been planned yet. | D-4 fixes the walk order once, here. Treat a change to it as a cross-spec change. |
@@ -690,8 +701,26 @@ including T-0, which unlike PLAN-SPEC-05's T-1 is not a bare enabler: the check 
 
 ## 8. Criteria that cannot be met as written
 
-Recorded here rather than discovered mid-implementation. **Items 1 and 2 need a decision before T-2;
-items 3 and 4 are recorded and need nothing.**
+Recorded here rather than discovered mid-implementation.
+
+**Items 1 and 2 were decided by the user on 2026-09-29 and both are now settled; the spec is being
+amended to match. The findings are kept as written below, because the reasoning is what makes the
+amendments reviewable — a criterion that changed with no visible cause is worse than one that never
+changed.** Items 3 and 4 are recorded and need nothing.
+
+- **Item 1 — resolved as recommended.** AC-29 becomes "all non-empty, and distinct wherever their
+  subjects are distinct", and tab rows keep subject-only names. The grounding is stronger than the
+  recommendation claimed: ARIA requires *"a label on each toolbar when the application contains more
+  than one"* and says nothing about uniqueness, so AC-29's distinctness half was stricter than the
+  standard it exists to satisfy. This is a correction, not a concession. The window row keeps D-7's
+  ordinal as an improvement rather than an obligation. Note for anyone tempted to revisit: a
+  positional name for tab rows would cost no *extra* re-renders, since `index` is already part of a
+  row's identity — it was rejected because a row that renames itself whenever something before it
+  closes is worse to listen to, not because it was expensive.
+- **Item 2 — resolved against D-8's draft.** A search-result group row has **no primary action** and
+  its toolbar begins at the select-all control. AC-32's premise does not apply there: it requires
+  the primary action to do what clicking the row body does, and in search results that is nothing.
+  See the rewritten D-8; R-5 is retired with it.
 
 1. **AC-29's two halves collide for genuinely duplicate subjects — needs a decision.** The criterion
    requires each toolbar's name to be *both* "derived from the row's subject" *and* distinct from
