@@ -215,7 +215,7 @@ export const takeFloatSearch = (): string | undefined => {
   return value;
 };
 
-chrome.runtime.onMessage.addListener((message: unknown) => {
+const handleFloatMessage = (message: unknown) => {
   const type = (message as { type?: string } | null)?.type;
 
   // Only the document actually holding a float can answer either of these.
@@ -230,6 +230,29 @@ chrome.runtime.onMessage.addListener((message: unknown) => {
   if (type !== RETURN_TO_FULL_VIEW) return;
   closeFloat();
   void focusSelf();
+};
+
+chrome.runtime.onMessage.addListener(handleFloatMessage);
+
+/**
+ * Take the listener with the module when HMR replaces it.
+ *
+ * Registering at module scope and never removing is right in production: it has
+ * to be listening before any message can arrive, and it dies with the document.
+ * In development it is not, because Vite re-evaluates this module *without*
+ * reloading the page — so every edit stacked another copy, and one
+ * `RETURN_TO_FULL_VIEW` then ran the hand-back once per accumulated listener.
+ *
+ * The obvious guard does not work and is worth naming so nobody tries it again:
+ * `hasListener(handleFloatMessage)` compares function identity, and a
+ * re-evaluated module defines a *new* closure every time, so the check never
+ * matches. It would also be the wrong thing to want — the surviving listener
+ * would be the old one, closed over the previous module's `current`, answering
+ * about a float this module no longer knows it holds. Disposing is what keeps
+ * the listener and the state it reads in the same generation.
+ */
+import.meta.hot?.dispose(() => {
+  chrome.runtime.onMessage.removeListener(handleFloatMessage);
 });
 
 /**
