@@ -11,6 +11,22 @@ saw.
 
 ---
 
+## Results so far — 2026-09-29
+
+Three answers, observed by the user on their own Chrome. The Chrome version was not recorded; it
+should be, before any of this is quoted as settled.
+
+| Item | Result |
+| ---- | ------ |
+| **AC-2** — the key opens the side panel | **Yes.** C-8 holds: a `commands` event still carries the activation `sidePanel.open()` needs, and T-4 stands as built. The gate is passed. |
+| **AC-5** — install warning | **No new permissions.** C-9 holds and SPEC-01 AC-24 does not fire. Recorded honestly as the weaker form: the post-change install was observed and judged to show nothing new, rather than diffed word-for-word against a baseline captured from `main` first. §A below is still worth doing if AC-5 is ever challenged. |
+| **AC-38** — does the panel take focus? | **No.** Typing after the shortcut goes to the page behind, not to the search field. This is the outcome the criterion anticipated: a **platform limitation to record, not a defect to fix**, and nothing may be added to force or fake focus. It makes the one-shot "focus the field when the document first receives focus" behaviour the load-bearing half of item 2 rather than a refinement — the caret must be waiting in the field for the moment focus does arrive. |
+
+Not yet answered: everything in §C and §D, AC-3's three presses, AC-7's cleared-shortcut pass, and
+AC-4's description on the shortcuts page.
+
+---
+
 ## A. Before the manifest changes  *(run from `main`, T-0)*
 
 - [ ] **AC-5 · today's install warning, verbatim**

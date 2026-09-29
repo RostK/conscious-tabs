@@ -18,12 +18,12 @@
 
 | Unit  | State       | Note |
 | ----- | ----------- | ---- |
-| T-0   | not started | Baseline install warning, recorded **before** the manifest changes. Ordering matters — see the unit. |
-| T-1   | not started | Enablers: `commands` on the chrome stub, and the worker's first test seam. Traces to no AC. |
-| T-2   | not started | `manifest.json` gains one custom command. |
-| T-3   | not started | A worker-safe way to reach the anchor tab. |
-| T-4   | not started | The command listener. AC-36 lives or dies here. |
-| T-5   | not started | **Gate** — a real Chrome, clean profile. Stop-and-rethink if the panel never opens. |
+| T-0   | superseded  | Not run as written. The `commands` key landed on a branch, so `main` stayed a clean baseline; the user observed the post-change install directly and reported no new permissions. Weaker than a word-for-word diff, and enough unless AC-5 is challenged. |
+| T-1   | **done**    | Enablers: `commands` on the chrome stub, and the worker's first test seam. Traces to no AC. |
+| T-2   | **done**    | `manifest.json` gains one custom command. |
+| T-3   | **done**    | A worker-safe way to reach the anchor tab. |
+| T-4   | **done**    | The command listener. AC-36 lives or dies here. |
+| T-5   | **partial** | **Gate passed.** The key opens the side panel — C-8 holds and T-4 stands. AC-38 answered **no** for the panel: it does not take document focus, which is a recorded platform limitation. AC-3, AC-4 and AC-7 still to run. |
 | T-6   | not started | One initial focus: the search field wins, `TabDisplay`'s claim is withdrawn. |
 | T-7   | not started | `↓` from the field lands on the active tab's row. |
 | T-8   | not started | Say so when the shortcut is unbound. |
