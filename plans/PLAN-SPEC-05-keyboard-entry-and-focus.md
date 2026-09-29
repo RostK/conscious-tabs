@@ -5,7 +5,7 @@
 | **Plan for**       | [SPEC-05](../specs/ui-shell/SPEC-05-2026-09-29-keyboard-access.md) (Status: approved 2026-09-29, 39 ACs, zero open NC) — **group A only**, per its §1.9 |
 | **Date**           | 2026-09-29                                                                                                                     |
 | **Module**         | `ui-shell`                                                                                                                     |
-| **Status**         | awaiting approval                                                                                                              |
+| **Status**         | approved (2026-09-29) — the three criteria §8 found unsatisfiable were amended in SPEC-05 first; see below |
 | **Execution mode** | Single-agent, sequential (user decision, 2026-09-29 — precedent PLAN-SPEC-01)                                                  |
 | **Test strategy**  | Vitest for everything reachable without a real browser, plus [MANUAL-SWEEP-SPEC-05.md](MANUAL-SWEEP-SPEC-05.md) for what is not (user decision, 2026-09-29) |
 | **Branch**         | `keyboard-entry-and-focus`                                                                                                     |
@@ -480,6 +480,14 @@ least one criterion. T-1 is an enabler and says so.
 ## 8. Criteria that cannot be met as written
 
 Recorded here rather than discovered mid-implementation.
+
+**Resolved 2026-09-29, before approval.** Items 1 and 2 were put to the user and the spec was
+amended: AC-3 now requires the already-open surface to be *left intact* rather than focused, and
+AC-36 now forbids what actually spends the activation — no `await`, no `.then()`, no
+`sendMessage`, no other `chrome.*` call before the open — so AC-39 survives. Item 3's risk was
+accepted rather than weakening AC-8, and is recorded in the spec as R-1 with the sweep as its
+observation point. The original findings are kept below as written, because the reasoning is what
+makes the amendments reviewable.
 
 1. **AC-3, the focus half — not satisfiable.** "The system SHALL focus that surface" has no API
    behind it when the surface is an already-open side panel: Chrome exposes no way to ask whether
