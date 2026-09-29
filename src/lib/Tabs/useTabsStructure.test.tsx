@@ -257,3 +257,63 @@ describe("several consumers", () => {
     expect(chrome.tabs.query).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The invariant `TabListItem`'s memo rests on.
+ *
+ * Every browser event rebuilds this tree, and each row used to arrive as a
+ * fresh object with identical contents — so React, comparing by reference,
+ * re-rendered the whole list because one title changed. Measured in jsdom, that
+ * was 500ms at eighty tabs and 681ms at two hundred; keeping the objects took
+ * it to 33 and 64, and flat rather than climbing.
+ *
+ * If these fail, the memo in `TabListItem` silently stops hitting and the
+ * regression is a performance one — invisible to every other test.
+ */
+describe("row identity across rebuilds", () => {
+  const fire = () =>
+    (
+      chrome.tabs.onUpdated as unknown as { fire: (...a: never[]) => void }
+    ).fire(...([2, { title: "Second, renamed" }, {}] as never[]));
+
+  const rows = (structure: ReturnType<typeof useTabsStructure>) =>
+    (structure ?? []).filter((item) => item.type === "tab") as TabItem[];
+
+  it("hands back the same object for a row that did not change", async () => {
+    const tabs = [
+      tab({ id: 1, index: 0, title: "First" }),
+      tab({ id: 2, index: 1, title: "Second" }),
+    ];
+    installChrome({ windows: WINDOWS, tabs });
+    const { result } = renderHook(() => useTabsStructure());
+    await waitFor(() => expect(result.current).toBeDefined());
+    const before = rows(result.current);
+
+    // One tab is renamed; the other is untouched.
+    tabs[1].title = "Second, renamed";
+    fire();
+    await waitFor(() =>
+      expect(titles(result.current)).toContain("Second, renamed"),
+    );
+    const after = rows(result.current);
+
+    expect(after[0]).toBe(before[0]);
+    expect(after[1]).not.toBe(before[1]);
+  });
+
+  // The other half: identity must not outlive the contents it stands for, or a
+  // memoised row would keep showing what a tab used to say.
+  it("hands back a new object once a row's contents change", async () => {
+    const tabs = [tab({ id: 1, index: 0, title: "First" })];
+    installChrome({ windows: WINDOWS, tabs });
+    const { result } = renderHook(() => useTabsStructure());
+    await waitFor(() => expect(result.current).toBeDefined());
+    const before = rows(result.current)[0];
+
+    tabs[0].title = "First, renamed";
+    fire();
+    await waitFor(() => expect(titles(result.current)).toEqual(["First, renamed"]));
+
+    expect(rows(result.current)[0]).not.toBe(before);
+  });
+});

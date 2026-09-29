@@ -62,6 +62,18 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   _not_ change. Evidence: `src/views/TabsView/TabsView.test.tsx`,
   `src/lib/float.test.ts`.
 
+- 2026-09-29 — **Give a row a stable object and memoise it; otherwise one changed tab
+  re-renders the whole list.** `getTabsTree` rebuilds the tree on every browser event, so each
+  row arrived as a fresh object with identical contents and React, comparing by reference,
+  re-rendered all of them. Measured in jsdom, one title changing cost 162 ms at 20 tabs, 500 ms
+  at 80 and 681 ms at 200 — proportional to the list, not to the change. Returning the *same*
+  `TabItem` while its contents are unchanged, plus `memo` on `TabListItem`, took it to 29 / 33 /
+  64 ms and made it nearly flat. Compare by a signature taken from the object itself, never a
+  hand-written field list: a field forgotten there is a row that silently stops updating. Bound
+  the cache rather than pruning it — pruning what a build did not see makes `SelectionToolbar`'s
+  filtered view evict the main list's rows every render. Evidence:
+  `src/lib/Tabs/useTabsStructure.ts` (`stableTab`), `src/lib/Tabs/Tab/TabListItem.tsx`.
+
 ## What Doesn't Work
 
 - 2026-07-30 — `.gitignore` patterns `*.local` and `.env*.local` do **not** match a bare
@@ -192,6 +204,24 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   while the notice is still on screen, the next burst rewrites it with the running total
   instead of queueing behind it. Evidence: `src/lib/Tabs/undo/SyncPrompt.tsx` (`liveCount`,
   `forget`).
+
+- 2026-09-29 — **A side panel opened programmatically does not take document focus, and no API
+  will give it one.** Measured on a real Chrome: after the keyboard command opens the panel,
+  typing goes to the page behind it. The API surface is `open` / `setOptions` / `getOptions` /
+  `setPanelBehavior` / `getPanelBehavior` — there is no way to ask whether the panel is open, no
+  way to focus it, and no `close()`. So "focus the search box on open" cannot be built as
+  stated. What works instead is claiming the caret twice: on mount, and again on the window's
+  first `focus` event, guarded to fire only while `document.activeElement` is still
+  `document.body` so a user who clicked a row is never yanked back. Evidence:
+  `src/lib/useInitialFocus.ts`, `plans/MANUAL-SWEEP-SPEC-05.md`.
+- 2026-09-29 — **`chrome://extensions/_favicon/` is keyed by page URL, which stops changing the
+  moment a navigation settles — so a miss caches forever.** A tab that has just navigated asks
+  for an icon Chrome has not catalogued yet, gets the default globe, and the browser caches that
+  answer against a request that will never differ again. The row then shows a globe for as long
+  as it is open. SPEC-03 E-8 foresaw this and *accepted* it, having reasoned about the rare case
+  (a site changing its icon) rather than the one that happens on every navigation. The fix is a
+  change token in the query string — a hash of the tab's own `favIconUrl`, which is never
+  fetched, only compared. Evidence: `src/lib/Tabs/elements/favicon.ts`.
 
 ## Codebase Patterns
 
@@ -384,6 +414,25 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `.claude/launch.json`, which is untracked and per-worktree, so it never reaches a PR.
   Evidence: `vite.harness.config.ts:12`.
 
+- 2026-09-29 — **A service worker written as pure side effects is not a TypeScript module, and
+  `await import()` of it fails the build while the suite stays green.** `src/worker/index.ts`
+  had no import and no export, so `tsc` treated it as a global script: `TS2306: File … is not a
+  module`. Vitest does not type-check, so 167 tests passed over a red build — the same trap
+  already recorded under Recurring Errors, reached by a new route. `export {}` is the seam, and
+  it becomes redundant the moment the file imports anything. The import itself is the only test
+  seam a worker has: `vi.resetModules()`, then `installChrome()`, then `await import()`, in that
+  order — a cached module does not re-run its side effects, and a stub installed after the
+  import is not the object the worker captured. Evidence: `src/worker/index.ts`,
+  `src/worker/index.test.ts`.
+- 2026-09-29 — **A `chrome.commands` event does carry the user activation `sidePanel.open()`
+  needs, and the listener is handed the active tab.** Confirmed on a real Chrome: the shortcut
+  opens the panel. `CommandEvent` is `(command: string, tab: chrome.tabs.Tab) => void`
+  (`@types/chrome/index.d.ts:1264`), so `tab.windowId` is in hand before the first statement runs
+  and there is nothing to await — which is what makes the call safe, since it is awaiting, not
+  calling, that spends the activation. Keep `open()` ahead of any `await`, `.then`,
+  `sendMessage` or other `chrome.*` call; a synchronous comparison is fine. The failure has no
+  symptom beyond "the key did nothing". Evidence: `src/worker/openSurface.ts`.
+
 ## Recurring Errors & Fixes
 
 - 2026-09-23 — **`npm test` passing does not mean the branch builds.** Test files live
@@ -457,6 +506,15 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   added to close. Also found and left alone: the drag overlay renders `GroupDisplay` with
   no controls, so the reservation is conditional; `TabDisplay` had the same shape and the
   mask made it moot.
+
+- 2026-09-29 — Shipped the keyboard way in (SPEC-05 group A: a command, focus in the search
+  field, one Down into the list), fixed a favicon that went stale after navigation, and cut the
+  per-event re-render cost of the list by roughly 5–15×. Two measurement lessons worth keeping.
+  First, a benchmark is only a comparison if both sides were taken the same way — a first
+  "after" run used a 5 ms `waitFor` interval against a 50 ms baseline and flattered the result
+  by about half; it was thrown away and both re-measured. Second, jsdom answers scaling
+  questions and not absolute ones: it says whether cost grows with list size, and nothing
+  trustworthy about milliseconds, paint or GC.
 
 ## Open Questions
 
