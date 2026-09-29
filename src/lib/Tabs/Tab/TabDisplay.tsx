@@ -148,7 +148,12 @@ export const TabDisplay: FC<{
           Invisible until the checkbox came to sit over the favicon. */}
       <ListItemAvatar sx={{ minWidth: "36px" }}>
         <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
-          <TabFavicon key={tab.url} pageUrl={tab.url} size={26} />
+          <TabFavicon
+            key={tab.url}
+            pageUrl={tab.url}
+            browserIcon={tab.favIconUrl}
+            size={26}
+          />
         </AudioBadge>
       </ListItemAvatar>
       <ListItemSecondaryAction>

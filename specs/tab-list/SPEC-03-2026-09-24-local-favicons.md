@@ -156,7 +156,7 @@ Store reviews permission changes. That is the trade this spec asks for, not a de
 | **E-5** | `data:` or `blob:` url                | Long key, no stored icon; globe. Must not throw on encoding.                                                          |
 | **E-6** | A url containing `&` or `#`           | Encoded, so the endpoint reads one `pageUrl`. A naive concatenation truncates the key here.                           |
 | **E-7** | The permission is missing at runtime  | The endpoint 404s and `onError` fires — the globe. Degrades to today's fallback, not a crash.                         |
-| **E-8** | Favicon changes while the tab is open | Accepted staleness: the key is the url, so the image is not re-requested. Chrome's store updates on its own schedule. |
+| **E-8** | Favicon changes while the tab is open | ~~Accepted staleness: the key is the url, so the image is not re-requested.~~ **Corrected 2026-09-29** — the acceptance was reasoned about the rare case (a site changing its icon) and shipped the common one: a tab that has just navigated asks for an icon Chrome has not catalogued yet, gets the default globe, and the browser caches that answer against a page URL which never changes again. The row then keeps the globe for as long as it is open. The request now carries a hash of the tab's own `favIconUrl` as a change token, so acquiring the real icon is a different request. That URL is still never fetched — it is a signal, not a source (AC-4 holds). |
 
 ---
 
