@@ -109,7 +109,11 @@ export const CurrentTab: FC = () => {
             the two by eye always threw the other out. */}
         <Box sx={{ display: "flex", flexShrink: 0, width: "32px" }}>
           <AudioBadge audible={tab.audible} muted={muted}>
-            <TabFavicon key={tab.url} pageUrl={tab.url} />
+            <TabFavicon
+              key={tab.url}
+              pageUrl={tab.url}
+              browserIcon={tab.favIconUrl}
+            />
           </AudioBadge>
         </Box>
         {/* Right margin only: a left one would push the title 4px past the

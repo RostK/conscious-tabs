@@ -49,4 +49,50 @@ describe("faviconUrl", () => {
     expect(faviconUrl(undefined, 20)).toBeUndefined();
     expect(faviconUrl("", 20)).toBeUndefined();
   });
+
+  /**
+   * The defect this parameter exists for.
+   *
+   * `_favicon` is keyed by page URL, and a page URL stops changing once a
+   * navigation settles. A tab navigated a second ago asks for an icon Chrome
+   * has not catalogued yet and gets the default globe, which the browser
+   * caches against that exact request. When Chrome acquires the real icon,
+   * the row asked for nothing new and kept the globe.
+   */
+  it("asks for a different resource once the browser's icon changes", () => {
+    const before = faviconUrl("https://example.com/", 20, undefined);
+    const globeCached = faviconUrl("https://example.com/", 20, "");
+    const after = faviconUrl(
+      "https://example.com/",
+      20,
+      "https://example.com/favicon.ico",
+    );
+
+    expect(before).toBe(globeCached);
+    expect(after).not.toBe(before);
+    expect(new URL(after!).searchParams.get("pageUrl")).toBe(
+      "https://example.com/",
+    );
+  });
+
+  // Stable in, stable out: a token that churned would re-request every icon on
+  // every render, which is the opposite of the point.
+  it("asks for the same resource while nothing has changed", () => {
+    const icon = "data:image/png;base64,iVBORw0KGgo=";
+
+    expect(faviconUrl("https://example.com/", 20, icon)).toBe(
+      faviconUrl("https://example.com/", 20, icon),
+    );
+  });
+
+  // The site's own URL is a change signal, never a source — fetching it is
+  // what SPEC-03 removed. It is hashed, so it is not even legible here.
+  it("never puts the site's own icon url in the request", () => {
+    const icon = "https://tracker.example/pixel.png?id=abc123";
+    const url = faviconUrl("https://example.com/", 20, icon);
+
+    expect(url).not.toContain("tracker.example");
+    expect(url).not.toContain("abc123");
+    expect(new URL(url!).protocol).toBe("chrome-extension:");
+  });
 });

@@ -28,6 +28,7 @@ const getTabsTree = (
         pinned,
         audible,
         mutedInfo,
+        favIconUrl,
       } = tab;
       const tabItem: TabItem = {
         type: "tab",
@@ -42,6 +43,7 @@ const getTabsTree = (
         pinned,
         audible,
         mutedInfo,
+        favIconUrl,
       };
       if (groupId === TAB_GROUP_ID_NONE) {
         // Tab not in a group
