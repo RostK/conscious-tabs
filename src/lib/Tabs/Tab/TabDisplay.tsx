@@ -28,10 +28,9 @@ import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
 
 export const TabDisplay: FC<{
-  focus?: boolean;
   tab: TabItem;
   dragHandle?: ReactNode;
-}> = ({ tab, focus = true, dragHandle }) => {
+}> = ({ tab, dragHandle }) => {
   const { isSelected, switchSelection } = useSelected(tab.id as number);
   const handleActivate = useCallback<MouseEventHandler>(
     (e) => {
@@ -90,13 +89,12 @@ export const TabDisplay: FC<{
       onClick={handleActivate}
       onKeyDown={handleRowKeys}
       selected={tab.active}
-      /* The rule guards against autofocus on load stealing a screen
-         reader's place in the document. This is the opposite: it puts
-         focus on the row for the tab the user is already looking at, so
-         the keyboard starts where they are rather than at the top of a
-         list of eighty. */
-      // eslint-disable-next-line jsx-a11y/no-autofocus
-      autoFocus={tab.active && focus}
+      /* Marks the row without claiming the caret. Landing on the active
+         tab is still what the keyboard does — it is one Down from the
+         search field now (App.tsx), rather than a second component
+         competing for focus the moment a surface opens. */
+      data-tab-row=""
+      data-active-tab={tab.active ? "" : undefined}
       /* The two widths are measured, not read off MUI's defaults. This
          theme sets typography.fontSize 12, which scales every icon by 12/14,
          so close and mute are 36.6px wide and the drag handle 33.1px rather

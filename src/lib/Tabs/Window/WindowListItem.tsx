@@ -31,8 +31,7 @@ export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;
   single: boolean;
-  focus?: boolean;
-}> = ({ focus, single, window, tabsStructure }) => {
+}> = ({ single, window, tabsStructure }) => {
   const flatTabs = useMemo(() => {
     return tabsStructure.reduce((acc, item) => {
       return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
@@ -143,7 +142,7 @@ export const WindowListItem: FC<{
         </Dropzone>
       )}
       {(single || isOpen) && (
-        <Tabs focus={focus} tabsStructure={tabsStructure} window={window} />
+        <Tabs tabsStructure={tabsStructure} window={window} />
       )}
     </>
   );

@@ -50,6 +50,7 @@ import { SelectionContext, SelectionProvider } from "./lib/Tabs/selection";
 import { TabDisplay } from "./lib/Tabs/Tab/TabDisplay.tsx";
 import { GroupDisplay } from "./lib/Tabs/TabsGroup/GroupDisplay.tsx";
 import { PromptProvider } from "./lib/Tabs/undo";
+import { useInitialFocus } from "./lib/useInitialFocus.ts";
 import { SearchView } from "./views/SearchView";
 import { TabsView } from "./views/TabsView";
 
@@ -107,6 +108,18 @@ function App() {
   const [dragging, setDragging] = useState<DefaultDrag | null>(null);
 
   const [search, setSearch] = useState("");
+
+  /**
+   * One claim on the caret, in one place.
+   *
+   * `TabDisplay` used to autofocus the active tab's row, which made two
+   * components race for focus on every mount — and the row won in a grouped
+   * list, because `GroupListItem` never forwarded the prop that was supposed
+   * to switch it off. Landing on the active tab is still what the keyboard
+   * does; it is one Down away (below) rather than a second claim.
+   */
+  const searchInput = useRef<HTMLInputElement>(null);
+  useInitialFocus(searchInput);
 
   /**
    * What the list did, for someone who cannot see it do it.
@@ -253,7 +266,33 @@ function App() {
                   <StyledInputBase
                     placeholder="Search…"
                     inputProps={{ "aria-label": "search" }}
+                    inputRef={searchInput}
                     value={search}
+                    onKeyDown={(event) => {
+                      // Down leaves the field for the list, landing on the tab
+                      // the user is already looking at. Bound here and not in
+                      // the list: plain arrows stay unclaimed between rows, so
+                      // the row walk keeps Left and Right to itself.
+                      if (event.key !== "ArrowDown") return;
+                      if (
+                        event.altKey ||
+                        event.ctrlKey ||
+                        event.metaKey ||
+                        event.shiftKey
+                      ) {
+                        return;
+                      }
+                      // Scoped to <main>: the DragOverlay renders a row of its
+                      // own outside it, and "the first row" would find that one
+                      // mid-drag.
+                      const list = document.querySelector("main");
+                      const row =
+                        list?.querySelector<HTMLElement>("[data-active-tab]") ??
+                        list?.querySelector<HTMLElement>("[data-tab-row]");
+                      if (!row) return;
+                      event.preventDefault();
+                      row.focus();
+                    }}
                     onChange={(e) => {
                       setSearch(e.target.value);
                     }}

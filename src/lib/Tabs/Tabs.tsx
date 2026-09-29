@@ -8,10 +8,9 @@ import { WindowDropzone } from "./Window/WindowDropzone.tsx";
 
 export const Tabs: FC<{
   expandedGroups?: boolean;
-  focus?: boolean;
   tabsStructure: TabsStructure;
   window?: chrome.windows.Window;
-}> = ({ tabsStructure, window, focus, expandedGroups }) => {
+}> = ({ tabsStructure, window, expandedGroups }) => {
   return (
     <Grid
       spacing={0}
@@ -20,7 +19,7 @@ export const Tabs: FC<{
     >
       {tabsStructure.map((item) =>
         item.type === "tab" ? (
-          <TabListItem focus={focus} tab={item} key={item.id} />
+          <TabListItem tab={item} key={item.id} />
         ) : (
           <GroupListItem
             expanded={expandedGroups}
