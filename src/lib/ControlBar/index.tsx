@@ -17,12 +17,8 @@ import {
 } from "@mui/material";
 import { FC, useContext, useEffect, useRef, useSyncExternalStore } from "react";
 
-import {
-  backToSidePanel,
-  closeIfSidePanel,
-  openAnchorTab,
-  useSelfTab,
-} from "../anchor";
+import { backToSidePanel, closeIfSidePanel, useSelfTab } from "../anchor";
+import { openAnchorTab } from "../anchorTab";
 import {
   canFloat,
   closeFloat,

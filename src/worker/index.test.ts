@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { installChrome } from "../test/chromeStub.ts";
@@ -58,5 +61,60 @@ describe("the service worker", () => {
     await Promise.resolve();
 
     expect(error).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Nothing that needs a DOM may reach the worker, and nothing else will tell us.
+ *
+ * A service worker has no `window`, no `document` and no React tree. Importing
+ * a module that touches one at import time does not fail a test, a type-check
+ * or a build — it fails when Chrome registers the worker, where the only
+ * symptom is that the toolbar icon and the shortcut quietly stop working. This
+ * is why `anchorTab.ts` was split out of `anchor.ts`, and this is what keeps
+ * the split from being undone by an import that looks harmless.
+ *
+ * It walks the real import graph rather than checking one file, because the
+ * dangerous version is transitive: `anchor.ts` is one hop from notistack, and
+ * a worker module importing it would pull in react-dom too.
+ */
+describe("what the worker is allowed to import", () => {
+  const FORBIDDEN = ["react", "react-dom", "notistack", "@mui/"];
+
+  const importsOf = (file: string): string[] =>
+    [...readFileSync(file, "utf8").matchAll(/from\s+"([^"]+)"/g)].map(
+      ([, specifier]) => specifier,
+    );
+
+  const resolveLocal = (from: string, specifier: string): string | undefined => {
+    if (!specifier.startsWith(".")) return undefined;
+    const base = resolve(dirname(from), specifier);
+    for (const candidate of [base, `${base}.ts`, join(base, "index.ts")]) {
+      if (existsSync(candidate) && candidate.endsWith(".ts")) return candidate;
+    }
+    return undefined;
+  };
+
+  it("reaches nothing that needs a window", () => {
+    const seen = new Set<string>();
+    const offences: string[] = [];
+    const walk = (file: string) => {
+      if (seen.has(file)) return;
+      seen.add(file);
+      for (const specifier of importsOf(file)) {
+        if (FORBIDDEN.some((bad) => specifier.startsWith(bad))) {
+          offences.push(`${file} imports ${specifier}`);
+        }
+        const local = resolveLocal(file, specifier);
+        if (local) walk(local);
+      }
+    };
+
+    walk(join(process.cwd(), "src/worker/index.ts"));
+
+    expect(offences).toEqual([]);
+    // A guard that walked nothing would pass forever. This is the assertion
+    // that the walk actually happened.
+    expect(seen.size).toBeGreaterThan(1);
   });
 });
