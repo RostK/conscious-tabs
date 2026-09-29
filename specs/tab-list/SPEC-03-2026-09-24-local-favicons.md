@@ -177,6 +177,13 @@ Store reviews permission changes. That is the trade this spec asks for, not a de
   the requirement is that it not be _slower_, which a local read cannot be.
 - **NFR-3 Storage-free.** Unchanged from SPEC-01 AC-23 (AC-5).
 - **NFR-4 Accessibility.** Favicons are decorative and already carry `alt=""`. Unchanged.
+  - **Corrected 2026-09-28.** This was true of `TabFavicon` and false of the favicon strip on a
+    window row: `TabAvatarsDisplay` passed `src` to MUI's `Avatar` without `alt`, and MUI
+    forwards `alt` to the `<img>` rather than supplying one, so those pictures went out bare —
+    six `image-alt` nodes of impact `critical`, found by the axe measurement taken while
+    drafting SPEC-04. "Already" did the damage: it asserted a property of code this spec had
+    not looked at. Fixed in `TabAvatarsDisplay.tsx`, guarded by
+    `TabAvatarsDisplay.test.tsx`. The requirement itself stands.
 
 ## 9. Cross-module impact
 
