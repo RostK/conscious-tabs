@@ -19,7 +19,6 @@ import {
 import { bringPanelAlong } from "../../surfaces.ts";
 import { closeTabs } from "../actions.ts";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
-import { TabItem } from "../types.ts";
 import { useTabsStructure } from "../useTabsStructure.ts";
 import { GroupForm } from "./GroupForm.tsx";
 import { SelectionContext } from "./SelectionContext.tsx";
@@ -43,13 +42,17 @@ export const SelectionToolbar: FC = () => {
   });
 
   const flatTabs = useMemo(() => {
+    // The order the user picked them in, read from a Map rather than by
+    // searching `selected` twice per comparison — `indexOf` inside a
+    // comparator turns an n log n sort into n log n × the size of the
+    // selection, which is at its worst exactly when someone has selected a lot.
+    const pickedAt = new Map(selected.map((id, at) => [id, at]));
     return (tabsStructure ?? [])
-      .reduce((acc, item) => {
-        return item.type === "group" ? [...acc, ...item.tabs] : [...acc, item];
-      }, [] as TabItem[])
+      .flatMap((item) => (item.type === "group" ? item.tabs : item))
       .sort(
         (a, b) =>
-          selected.indexOf(a.id as number) - selected.indexOf(b.id as number),
+          (pickedAt.get(a.id as number) ?? 0) -
+          (pickedAt.get(b.id as number) ?? 0),
       );
   }, [selected, tabsStructure]);
 

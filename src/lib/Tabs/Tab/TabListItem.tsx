@@ -3,6 +3,7 @@ import {
   ComponentProps,
   FC,
   KeyboardEventHandler,
+  memo,
   MouseEventHandler,
 } from "react";
 
@@ -14,7 +15,7 @@ import { GroupItem } from "../types.ts";
 import { handleDrop } from "./handleDrop.ts";
 import { TabDisplay } from "./TabDisplay.tsx";
 
-export const TabListItem: FC<
+const TabListItemRow: FC<
   ComponentProps<typeof TabDisplay> & { group?: GroupItem }
 > = ({ tab, group, ...props }) => {
   const { isOver, isSelf, Dropzone } = useDropzone({
@@ -91,3 +92,31 @@ export const TabListItem: FC<
     </>
   );
 };
+
+/**
+ * A row re-renders when its own tab changes, not when any tab does.
+ *
+ * `useTabsStructure` hands back the same `TabItem` object while a tab's
+ * contents are unchanged, so reference equality is a real answer here rather
+ * than a coincidence — without that this memo would never hit and would only
+ * add a comparison to every render.
+ *
+ * `group` is compared by the one field this component reads. It is rebuilt on
+ * every pass, with a `tabs` array that differs between the full list and
+ * `SelectionToolbar`'s filtered view, so comparing it by reference would fail
+ * for every grouped row — and comparing it deeply would be work in service of
+ * a colour.
+ *
+ * Note what this does *not* buy: `useDraggable` and `useDropzone` subscribe to
+ * dnd-kit's context, so every row still re-renders while a drag is live. That
+ * is dnd-kit's design and a separate problem from this one.
+ */
+export const TabListItem = memo(TabListItemRow, (before, after) => {
+  const { tab: beforeTab, group: beforeGroup, ...beforeRest } = before;
+  const { tab: afterTab, group: afterGroup, ...afterRest } = after;
+  if (beforeTab !== afterTab) return false;
+  if (beforeGroup?.color !== afterGroup?.color) return false;
+  const keys = Object.keys(beforeRest) as (keyof typeof beforeRest)[];
+  if (keys.length !== Object.keys(afterRest).length) return false;
+  return keys.every((key) => beforeRest[key] === afterRest[key]);
+});
