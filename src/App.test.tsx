@@ -185,10 +185,12 @@ describe("one Down from the field", () => {
   // The comment on the binding claims it works from a control inside a row,
   // which is why it lives on the row rather than on the row's own button. Both
   // other tests focus a row itself, so nothing held that claim up.
+  // Since SPEC-04 T-2 the row is a toolbar and its focus target is the
+  // primary button, so "a control inside a row" means a secondary control.
   it("comes back from a control inside a row", async () => {
     await mountApp();
     const control = document.querySelector<HTMLElement>(
-      "main [data-tab-row] [data-row-control]",
+      'main [role="toolbar"] [data-row-control]:not([data-tab-row])',
     );
     expect(control).not.toBeNull();
     control?.focus();

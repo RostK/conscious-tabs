@@ -6,19 +6,30 @@ import {
   VolumeUp,
 } from "@mui/icons-material";
 import {
+  ButtonBase,
   ListItemAvatar,
   ListItemButton,
   ListItemSecondaryAction,
   ListItemText,
 } from "@mui/material";
-import { FC, MouseEventHandler, ReactNode, useCallback } from "react";
+import {
+  cloneElement,
+  FC,
+  isValidElement,
+  MouseEventHandler,
+  ReactElement,
+  ReactNode,
+  useCallback,
+} from "react";
 
 import { activateTab, closeTab, setMuted } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
+import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import {
   rowControlProps,
   rowControlsSx,
+  rowPrimaryProps,
   rowTailMaskSx,
   selectedProps,
   useRowKeys,
@@ -26,6 +37,21 @@ import {
 import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
+
+/**
+ * Where a tab lives, for the row's name: two tabs with the same title on
+ * different sites are still told apart. Text either way and handed to
+ * `aria-label` as a string, so it reaches no sink. Two tabs open on the same
+ * page still collide — SPEC-04 §8 item 1, not solved here.
+ */
+const hostOf = (url: string | undefined): string => {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname || url;
+  } catch {
+    return url;
+  }
+};
 
 export const TabDisplay: FC<{
   tab: TabItem;
@@ -46,6 +72,18 @@ export const TabDisplay: FC<{
       void activateTab(tab.id, tab.windowId);
     },
     [switchSelection, tab.id, tab.windowId],
+  );
+  // The row stays the pointer's click target (AC-18), and the primary button
+  // sits inside it, so a click on the title would otherwise fire both. The
+  // event is passed on rather than rebuilt: `handleActivate` reads
+  // ctrlKey/metaKey from it, and a Ctrl-click that lost its modifier would
+  // silently stop selecting.
+  const handlePrimary = useCallback<MouseEventHandler>(
+    (e) => {
+      e.stopPropagation();
+      handleActivate(e);
+    },
+    [handleActivate],
   );
   const handleDelete = useCallback<MouseEventHandler>(
     (e) => {
@@ -83,28 +121,87 @@ export const TabDisplay: FC<{
     [switchSelection],
   );
 
+  // Derived here, from `tab`, and never passed in: a new prop on TabListItem
+  // would defeat its row memo (SPEC-04 D-6).
+  const host = hostOf(tab.url);
+  const toolbarName = host
+    ? `${tab.title || "tab"}, ${host}`
+    : tab.title || "tab";
+
   return (
     <ListItemButton
+      // A toolbar, not a button: the row holds several controls, and a button
+      // may not. ButtonBase sets role="button" on a non-button component, but
+      // spreads its own props after that default, so this wins — asserted in
+      // TabDisplay.test.tsx rather than trusted, in case an upgrade reverses it.
+      component="div"
+      role="toolbar"
+      // Never focused and not a tab stop: the primary button below is the stop.
+      tabIndex={-1}
+      aria-label={toolbarName}
       dense
       onClick={handleActivate}
       onKeyDown={handleRowKeys}
       selected={tab.active}
-      /* Marks the row without claiming the caret. Landing on the active
-         tab is still what the keyboard does — it is one Down from the
-         search field now (App.tsx), rather than a second component
-         competing for focus the moment a surface opens. */
-      data-tab-row=""
-      data-active-tab={tab.active ? "" : undefined}
       /* The two widths are measured, not read off MUI's defaults. This
          theme sets typography.fontSize 12, which scales every icon by 12/14,
          so close and mute are 36.6px wide and the drag handle 33.1px rather
          than the 40 and 36 the defaults give — which is how the numbers this
-         replaces came to be 6px and 2px too big. Close carries edge="end",
-         whose -12px margin comes off the total: drag + close is 57.7, and
-         94.3 with mute. Rounded up, so the fade finishes before the first
-         icon on either kind of row. */
+         replaces came to be 6px and 2px too big. The drag handle carries
+         edge="end", whose -12px margin comes off the total: drag + close is
+         57.7, and 94.3 with mute. Rounded up, so the fade finishes before the
+         first icon on either kind of row. */
       sx={[{ pt: 0.2, pb: 0.2 }, rowControlsSx, rowTailMaskSx(noisy ? 96 : 60)]}
     >
+      {/* The row's primary action: first in DOM order, so it is the toolbar's
+          first control and its one tab stop.
+
+          It carries the markers App reads to land the search field's Down on
+          the active tab — marks the row without claiming the caret. The row
+          itself is no longer focusable, so they have to sit on something that
+          is. Landing here announces the tab, not the toolbar, and Left/Right
+          walk on from it. */}
+      <ButtonBase
+        {...rowPrimaryProps}
+        data-tab-row=""
+        data-active-tab={tab.active ? "" : undefined}
+        aria-label={`Switch to ${tab.title || "tab"}`}
+        onClick={handlePrimary}
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          justifyContent: "flex-start",
+          textAlign: "left",
+          p: 0,
+        }}
+      >
+        {/* No top padding. It nudged the favicon down against the first line of
+            text, which put its centre ~2.5px below the row's centre line — and
+            so below the checkbox and the close button, which are both centred.
+            Invisible until the checkbox came to sit over the favicon. */}
+        <ListItemAvatar sx={{ minWidth: "36px" }}>
+          <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
+            <TabFavicon
+              key={tab.url}
+              pageUrl={tab.url}
+              browserIcon={tab.favIconUrl}
+              size={26}
+            />
+          </AudioBadge>
+        </ListItemAvatar>
+        {/* No right padding. It was reserved for the actions, which are
+            absolutely positioned — but they are invisible until the row is
+            hovered or focused, so at rest every title ellipsised against 58px
+            of empty row. `rowTailMaskSx` on the row above takes the tail away
+            only while they are actually showing, which costs no layout and so
+            cannot reflow the text the way reserving on hover would. */}
+        <ListItemText
+          primaryTypographyProps={{ noWrap: true }}
+          secondaryTypographyProps={{ noWrap: true }}
+          primary={tab.title}
+          secondary={tab.url?.replace("https://", "")}
+        />
+      </ButtonBase>
       {/* Beside the favicon, in the row's left padding — not in its slot.
           Selection persists, and a persistent checkbox that took the favicon's
           place would cost the user the one thing that identifies the tab they
@@ -118,7 +215,11 @@ export const TabDisplay: FC<{
           every other row. It used to carry a second class with its own copy
           of those six selectors, which differed only by omitting
           `:focus-within` — one behaviour with two definitions, in a file
-          that has already had to fix that behaviour twice. */}
+          that has already had to fix that behaviour twice.
+
+          After the primary button in the DOM, so it is the walk's second stop;
+          it is absolutely positioned, so where it sits in the markup does not
+          move it. */}
       <ItemButton
         className="itemAction"
         {...rowControlProps}
@@ -148,20 +249,6 @@ export const TabDisplay: FC<{
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>
-      {/* No top padding. It nudged the favicon down against the first line of
-          text, which put its centre ~2.5px below the row's centre line — and
-          so below the checkbox and the close button, which are both centred.
-          Invisible until the checkbox came to sit over the favicon. */}
-      <ListItemAvatar sx={{ minWidth: "36px" }}>
-        <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
-          <TabFavicon
-            key={tab.url}
-            pageUrl={tab.url}
-            browserIcon={tab.favIconUrl}
-            size={26}
-          />
-        </AudioBadge>
-      </ListItemAvatar>
       <ListItemSecondaryAction>
         {noisy && (
           <ItemButton
@@ -174,29 +261,25 @@ export const TabDisplay: FC<{
             {muted ? <VolumeOff /> : <VolumeUp />}
           </ItemButton>
         )}
-        {dragHandle}
         <ItemButton
           onClick={handleDelete}
-          edge="end"
           {...rowControlProps}
           aria-label={`Close ${tab.title || "tab"}`}
           className="itemAction"
         >
           <Close />
         </ItemButton>
+        {/* Last, and so the final control in the toolbar (AC-30). `edge="end"`
+            moved here from Close with it: it is a negative margin on whatever
+            sits flush with the row's right edge, so the width the tail mask
+            reserves is unchanged. The handle is built by TabListItem, which
+            this change may not touch, so the edge is set here. */}
+        {isValidElement(dragHandle) && dragHandle.type === DragHandle
+          ? cloneElement(dragHandle as ReactElement<{ edge?: "end" }>, {
+              edge: "end",
+            })
+          : dragHandle}
       </ListItemSecondaryAction>
-      {/* No right padding. It was reserved for the actions, which are
-          absolutely positioned — but they are invisible until the row is
-          hovered or focused, so at rest every title ellipsised against 58px of
-          empty row. `rowTailMaskSx` on the row above takes the tail away only
-          while they are actually showing, which costs no layout and so cannot
-          reflow the text the way reserving on hover would. */}
-      <ListItemText
-        primaryTypographyProps={{ noWrap: true }}
-        secondaryTypographyProps={{ noWrap: true }}
-        primary={tab.title}
-        secondary={tab.url?.replace("https://", "")}
-      />
     </ListItemButton>
   );
 };

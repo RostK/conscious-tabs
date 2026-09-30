@@ -40,6 +40,12 @@ export const DragHandle: FC<{
    */
   className?: string;
   sx?: ComponentProps<typeof ItemButton>["sx"];
+  /**
+   * Passed straight to the button. The last control in a row's secondary
+   * action carries `edge="end"` so it sits flush with the row's right edge;
+   * on a tab row that is this handle. Undefined elsewhere.
+   */
+  edge?: ComponentProps<typeof ItemButton>["edge"];
 }> = ({
   label,
   setActivatorNodeRef,
@@ -47,6 +53,7 @@ export const DragHandle: FC<{
   onKeyDown,
   className = "itemAction",
   sx,
+  edge,
 }) => {
   // The handle sits inside the row's own button, so a click on it would
   // otherwise bubble and switch tabs — grabbing is not activating.
@@ -58,6 +65,7 @@ export const DragHandle: FC<{
   return (
     <ItemButton
       className={className}
+      edge={edge}
       // Reached with Left/Right from the row, not by Tab.
       {...rowControlProps}
       ref={setActivatorNodeRef}

@@ -40,26 +40,42 @@ const onlyNestedInteractive = {
 const rowsOf = (container: HTMLElement) =>
   container.querySelectorAll(".MuiListItemButton-root").length;
 
-const BASELINE: readonly [string, RowFixture, number][] = [
-  [FIVE_TABS.name, FIVE_TABS, 5],
-  [TWENTY_TABS.name, TWENTY_TABS, 20],
-  [MIXED_WINDOWS.name, MIXED_WINDOWS, 8],
-  [COLLAPSED_GROUP.name, COLLAPSED_GROUP, 2],
+/**
+ * [name, fixture, nested-interactive nodes now, rows rendered].
+ *
+ * The third column moves as each row kind is converted. The fourth is the
+ * fixture's row count, which is also what the third *was* before T-2 — one node
+ * per row, on every row (spec §1.1). That is the falsification evidence AC-25
+ * asks for: these four assertions were red the moment T-2 landed, at 5, 20, 8
+ * and 2, and were then updated to what T-2 leaves behind. See MANUAL-SWEEP §A.
+ *
+ * After T-2 only tab rows are toolbars, so what remains is the group and
+ * window rows not yet converted: 0 + 0, then 2 windows + 1 group, then 1 group.
+ * T-4 and T-5 take the last three to zero, and T-7 converts the lot.
+ */
+const BASELINE: readonly [string, RowFixture, number, number][] = [
+  // was 5 before T-2
+  [FIVE_TABS.name, FIVE_TABS, 0, 5],
+  // was 20 before T-2
+  [TWENTY_TABS.name, TWENTY_TABS, 0, 20],
+  // was 8 before T-2; 3 = the two window rows and the group row
+  [MIXED_WINDOWS.name, MIXED_WINDOWS, 3, 8],
+  // was 2 before T-2; 1 = the group row
+  [COLLAPSED_GROUP.name, COLLAPSED_GROUP, 1, 2],
 ];
 
-describe("AC-1 · nested-interactive, before the rows change", () => {
+describe("AC-1 · nested-interactive, while the rows are converted", () => {
   it.each(BASELINE)(
-    "%s reports one node per rendered row",
-    async (_name, fixture, expected) => {
+    "%s reports the rows not yet converted",
+    async (_name, fixture, expected, rows) => {
       const { container } = await renderList(fixture);
 
       const results = await runAxe(container, onlyNestedInteractive);
 
       expect(countNodes(results, NESTED_INTERACTIVE)).toBe(expected);
-      // The count is a census of rows, not a backlog (spec §1.1): pin the
-      // relationship as well as the figure, so a fixture that drifts to a
-      // different size cannot keep the number and lose the meaning.
-      expect(rowsOf(container)).toBe(expected);
+      // The row count is pinned separately, so a fixture that drifts to a
+      // different size cannot keep a number and lose what it was measuring.
+      expect(rowsOf(container)).toBe(rows);
     },
   );
 });
@@ -81,11 +97,23 @@ describe("AC-9 · Tab stops, before the rows change", () => {
     }
 
     expect(stops.size).toBe(20);
-    // The controls that would make it 80 are all there, and all skipped: 3
-    // per plain tab row, each at tabIndex -1 and reached with Left/Right.
-    expect(container.querySelectorAll("[data-row-control]")).toHaveLength(60);
+    // 4 controls per plain tab row: the primary button, which is the one stop,
+    // and three at tabIndex -1 reached with Left/Right. This was 60 before T-2
+    // — the row itself was the stop and was not marked as a control — and is 80
+    // now that the primary button is one. The stops are the same 20 either way.
+    expect(container.querySelectorAll("[data-row-control]")).toHaveLength(80);
     expect(
-      [...stops].every((stop) => !stop.hasAttribute("data-row-control")),
+      [...stops].every(
+        (stop) =>
+          stop.hasAttribute("data-row-control") &&
+          stop.getAttribute("tabindex") === "0",
+      ),
+    ).toBe(true);
+    // One per row, and none a secondary control.
+    expect(container.querySelectorAll("[data-row-control]:not([tabindex='-1'])"))
+      .toHaveLength(20);
+    expect(
+      [...stops].every((stop) => stop.hasAttribute("data-tab-row")),
     ).toBe(true);
   });
 });

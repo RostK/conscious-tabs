@@ -24,6 +24,21 @@ export const rowControlProps = {
 } as const;
 
 /**
+ * Spread onto a row's primary action — the one control Tab stops on.
+ *
+ * Two definitions rather than one with a flag, because the difference is the
+ * whole model: the primary action is the row's **fixed** tab stop, and every
+ * other control stays at -1 and is reached with Left/Right. Nothing reassigns
+ * them. APG's roving tabindex would move the 0 to whichever control was last
+ * focused, and SPEC-04 AC-36 forbids exactly that memory — Tab back into a row
+ * always lands on its first control, not on the one you left from.
+ */
+export const rowPrimaryProps = {
+  "data-row-control": true,
+  tabIndex: 0,
+} as const;
+
+/**
  * The row states in which a hidden control is showing, asked of the row rather
  * than of the control.
  *
@@ -35,6 +50,12 @@ export const rowControlProps = {
  * right* — the checkbox sits in the row's left padding, so a selected row with
  * the pointer elsewhere has nothing over there to mask.
  */
+// Updated 2026-09-30 (SPEC-04 T-2): the tab row is a `role="toolbar"` at
+// tabIndex -1 now, so it is never itself the focus-visible element and
+// `&:focus-visible` below is unreachable for it. The reveal comes from
+// `&:has(:focus-visible)` matching the focused primary button. Left in place
+// rather than deleted: removing it is a behaviour claim jsdom cannot check, in
+// a file that has had to re-fix this behaviour twice.
 const revealedRow = [
   "&:hover",
   "&:focus-visible",
@@ -55,6 +76,9 @@ export const rowControlsSx = {
     opacity: 0,
     pointerEvents: "none",
   },
+  // `&:focus-visible .itemAction` is unreachable on a row that is no longer
+  // focusable (2026-09-30, SPEC-04 T-2); `&:has(:focus-visible) .itemAction`
+  // does the work. See `revealedRow`.
   [[
     "&:hover .itemAction",
     "&:focus-visible .itemAction",
@@ -255,8 +279,10 @@ export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
     // reserves Shift+arrow for selection, and Ctrl/Alt+arrow are the browser's.
     if (!isPlainArrow(event)) return;
     const row = event.currentTarget;
+    // Not the row itself: it is a toolbar at tabIndex -1 and never holds
+    // focus, so it could not match `activeElement`, and Left from the first
+    // control would `focus()` a non-focusable div. (SPEC-04 D-9.)
     const stops: HTMLElement[] = [
-      row,
       ...row.querySelectorAll<HTMLElement>("[data-row-control]"),
     ];
     const at = stops.indexOf(document.activeElement as HTMLElement);
