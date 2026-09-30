@@ -74,6 +74,15 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   filtered view evict the main list's rows every render. Evidence:
   `src/lib/Tabs/useTabsStructure.ts` (`stableTab`), `src/lib/Tabs/Tab/TabListItem.tsx`.
 
+- 2026-09-30 — **Test an in-flight load with a hand-released promise, not timers; and gate a
+  list wrapper on having rows, not on the empty state.** The tabs and windows stores both sit behind one `Promise.all`
+  (`browsingWindowIds`), so holding `windows.getAll` stalls the tabs store too, and a 20 ms
+  sleep against a 60 ms delay never proved which half had landed. Hold the read on a promise
+  you release by hand, await the reads that did go through inside `act`, assert, then release.
+  The bug it pinned: the empty-state early return waits for `loaded`, so until then
+  `RowList` rendered as an empty `role="list"` — a wrapper needs its own "has rows" gate.
+  Evidence: `src/lib/Tabs/elements/RowList.test.tsx` (`stall`), `src/views/TabsView/index.tsx`.
+
 ## What Doesn't Work
 
 - 2026-07-30 — `.gitignore` patterns `*.local` and `.env*.local` do **not** match a bare
@@ -223,6 +232,15 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   change token in the query string — a hash of the tab's own `favIconUrl`, which is never
   fetched, only compared. Evidence: `src/lib/Tabs/elements/favicon.ts`.
 
+- 2026-09-30 — **A test that hands a component its own child can pass for the wrong reason,
+  and a moved `data-*` hook breaks selectors that use it as an ancestor.** `TabDisplay`'s test
+  built its own drag handle with `edge="end"`, so it stayed green with `edge="end"` deleted from
+  `TabListItem`, which is what builds the real one; only a test rendered through
+  `TabListItem` fails. And moving `data-tab-row` onto the new primary button broke
+  `App.test.tsx`'s `main [data-tab-row] [data-row-control]`, which no plan had listed: grep the
+  tests, not just `App.tsx`, for every selector a moved hook appears in. Evidence:
+  `src/lib/Tabs/Tab/TabDisplay.test.tsx`, `src/App.test.tsx`.
+
 ## Codebase Patterns
 
 - 2026-09-22 — **Never put a volatile flag in a React list key here.** The window rows were keyed
@@ -285,6 +303,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   only inspects descendants — so a row focused by Tab needs its own `&:focus-visible`, and
   leaving it out breaks the keyboard path alone, which no pointer test will show. Evidence:
   `src/lib/Tabs/elements/rowControls.ts:38`.
+
+- 2026-09-30 — **`useRowKeys` serves rows in different states, so "is the row itself a stop" is
+  read off the element (`row.tabIndex >= 0`), not passed in.** SPEC-04 T-2 made the tab row a
+  `role="toolbar"` at `tabIndex -1` whose one stop is a primary button, and dropped the row
+  from `stops` for everyone — which silently took Left/Right away from the group and window
+  rows, still focusable `ListItemButton`s until T-4/T-5, with no failing test. Converting a row
+  to `tabIndex -1` now drops it from the walk by construction. This also updates the
+  2026-09-28 Codebase Patterns note on `&:focus-visible`: the tab row is never focused now, so
+  its reveal comes only from `&:has(:focus-visible)`; the group and window rows still need
+  both. Evidence: `src/lib/Tabs/elements/rowControls.ts` (`useRowKeys`).
 
 ## Decisions
 
@@ -433,6 +461,23 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `sendMessage` or other `chrome.*` call; a synchronous comparison is fine. The failure has no
   symptom beyond "the key did nothing". Evidence: `src/worker/openSurface.ts`.
 
+- 2026-09-30 — **A `ButtonBase` nested inside `ListItemButton` shares its events with the row.**
+  Focus bubbles, so the row picks up `Mui-focusVisible` when the inner button takes keyboard
+  focus — today that is the tab row's only visible focus indicator, pinned in
+  `TabDisplay.test.tsx`, so do not give the button its own ring on top. `mousedown` bubbles
+  too, so both ripples play unless the inner one has `disableRipple`; `stopPropagation` in the
+  inner `onClick` stops only the click (which still has to pass the event on — Ctrl-click
+  selection reads its modifiers). And the row can be `role="toolbar"` at all only because
+  `ButtonBase` spreads props after its `role: "button"` default; that is asserted, not trusted.
+  Evidence: `src/lib/Tabs/Tab/TabDisplay.tsx` (primary `ButtonBase`).
+- 2026-09-30 — **axe in Vitest: enforce "never disable a rule" in the runner, and print node
+  HTML.** A source scan for `rules: { "nested-interactive" … }` missed multi-key, computed-key
+  and array forms; `runAxe` now throws on `rules` or `disableOtherRules`, and the scan remains
+  only for `axe.configure`, which bypasses the runner. `nested-interactive` targets are
+  class-based and identical across rows, so the failure message carries each node's HTML. Under
+  the jsdom environment `import.meta.url` is an `http:` URL and `fileURLToPath` throws — use
+  `process.cwd()` to reach `src/`. Evidence: `src/test/axe.ts`, `src/lib/Tabs/rows.a11y.test.tsx`.
+
 ## Recurring Errors & Fixes
 
 - 2026-09-23 — **`npm test` passing does not mean the branch builds.** Test files live
@@ -515,6 +560,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   by about half; it was thrown away and both re-measured. Second, jsdom answers scaling
   questions and not absolute ones: it says whether cost grows with list size, and nothing
   trustworthy about milliseconds, paint or GC.
+
+- 2026-09-30 — SPEC-04 T-0…T-2 built (the list, the tab row as a toolbar), reviewed by three
+  gates and `pr-self-review` with two fix rounds, and checked in a real Chromium on the layout
+  harness. The review caught what the suite could not: a shared key handler regressing rows
+  the unit did not touch, and a row name that read a whole `data:` URL aloud. Held for T-3,
+  the NVDA gate. `src/lib/Tabs/Tab/TabDisplay.test.tsx` contains NUL, BEL and RLO on purpose,
+  so git calls it binary: use `git diff --text`, edit it with narrow replacements, and count the
+  bytes with node afterwards.
 
 ## Open Questions
 
