@@ -30,7 +30,11 @@ and from there **floats on top** of your other applications in a small always-on
   From there, `Tab` moves between rows and `←` / `→` reach the controls on the row you're on. One
   stop per row, so walking a list of twenty tabs costs twenty stops rather than eighty. Controls
   reveal on focus as well as on hover, and each is named for what it acts on — _"Close Gmail"_, not
-  _"Close"_.
+  _"Close"_. **`F6` moves focus between the page and the panel, both ways** — Chrome's own key for
+  cycling browser panes, not anything this extension adds. That is the round trip: the shortcut
+  opens the panel and puts you in it, and `F6` carries you in and out from then on. A second press
+  of the shortcut will not bring focus back to a panel that is already open, because Chrome lets a
+  panel focus itself only in the moment it is created.
 - Follows your system **light / dark** theme.
 
 ## Install
