@@ -27,8 +27,14 @@ things, not yet fixed: (1) **blocking** — `useRowKeys` dropped `row` from `sto
 the group and window rows (`GroupDisplay`, `WindowDisplay`) are still focusable and still use it, so
 Right from a group/window row no longer reaches its controls; keep the row as a stop when
 `row.tabIndex >= 0`, and add a group/window arrow test. (2) discuss — `TabsView`/`SearchView`
-render an empty `RowList` before the first reads resolve (E-4). plan-verifier and
-architecture-reviewer were running and must be re-run. Then: fix loop → a real-browser pass →
+render an empty `RowList` before the first reads resolve (E-4). architecture-reviewer finished:
+**0 violations**, 4 smells — the one to decide is S-01: `TabDisplay` `cloneElement`s `edge="end"`
+onto the handle by component type (`TabDisplay.tsx:277-281`, with an `as` cast) only because T-2's
+DoD says `TabListItem.tsx` must not be in the diff; setting `<DragHandle edge="end">` in
+`TabListItem.tsx:79-84` adds no `TabListItem` prop and leaves the memo alone, so it meets D-6 as
+D-6 is actually written. The others: `RowList` is a deep import rather than a barrel export,
+the list/listitem contract is split between the views and `lib/Tabs`, and `rowFixtures.tsx` is
+tab-list-specific but lives in `src/test/`. plan-verifier was still running and must be re-run. Then: fix loop → a real-browser pass →
 `pr-self-review` → T-3 (the user's NVDA session).
 | T-3  | not started | **Gate — NVDA + Chrome, 20 and 80 rows.** A-7 is discharged here or the §13.1 retreat starts. |
 | T-4  | not started | The group row. |
