@@ -52,7 +52,29 @@ Still open, carried forward rather than fixed now:
 - **Cross-spec, R-8:** `SPEC-05` still quotes the old "Select tab" label in its table
   (`specs/ui-shell/SPEC-05-2026-09-29-keyboard-access.md:86`).
 
-Next: a real-browser pass, then `pr-self-review`, then T-3 (the user's NVDA session).
+**Real-browser pass (layout harness, Chromium, 2026-09-30):**
+
+- Down from search lands on the active tab's primary button, with focus-visible on it.
+- The walk runs Switch → Select → Close → Reorder and stops dead at the end.
+- The controls are revealed via `:has(:focus-visible)`, at opacity 1.
+- Up returns to search.
+- A window row walks row → Select → row.
+- `elementFromPoint` at each control's centre on a hovered row returns that control, the checkbox over the favicon included.
+- A title click calls `tabs.update` once, and Ctrl-click selects with no call.
+
+**`pr-self-review`: 0 critical.** Fix round 2 closed what it found:
+
+- Row names for `data:`, `blob:`, `file:` and extension URLs are short now, not the whole URL.
+- `runAxe` refuses `rules` and `disableOtherRules` at run time, and the source scan catches the other forms.
+- The E-4 loading test uses hand-resolved promises instead of timers.
+- `App.test.tsx` now asserts that focus reached the control.
+- `disableRipple` is on the primary button.
+- The row's `Mui-focusVisible` dependency is pinned by a test.
+- Test hygiene.
+
+Carried to T-8: `ListItemAvatar`/`ListItemText` render `<div>`s inside the primary `<button>`. That is non-conforming but harmless, and changing it moves layout the T-8 re-measure has to check.
+
+Next: **T-3, the user's NVDA session**, against a fresh `npm run build`. The branch is held locally, per the user's 2026-09-30 decision, and pushed after the gate.
 
 ---
 

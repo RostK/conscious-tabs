@@ -31,7 +31,7 @@ const win = (over: Partial<chrome.windows.Window> = {}) =>
     type: "normal",
     focused: true,
     ...over,
-  }) as Partial<chrome.windows.Window>;
+  }) satisfies Partial<chrome.windows.Window>;
 
 const tab = (id: number, over: Partial<chrome.tabs.Tab> = {}) =>
   ({
@@ -44,7 +44,7 @@ const tab = (id: number, over: Partial<chrome.tabs.Tab> = {}) =>
     title: `Tab ${id}`,
     url: `https://example.com/${id}`,
     ...over,
-  }) as Partial<chrome.tabs.Tab>;
+  }) satisfies Partial<chrome.tabs.Tab>;
 
 const group = (over: Partial<chrome.tabGroups.TabGroup> = {}) =>
   ({
@@ -54,7 +54,7 @@ const group = (over: Partial<chrome.tabGroups.TabGroup> = {}) =>
     collapsed: false,
     windowId: 1,
     ...over,
-  }) as Partial<chrome.tabGroups.TabGroup>;
+  }) satisfies Partial<chrome.tabGroups.TabGroup>;
 
 const plainTabs = (count: number) =>
   Array.from({ length: count }, (_, at) => tab(at + 1));

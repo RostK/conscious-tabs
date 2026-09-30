@@ -34,14 +34,36 @@ import { TabItem } from "../types.ts";
  * different sites are still told apart. Text either way and handed to
  * `aria-label` as a string, so it reaches no sink. Two tabs open on the same
  * page still collide — SPEC-04 §8 item 1, not solved here.
+ *
+ * Short, because it is read aloud each time focus enters the row. A URL with no
+ * hostname (`data:`, `file:`, `about:`) used to fall back to the whole URL,
+ * which for a `data:` tab is its entire payload; those name their scheme
+ * instead, `blob:` names the page that made it, and an extension page — whose
+ * "host" is a 32-character id — says "extension".
  */
+const MAX_UNPARSEABLE = 60;
+
 const hostOf = (url: string | undefined): string => {
   if (!url) return "";
+  let parsed: URL;
   try {
-    return new URL(url).hostname || url;
+    parsed = new URL(url);
   } catch {
-    return url;
+    return url.length > MAX_UNPARSEABLE
+      ? `${url.slice(0, MAX_UNPARSEABLE)}…`
+      : url;
   }
+  const scheme = parsed.protocol.replace(/:$/, "");
+  if (scheme === "chrome-extension") return "extension";
+  if (scheme === "blob") {
+    // `blob:https://example.com/<uuid>` — the origin is the pathname.
+    try {
+      return new URL(parsed.pathname).hostname || scheme;
+    } catch {
+      return scheme;
+    }
+  }
+  return parsed.hostname || scheme;
 };
 
 export const TabDisplay: FC<{
@@ -151,9 +173,17 @@ export const TabDisplay: FC<{
           the active tab — marks the row without claiming the caret. The row
           itself is no longer focusable, so they have to sit on something that
           is. Landing here announces the tab, not the toolbar, and Left/Right
-          walk on from it. */}
+          walk on from it.
+
+          No focus style of its own, on purpose: the visible indicator is the
+          row's. Focus events bubble, so the ListItemButton above picks up
+          `Mui-focusVisible` when this takes keyboard focus — pinned in
+          TabDisplay.test.tsx, since restyling this button would double it. */}
       <ButtonBase
         {...rowPrimaryProps}
+        // The row plays a ripple on mousedown and this one bubbles into it, so
+        // a click on the title would otherwise play both.
+        disableRipple
         data-tab-row=""
         data-active-tab={tab.active ? "" : undefined}
         aria-label={`Switch to ${tab.title || "tab"}`}

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { expectNoViolations,runAxe } from "../../../test/axe.ts";
@@ -63,7 +63,10 @@ const renderSearch = async (fixture: RowFixture) => {
       <SearchView search="example" onMatches={() => undefined} />
     </SelectionProvider>,
   );
-  await screen.findAllByRole("listitem");
+  // The fixture's own text, not "any item": the first row to render says
+  // nothing about the last, and a count taken after only some of them are
+  // there is a race rather than a measurement.
+  await screen.findByText(fixture.ready);
   return view;
 };
 
@@ -111,15 +114,27 @@ describe("AC-3 · one list, one item per row (TabsView)", () => {
   });
 });
 
+// Search matches every fixture through its `example.com` URLs and renders no
+// window rows (E-3), with groups always expanded. So these are not §1.1's
+// numbers: the mixed fixture is its two windows' tabs — one plain, the group
+// row and its two, two more plain, and window 2's one — and the collapsed
+// group opens to its row and both tabs.
+const EXPECTED_SEARCH_LISTITEMS: readonly [string, RowFixture, number][] = [
+  [COLLAPSED_GROUP.name, COLLAPSED_GROUP, 3],
+  [FIVE_TABS.name, FIVE_TABS, 5],
+  [MIXED_WINDOWS.name, MIXED_WINDOWS, 7],
+  [TWENTY_TABS.name, TWENTY_TABS, 20],
+];
+
 describe("AC-3 · one list, one item per row (SearchView)", () => {
-  it.each(ROW_FIXTURES.map((fixture) => [fixture.name, fixture] as const))(
+  it.each(EXPECTED_SEARCH_LISTITEMS)(
     "%s renders a single list with a window-row-less shape (E-3)",
-    async (_name, fixture) => {
+    async (_name, fixture, expected) => {
       const { container } = await renderSearch(fixture);
 
       expect(screen.getAllByRole("list")).toHaveLength(1);
-      // No window rows here, so the count is the rows rendered — not §1.1's.
-      expect(screen.getAllByRole("listitem")).toHaveLength(rowsOf(container));
+      expect(screen.getAllByRole("listitem")).toHaveLength(expected);
+      expect(rowsOf(container)).toBe(expected);
       expectNoViolations(await runAxe(container, STRUCTURE_RULES));
     },
   );
@@ -172,25 +187,51 @@ describe("E-4 / E-3 · nothing to show is not a list of zero", () => {
  * its list. Rendering `RowList` there announces "Open tabs, list, 0 items" on
  * every open, and `RowList` says it renders only when there are rows.
  *
- * The delay is on one read at a time, so neither order can hide it: the
- * windows land first in practice, but a view must not depend on that.
+ * One read is held at a time, so neither order can hide it: the windows land
+ * first in practice, but a view must not depend on that.
  */
 describe("E-4 · no list before there is a row to put in it", () => {
-  const slow = (read: "tabs" | "windows", delayMs: number) => {
+  /**
+   * Holds one read until `release()` is called, and lets the others through.
+   *
+   * By hand, not by delay: a timer says "probably not yet" and a slow machine
+   * makes that false, while a promise nobody has resolved cannot land early.
+   * `landed` collects the reads that were let through, so a test can wait for
+   * exactly them — the assertion that follows is then about a state that has
+   * been reached, not one that is expected to have been by now.
+   */
+  const stall = (held: "tabs" | "windows") => {
     installChrome(FIVE_TABS.build());
-    if (read === "tabs") {
-      const real = chrome.tabs.query;
-      chrome.tabs.query = ((info?: chrome.tabs.QueryInfo) =>
-        new Promise((resolve) => {
-          setTimeout(() => resolve(real(info ?? {}) as never), delayMs);
-        })) as typeof chrome.tabs.query;
-    } else {
-      const real = chrome.windows.getAll;
-      chrome.windows.getAll = ((info?: chrome.windows.QueryOptions) =>
-        new Promise((resolve) => {
-          setTimeout(() => resolve(real(info ?? {}) as never), delayMs);
-        })) as typeof chrome.windows.getAll;
-    }
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const landed: Promise<unknown>[] = [];
+    const wrap = <Args extends unknown[], Result>(
+      read: (...args: Args) => Result,
+      hold: boolean,
+    ) =>
+      ((...args: Args) => {
+        if (hold) return gate.then(() => read(...args));
+        const result = Promise.resolve(read(...args));
+        landed.push(result);
+        return result;
+      }) as (...args: Args) => Result;
+
+    chrome.tabs.query = wrap(
+      chrome.tabs.query,
+      held === "tabs",
+    ) as typeof chrome.tabs.query;
+    chrome.windows.getAll = wrap(
+      chrome.windows.getAll,
+      held === "windows",
+    ) as typeof chrome.windows.getAll;
+    chrome.tabGroups.query = wrap(
+      chrome.tabGroups.query,
+      false,
+    ) as typeof chrome.tabGroups.query;
+
+    return { release, landed };
   };
 
   const views = [
@@ -217,18 +258,28 @@ describe("E-4 · no list before there is a row to put in it", () => {
   for (const [name, view] of views) {
     for (const read of reads) {
       it(`${name} renders no list while the ${read} read is in flight`, async () => {
-        slow(read, 60);
+        const { release, landed } = stall(read);
 
         render(view());
 
-        // Long enough for the other read to have landed, short of this one.
-        await new Promise((resolve) => setTimeout(resolve, 20));
+        // The reads that were not held have been asked for, have answered, and
+        // React has had its turn with the answers — only then is "no list" a
+        // statement about a view holding half of what it needs.
+        await waitFor(() => {
+          expect(landed.length).toBeGreaterThan(0);
+        });
+        await act(async () => {
+          await Promise.all(landed);
+        });
         expect(screen.queryByRole("list")).toBeNull();
 
         // Precondition for the assertion above: the rows do arrive, and the
         // list with them — so its absence was not the view rendering nothing
         // at all.
-        expect(await screen.findAllByRole("listitem")).toHaveLength(5);
+        release();
+        await waitFor(() => {
+          expect(screen.getAllByRole("listitem")).toHaveLength(5);
+        });
         expect(screen.getAllByRole("list")).toHaveLength(1);
       });
     }

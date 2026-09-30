@@ -192,31 +192,107 @@ const sourceFiles = (dir: string): string[] =>
     return /\.(ts|tsx)$/.test(entry.name) ? [path] : [];
   });
 
-const DISABLES_THE_RULE = new RegExp(
-  ["rules", "\\s*:\\s*\\{[^}]*", `["']${NESTED_INTERACTIVE}["']`].join(""),
-);
 const DISABLES_EVERYTHING_ELSE = new RegExp(["disable", "OtherRules"].join(""));
+// `axe.configure` changes what every later run does, from anywhere, and never
+// passes through `runAxe`. Nothing here needs it, so its mere presence is the
+// finding — whatever it is configured to do.
+const CONFIGURES_AXE = new RegExp(["axe\\s*\\.\\s*", "configure\\b"].join(""));
+const IMPORTS_CONFIGURE = new RegExp(
+  ["import\\s*\\{[^}]*\\b", "configure\\b[^}]*\\}\\s*from\\s*[\"']axe-core"].join(""),
+);
+// The rule by any spelling a `rules` block would use: the string, the
+// constant that holds it, or a camelCased key.
+const NAMES_THE_RULE = /nested[-_]?interactive/i;
+
+/**
+ * The text of every `rules: {…}` or `rules: […]` value in `text`.
+ *
+ * Balanced by counting brackets, not by stopping at the first `}` — which is
+ * what let `rules: { "color-contrast": {…}, "nested-interactive": {…} }` past
+ * the first version of this scan. Brackets inside strings are not special-cased;
+ * over-reading a block is the safe direction, and an unterminated one runs to
+ * the end of the file.
+ */
+const rulesBlocks = (text: string): string[] => {
+  const blocks: string[] = [];
+  const opener = /\brules["']?\s*:\s*([[{])/g;
+  for (let hit = opener.exec(text); hit; hit = opener.exec(text)) {
+    const start = hit.index + hit[0].length - 1;
+    let depth = 0;
+    let end = text.length - 1;
+    for (let at = start; at < text.length; at++) {
+      const char = text[at];
+      if (char === "{" || char === "[") depth++;
+      if ((char === "}" || char === "]") && --depth === 0) {
+        end = at;
+        break;
+      }
+    }
+    blocks.push(text.slice(start, end + 1));
+  }
+  return blocks;
+};
+
+const disablesTheRule = (text: string): boolean =>
+  rulesBlocks(text).some((block) => NAMES_THE_RULE.test(block));
+
+const switchesAxeOff = (text: string): boolean =>
+  disablesTheRule(text) ||
+  DISABLES_EVERYTHING_ELSE.test(text) ||
+  CONFIGURES_AXE.test(text) ||
+  IMPORTS_CONFIGURE.test(text);
 
 describe("AC-2 · no axe configuration disables the rule", () => {
-  it("recognises both ways of doing it", () => {
+  it("recognises every way of doing it", () => {
     expect(
-      DISABLES_THE_RULE.test(`axe.run(el, { rules: { "${NESTED_INTERACTIVE}": { enabled: false } } })`),
+      disablesTheRule(`axe.run(el, { rules: { "${NESTED_INTERACTIVE}": { enabled: false } } })`),
     ).toBe(true);
     expect(
-      DISABLES_THE_RULE.test(`{ rules: {\n  '${NESTED_INTERACTIVE}': { enabled: false },\n} }`),
+      disablesTheRule(`{ rules: {\n  '${NESTED_INTERACTIVE}': { enabled: false },\n} }`),
     ).toBe(true);
+    // Not the first key: the old scan stopped at the first closing brace.
+    expect(
+      disablesTheRule(
+        `{ rules: { "color-contrast": { enabled: true }, "${NESTED_INTERACTIVE}": { enabled: false } } }`,
+      ),
+    ).toBe(true);
+    expect(
+      disablesTheRule(
+        `{\n  rules: {\n    "color-contrast": {\n      enabled: true,\n    },\n    "${NESTED_INTERACTIVE}": {\n      enabled: false,\n    },\n  },\n}`,
+      ),
+    ).toBe(true);
+    // A computed key, through the constant this file itself uses.
+    expect(
+      disablesTheRule("{ rules: { [NESTED_INTERACTIVE]: { enabled: false } } }"),
+    ).toBe(true);
+    // The array form `axe.configure` takes.
+    expect(
+      disablesTheRule(
+        `axe.configure({ rules: [{ id: "${NESTED_INTERACTIVE}", enabled: false }] })`,
+      ),
+    ).toBe(true);
+    expect(switchesAxeOff("axe.configure({ reporter: 'v2' })")).toBe(true);
+    expect(switchesAxeOff('import { configure } from "axe-core";')).toBe(true);
     expect(DISABLES_EVERYTHING_ELSE.test("{ disableOtherRules: true }")).toBe(
       true,
     );
+
     // A narrowing `runOnly` is how a run is meant to be scoped.
     expect(
-      DISABLES_THE_RULE.test(
+      switchesAxeOff(
         `{ runOnly: { type: "rule", values: ["${NESTED_INTERACTIVE}"] } }`,
+      ),
+    ).toBe(false);
+    // The rule named outside a `rules` block, and a `rules` block that does
+    // not name it, are both fine.
+    expect(
+      switchesAxeOff(
+        `const ID = "${NESTED_INTERACTIVE}"; const c = { rules: { "image-alt": { enabled: true } } };`,
       ),
     ).toBe(false);
   });
 
-  it("finds neither anywhere in src/", () => {
+  it("finds none of it anywhere in src/", () => {
     const files = sourceFiles(SRC).filter(
       (file) => relative(SRC, file).replace(/\\/g, "/") !== SELF,
     );
@@ -225,11 +301,44 @@ describe("AC-2 · no axe configuration disables the rule", () => {
       "test/axe.ts",
     );
 
+    // The runner has to name `disableOtherRules` to refuse it, and says so in
+    // its comment, so the words alone cannot be held against it. It is still
+    // held to the part that matters: no `rules` block naming the rule.
     const offenders = files.filter((file) => {
       const text = readFileSync(file, "utf8");
-      return DISABLES_THE_RULE.test(text) || DISABLES_EVERYTHING_ELSE.test(text);
+      return relative(SRC, file).replace(/\\/g, "/") === "test/axe.ts"
+        ? disablesTheRule(text)
+        : switchesAxeOff(text);
     });
 
     expect(offenders.map((file) => relative(SRC, file))).toEqual([]);
+  });
+
+  // The scan reads syntax and can be walked around (`rules` passed by
+  // reference, a key built at run time). The runner refuses the option itself.
+  it("is backed by the runner, which refuses to switch anything off", async () => {
+    const el = document.createElement("div");
+
+    expect(() =>
+      runAxe(el, {
+        rules: { [NESTED_INTERACTIVE]: { enabled: false } },
+      }),
+    ).toThrow(/rules/);
+    expect(() =>
+      runAxe(el, {
+        // Not in `RunOptions`: it belongs to `axe.configure`, which is why the
+        // runner has to look for it by name.
+        ...({ disableOtherRules: true } as object),
+      }),
+    ).toThrow(/disableOtherRules/);
+    // An empty `rules` is still `rules`: the option's presence is the finding.
+    expect(() => runAxe(el, { rules: {} })).toThrow(/rules/);
+    // And runOnly, the sanctioned narrowing, is untouched.
+    document.body.append(el);
+    try {
+      await expect(runAxe(el, onlyNestedInteractive)).resolves.toBeDefined();
+    } finally {
+      el.remove();
+    }
   });
 });

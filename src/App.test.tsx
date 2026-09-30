@@ -194,6 +194,7 @@ describe("one Down from the field", () => {
     );
     expect(control).not.toBeNull();
     control?.focus();
+    expect(document.activeElement).toBe(control);
 
     await userEvent.keyboard("{ArrowUp}");
 

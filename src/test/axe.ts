@@ -16,12 +16,30 @@ import axe from "axe-core";
  *     to catch. `rows.a11y.test.tsx` scans `src/` for exactly that.
  *   - Only violations are asked for. `passes` lists every element that was
  *     fine, which on a twenty-row list is noise nobody reads.
+ *
+ * The first rule is enforced here, not merely asked for. `rules` is how a run
+ * switches a rule off, and `disableOtherRules` turns off everything a
+ * `runOnly` did not name; either one lets a count come out right for the wrong
+ * reason. Refusing them at run time cannot be fooled by how the call is
+ * spelled, which a scan of the source can be (`rows.a11y.test.tsx` still does
+ * that too, for `axe.configure`, which never passes through here).
  */
 export const runAxe = (
   container: Element,
   options: axe.RunOptions = {},
-): Promise<axe.AxeResults> =>
-  axe.run(container, { ...options, resultTypes: ["violations"] });
+): Promise<axe.AxeResults> => {
+  if (options.rules !== undefined) {
+    throw new Error(
+      "runAxe: `rules` can switch a rule off, and a rule that is off reports zero on every tree. Narrow the run with `runOnly` instead.",
+    );
+  }
+  if ("disableOtherRules" in options) {
+    throw new Error(
+      "runOnly names what to run; `disableOtherRules` switches off everything else and is not accepted here.",
+    );
+  }
+  return axe.run(container, { ...options, resultTypes: ["violations"] });
+};
 
 /** How many nodes a rule flagged — zero when it did not fire at all. */
 export const countNodes = (results: axe.AxeResults, ruleId: string): number =>
