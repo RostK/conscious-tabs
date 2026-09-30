@@ -212,8 +212,17 @@ discovery.
   `[row, ...row.querySelectorAll("[data-row-control]")]`. The row is no longer focusable, so index 0
   can never match `document.activeElement` and Left from the first control would call `focus()` on a
   non-focusable div. It becomes `[...row.querySelectorAll("[data-row-control]")]` — one line, and
-  the only change this plan makes to the file the spec says it changes least. AC-34, AC-35, AC-36 and
-  AC-37 pin the result.
+  the only change **this plan** makes to the file the spec says it changes least. AC-34, AC-35,
+  AC-36 and AC-37 pin the result.
+
+  **Updated 2026-09-30.** `useRowKeys` is no longer the function this plan was written against.
+  It has since gained an `ArrowUp` branch, ahead of the walk, that returns focus to the search
+  field — the exit from the list, added because `↓` put focus on a row and nothing brought it
+  back. Three things follow for T-2. The branch sits **above** the `stops` array this decision
+  edits, so whoever changes one has to read the other. Left/Right now reject modified arrows via
+  a shared `isPlainArrow` predicate, which `App` uses for its half of the model, so a change to
+  the walk's key rules is a change to two call sites. And the `dragActive` guard now runs before
+  the key test rather than after it, covering every key rather than only the walk's.
 - **D-10 — axe arrives as `axe-core` in `devDependencies`, not as `vitest-axe`.** AC-25 says
   "`vitest-axe` **or equivalent**", and the defect it names is depending on
   `eslint-plugin-jsx-a11y`'s transitive copy. `axe-core@4.13.0` is already resolved in

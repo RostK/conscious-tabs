@@ -168,6 +168,23 @@ export const setRowDragActive = (value: boolean): void => {
   dragActive = value;
 };
 
+/**
+ * An arrow press with nothing held down.
+ *
+ * The two halves of one keyboard model — `Down` out of the search field and
+ * `Up` back into it — have to agree on what counts as plain, and `App` reads
+ * this for its half. A modified arrow belongs to whoever bound it: SPEC-05
+ * reserves `Shift`+arrow for extending a selection, and `Ctrl`/`Alt`+arrow are
+ * the browser's own.
+ */
+export const isPlainArrow = (event: {
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+}): boolean =>
+  !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+
 export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
   useCallback((event) => {
     if (dragActive) return;
@@ -188,18 +205,31 @@ export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
      * others.
      */
     if (event.key === "ArrowUp") {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
-        return;
-      }
+      if (!isPlainArrow(event)) return;
       const field = document.querySelector<HTMLElement>("[data-search-field]");
       if (!field) return;
+      /*
+       * Prevented, but deliberately **not** stopped.
+       *
+       * dnd-kit's KeyboardSensor listens on the owner document, so stopping
+       * propagation here would hide the key from it — and the only thing
+       * standing between that and a drag whose arrows go dead is `dragActive`
+       * above, a flag set by a separate callback. Left/Right can afford to
+       * stop, because they only do so once they have found a stop to move to;
+       * this branch would stop on every press. Letting it bubble costs
+       * nothing — no ancestor of a row handles Up — and means a stale flag
+       * degrades to "focus moved as well" rather than "the drag stopped
+       * responding".
+       */
       event.preventDefault();
-      event.stopPropagation();
       field.focus();
       return;
     }
 
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    // Same rule as Up: a modified arrow belongs to whoever bound it. SPEC-05
+    // reserves Shift+arrow for selection, and Ctrl/Alt+arrow are the browser's.
+    if (!isPlainArrow(event)) return;
     const row = event.currentTarget;
     const stops: HTMLElement[] = [
       row,
