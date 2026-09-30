@@ -128,6 +128,37 @@ describe("one Down from the field", () => {
     expect(document.activeElement).toHaveAttribute("data-tab-row");
   });
 
+  /**
+   * The way back. `Down` put focus on a row and nothing brought it back:
+   * `Shift+Tab` lands on whatever precedes the row in the DOM, not the field,
+   * so the list was a one-way trip — reported from real use within a minute of
+   * the shortcut shipping.
+   */
+  it("comes back to the field on Up", async () => {
+    await mountApp();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(document.activeElement).toHaveAttribute("data-tab-row");
+
+    await userEvent.keyboard("{ArrowUp}");
+
+    expect(document.activeElement).toBe(screen.getByLabelText("search"));
+  });
+
+  // From any row, not only the first. Plain arrows are unbound between rows,
+  // so there is no "previous row" meaning to displace — and a key that works
+  // at the top and silently does nothing three rows down is worse than one
+  // that does not exist.
+  it("comes back from a row further down the list", async () => {
+    await mountApp();
+    await userEvent.keyboard("{ArrowDown}");
+    const rows = document.querySelectorAll<HTMLElement>("[data-tab-row]");
+    rows[rows.length - 1].focus();
+
+    await userEvent.keyboard("{ArrowUp}");
+
+    expect(document.activeElement).toBe(screen.getByLabelText("search"));
+  });
+
   // The field keeps every other key. A modified Down is somebody else's.
   it("leaves a modified Down alone", async () => {
     await mountApp();

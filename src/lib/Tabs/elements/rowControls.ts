@@ -170,8 +170,36 @@ export const setRowDragActive = (value: boolean): void => {
 
 export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
   useCallback((event) => {
-    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     if (dragActive) return;
+
+    /*
+     * Up leaves the list the way Down entered it.
+     *
+     * `Down` in the search field puts focus on a row; without this there was
+     * no way back — `Shift+Tab` lands on whatever precedes the row in the DOM,
+     * not the field, so the list was a one-way trip. Reported from real use
+     * within a minute of the shortcut shipping.
+     *
+     * From **any** row, and from a control inside one, rather than only from
+     * the first. Plain arrows are deliberately unbound between rows, so
+     * nobody is expecting `Up` to mean "previous row" and there is no
+     * competing meaning to displace — where binding it only at the top would
+     * make the same key work in some places and silently do nothing in
+     * others.
+     */
+    if (event.key === "ArrowUp") {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+      const field = document.querySelector<HTMLElement>("[data-search-field]");
+      if (!field) return;
+      event.preventDefault();
+      event.stopPropagation();
+      field.focus();
+      return;
+    }
+
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     const row = event.currentTarget;
     const stops: HTMLElement[] = [
       row,

@@ -266,7 +266,13 @@ function App() {
                   </SearchIconWrapper>
                   <StyledInputBase
                     placeholder="Search…"
-                    inputProps={{ "aria-label": "search" }}
+                    inputProps={{
+                      "aria-label": "search",
+                      // How a row finds its way back here. The rows must not
+                      // know this component's markup, and an aria-label is a
+                      // name for a user, not a selector for us.
+                      "data-search-field": "",
+                    }}
                     inputRef={searchInput}
                     value={search}
                     onKeyDown={(event) => {

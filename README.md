@@ -24,7 +24,8 @@ and from there **floats on top** of your other applications in a small always-on
   extra permission.
 - **Built for the keyboard** — `Ctrl+Shift+K` (`⌘+Shift+K` on a Mac) opens it without reaching for
   the mouse, and the caret lands in the search box ready to filter; one `↓` from there puts you on
-  the tab you're already looking at. Rebind or clear it at `chrome://extensions/shortcuts` — Chrome
+  the tab you're already looking at, and `↑` brings you back to the box from anywhere in the list.
+  Rebind or clear the shortcut at `chrome://extensions/shortcuts` — Chrome
   owns that list, and if another extension already holds the chord the shortcut simply won't be
   assigned, which the panel tells you rather than leaving you to wonder.
   From there, `Tab` moves between rows and `←` / `→` reach the controls on the row you're on. One
