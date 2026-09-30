@@ -47,7 +47,7 @@ What you can do
 
 • Float it on top — open Conscious Tabs in a tab, then float it into a small always-on-top window that stays visible over your other apps. Triage your tabs without switching back to the browser, and get your full browser width back while you do it.
 
-• Reach it all from the keyboard — press Ctrl+Shift+K (Command+Shift+K on a Mac) to open it with the cursor already in the search box, then one Down arrow to land on the tab you're on. Rebind it at chrome://extensions/shortcuts. From there Tab steps between rows, the arrow keys reach the controls on the row you're on, and every button announces the tab, group, or window it acts on rather than just "Close". F6 — Chrome's own key for cycling browser panes — moves focus between the page and the panel in both directions, so the whole round trip stays on the keyboard.
+• Reach it all from the keyboard — press Ctrl+Shift+K (Command+Shift+K on a Mac) to open it with the cursor already in the search box, then one Down arrow to land on the tab you're on and Up to come back to the box. Rebind it at chrome://extensions/shortcuts. From there Tab steps between rows, the arrow keys reach the controls on the row you're on, and every button announces the tab, group, or window it acts on rather than just "Close". F6 — Chrome's own key for cycling browser panes — moves focus between the page and the panel in both directions, so the whole round trip stays on the keyboard.
 
 • Fits your browser — follows your system light / dark theme and sits natively in the side panel.
 

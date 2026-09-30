@@ -139,6 +139,7 @@ reasonable.
 | C-13 | `chrome.commands.onCommand` **passes the active tab to the listener**: `CommandEvent extends chrome.events.Event<(command: string, tab: chrome.tabs.Tab) => void>`. So `tab.windowId` and `tab.url` are both in hand **before the first statement runs**. This is what makes AC-36's operative reading safe — there is nothing to await in order to know which window to open in, or whether the active tab is one of our own pages (AC-39). | `node_modules/@types/chrome/index.d.ts:1264` (`onCommand` declared at `:1278`), verified in this working tree 2026-09-29 |
 | C-14 | **Focus on open, measured — the first hard numbers this question has had.** (1) A side panel opened by the keyboard command **does not receive document focus**; typing after the shortcut goes to the page behind it. (2) `window.focus()` **called on mount, from the panel document itself, is honoured** — with it, the first keystroke after the shortcut lands in the search field. (3) A **second** press, with the panel already open, **cannot** bring focus back: the message reaches the panel, but `document.hasFocus()` is `false` before `window.focus()` and `false` after. **Transient activation is required and only the moment of creation carries it.** | Measured on **Chrome 154.0.8037.92, 2026-09-30** — §16. Supersedes the low-confidence Chrome 148/149 claim in §10. |
 | C-15 | **`F6` cycles focus between the page and the side panel, in both directions.** The keyboard round trip is therefore complete with nothing from this extension: the shortcut opens the panel and puts the caret in the field (C-14 item 2), and `F6` moves in and out thereafter. **This is why no Escape-to-close handler was added** — NG-13. | Measured on Chrome 154.0.8037.92, 2026-09-30 — §16. |
+| C-16 | **dnd-kit's `KeyboardSensor` listens on the owner document**, so a row handler that calls `stopPropagation()` on an arrow hides that key from the drag. The only thing preventing that is `dragActive` — a module-level flag set by a **separate** callback (`App`'s `DndContext` handlers), so it can go stale. Consequence: a row branch that would have to stop on **every** press must not stop at all, so that a stale flag degrades to "focus also moved" rather than "the drag stopped responding". `←`/`→` are exempt because they stop only after finding a stop to move to. | `src/lib/Tabs/elements/rowControls.ts` (`dragActive`, `setRowDragActive`); SPEC-04 §1.6 and AC-37, which record the same hand-off as the part with no external guidance behind it |
 
 C-3 and C-8 together are what makes item 1 buildable at all: the gesture constraint is met, and the
 codebase already has a user-visible failure path for the case where the open is refused anyway.
@@ -279,7 +280,12 @@ are already `listitem`s and that SPEC-04 AC-34…AC-37 are implemented facts, no
 - **NG-5** A settings screen, an options page, or any in-app way to rebind the shortcut. Chrome
   owns that surface at `chrome://extensions/shortcuts`; a second one would need storage (NG-4).
 - **NG-6** Changing SPEC-04's keyboard walk. `Tab` between rows, `←`/`→` within a row, no wrapping,
-  no Home/End within a row — all exactly as SPEC-04 AC-34…AC-37 pin them.
+  no Home/End within a row — all exactly as SPEC-04 AC-34…AC-37 pin them. _(**`↑` and the modifier
+  rule do not breach this.** AC-40 adds a key to the handler that implements the walk without
+  changing the walk: `↑` is the exit from the list, not a step within it, and every stop SPEC-04
+  pins keeps its position and its key. AC-41 narrows `←`/`→` to **unmodified** presses, which is a
+  change to what the handler accepts, not to where the walk goes — recorded in §15 A-6 rather than
+  left to be found.)_
 - **NG-7** Changing what any row control **does**, or the pointer semantics of selection. A plain
   click still activates; `Ctrl`/`Cmd`-click still toggles (SPEC-04 AC-18).
 - **NG-8** A global shortcut that performs a **destructive action** without opening the UI first
@@ -464,7 +470,8 @@ worse than one that focuses it.
   row in a fixture that has one, and on row 1 in a fixture that does not; manual. _(US-7, and §1.8's
   precedence rule 3 — this is where `TabDisplay`'s "start where the user already is" intent is
   honoured, one press later. `↓` is bound **in the field**, not in the list: NG-6 and SPEC-04 keep
-  plain arrows unbound between rows, and this does not change that.)_
+  plain arrows from moving between rows, and this does not change that. **AC-40 is the return trip**
+  — without it this entry was a one-way door, which is what real use found within a minute.)_
 - **AC-15** _(Must)_ Focusing the search field on open SHALL NOT alter the `search` value, and SHALL
   NOT cause the float to report a search the user did not type.
   **Verify:** unit — mount as `host="float"`, assert `reportFloatSearch` is not called on mount;
@@ -480,10 +487,18 @@ worse than one that focuses it.
 
 ### 5.3 Item 3 — range selection and select-all  *(group B — assumes SPEC-04 is implemented)*
 
-**The resolved key model.** `Shift`+`↑`/`↓` extends a range; plain arrows stay unbound between rows
-(NG-6, SPEC-04). `Ctrl`/`Cmd`+`A` selects all **while focus is in the list**; in the search field it
+**The resolved key model.** `Shift`+`↑`/`↓` extends a range; **no plain arrow moves focus from one
+row to another** (NG-6, SPEC-04). `Ctrl`/`Cmd`+`A` selects all **while focus is in the list**; in the search field it
 keeps its native select-all-**text** meaning. And one principle governs both, **G-8: selection only
 ever covers rows the user can see.**
+
+> **The invariant, stated precisely, because it reads like a contradiction otherwise.** The rule is
+> **not** "plain arrows do nothing in the list" — it is **"no plain arrow moves focus from one row to
+> another."** Three plain arrows are bound, and none of them is row-to-row movement: `←`/`→` move
+> **within** the focused row (SPEC-04 AC-34), `↑` **leaves the list** for the search field (AC-40),
+> and `↓` in the field **enters** it (AC-14). What stays unclaimed is exactly the meaning `Shift`+`↑`
+> and `Shift`+`↓` need for a range (AC-17) — which is the whole reason the invariant is worded this
+> way. AC-41 is what keeps the modified and unmodified arrows from colliding.
 
 - **AC-17** _(Must)_ WHEN the user presses `Shift`+`↑` or `Shift`+`↓`, focus SHALL move one row in
   that direction and every row between the anchor row and the newly focused row **inclusive** SHALL
@@ -551,7 +566,8 @@ ever covers rows the user can see.**
   focus; WHEN the drag ends or is cancelled, they SHALL take effect again.
   **Verify:** unit — with `setRowDragActive(true)`, the new keys leave `selected` and
   `document.activeElement` unchanged and reach dnd-kit; after `onDragEnd` and `onDragCancel` they
-  work again. _(SPEC-04 AC-37; `rowControls.ts:164-169`.)_
+  work again. _(SPEC-04 AC-37. **AC-42 is the group-A half of this**, already shipped for `↑`,
+  including the propagation clause that keeps a stale flag from silencing a drag; C-16.)_
 - **AC-27** _(Must)_ The feature SHALL write no data to `chrome.storage`, `localStorage`,
   `sessionStorage`, IndexedDB or cookies — in particular no remembered selection and no remembered
   search.
@@ -568,7 +584,9 @@ ever covers rows the user can see.**
 - **AC-29** _(Must)_ SPEC-04's keyboard walk SHALL be unchanged: `Tab` moves between rows and not
   within one, `←`/`→` move between the focused row's controls, neither wraps, and Home/End stay
   unbound within a row.
-  **Verify:** SPEC-04's AC-34 and AC-35 tests pass unmodified (NG-6).
+  **Verify:** SPEC-04's AC-34 and AC-35 tests pass unmodified (NG-6) — with the one stated
+  narrowing that those tests must exercise **unmodified** `←`/`→`, per AC-41. _(AC-40's `↑` adds a
+  key to the same handler without altering any stop, any order or any boundary of the walk itself.)_
 - **AC-30** _(Must)_ The list's Tab-stop budget SHALL NOT increase: a 20-plain-tab fixture SHALL
   still cost **20** stops.
   **Verify:** SPEC-04 AC-9's test passes unmodified. _(A "select mode" that made checkboxes real tab
@@ -656,6 +674,45 @@ ever covers rows the user can see.**
   **C-13 says it is** — `onCommand` hands the listener the active tab, so `isOwnPage(tab.url)` is a
   synchronous guard and AC-36 expressly permits it. The escape hatch is therefore not expected to
   fire; it is retained because a degraded extra copy is a far better failure than a dead key.)_
+
+### 5.6 The list's exit, and the modifier rule  *(group A — AC-40…AC-42)*
+
+`↓` in the search field enters the list (AC-14). **Nothing came back out.** `Shift+Tab` from a row
+lands on whatever precedes it in the DOM, not the field, so the list was a one-way trip — reported
+from real use within a minute of the shortcut shipping. `↑` is the mirror of `↓`: not row-to-row
+movement, **the exit from the list**. See the restated invariant in §5.3.
+
+- **AC-40** _(Must)_ WHEN the user presses a plain `↑` WHILE focus is on a row **or on a control
+  inside a row**, focus SHALL move to the search field.
+  **Verify:** unit — from the first row, from a later row, and from a control reached by `→` inside a
+  later row, `↑` puts `document.activeElement` on the search field; run the same three cases against
+  a tab row, a group row and a window row and assert identical behaviour. _(**Bound from any row, not
+  only the first.** Plain arrows do not move between rows, so there is no "previous row" meaning to
+  displace — and a key that works at the top while silently doing nothing three rows down is worse
+  than one that does not exist. Implemented once in `useRowKeys` so all three row kinds cannot
+  diverge. The field is located by a marker attribute (`App.tsx:277`, `data-search-field`), so **the
+  field carrying its marker is part of this contract** — lose it and `↑` silently does nothing,
+  which is the failure this criterion is shaped to catch.)_
+- **AC-41** _(Must)_ A row's keyboard handler SHALL ignore any arrow press carrying `Shift`, `Ctrl`,
+  `Alt` or `Meta` — `↑`, `←` and `→` alike.
+  **Verify:** unit — on a row, `Shift`+`↑` leaves focus unchanged and does not reach the search
+  field; `Ctrl`+`→` and `Alt`+`→` leave focus unchanged; plain `←`/`→` still walk the row's controls.
+  _(Two reasons, one rule. **`Shift`+`↑` must stay free for group B's range selection** (DEC-6…DEC-9,
+  AC-17) — if `↑` claimed it, item 3 would arrive to find its key already taken by item 2. And
+  `Ctrl`/`Alt`+arrow belong to the browser. **This is a behaviour change in group A's scope, recorded
+  rather than discovered:** `←`/`→` previously accepted modifiers, so `Ctrl`+`→` used to walk a row's
+  controls and no longer does.)_
+- **AC-42** _(Must)_ WHILE a keyboard drag is live, the row keyboard handler SHALL take no action for
+  any arrow key; AND the `↑` branch SHALL NOT call `stopPropagation()`.
+  **Verify:** unit — with `setRowDragActive(true)`, `↑`, `←` and `→` all leave
+  `document.activeElement` unchanged; **and** a plain `↑` on a row is observed by a listener attached
+  to the owner document, proving propagation was not stopped. _(The arrows belong to dnd-kit during a
+  drag (SPEC-04 AC-37, C-16). The propagation clause is the load-bearing half and is **not** a style
+  preference: `↑` would have to stop on **every** press, since unlike `←`/`→` it has no "found a stop
+  to move to" condition to gate on — and the only thing standing between that and a drag whose arrows
+  go dead is a module-level flag set by a separate callback. Letting `↑` bubble means a stale flag
+  degrades to "focus also moved" rather than "the drag stopped responding". `←`/`→` still stop,
+  because they only do so once they have found a stop.)_
 
 ---
 
@@ -794,10 +851,10 @@ one and weakens the criterion it came from.
 | `src/lib/float.ts`                                                              | `canFloat()` restricts the float to the anchor tab; `openFloat` must stay a direct, synchronous click handler. **No command path may call it** (NG-9, AC-2). `takeFloatSearch`/`reportFloatSearch` constrain AC-15.                                                                                 |
 | `src/lib/surfaces.ts`                                                           | `bringPanelAlong` already gates `sidePanel.open()` on `getHost() === "panel"`; a command firing from the worker has **no host**, so it cannot reuse that helper unchanged. `resolveUserWindow()` is what a command would need to answer "which window's panel", and it can return `undefined` (E-3). |
 | `src/lib/host.ts`                                                               | `getHost()` reads `window.location.search` — it does not exist in the worker. Any "which surface is open" question asked from the command handler needs a different answer than the one every in-page caller uses.                                                                                  |
-| `src/App.tsx`                                                                   | Owns `search`, the `Search`/`StyledInputBase` field (lines 249-272), the float↔anchor hand-off (lines 130-162) and the polite live region (lines 282-291). Items 2 and 3 both land here: AC-12, AC-15, AC-16, AC-24.                                                                                |
+| `src/App.tsx`                                                                   | Owns `search`, the `Search`/`StyledInputBase` field, the float↔anchor hand-off and the polite live region. Items 2 and 3 both land here: AC-12, AC-15, AC-16, AC-24. **The field's `data-search-field` marker (`App.tsx:277`) is how `useRowKeys` finds it for AC-40** — a cross-module coupling, and the thing that silently breaks `↑` if it is removed. |
 | `src/lib/Tabs/Tab/TabDisplay.tsx`                                               | `autoFocus={tab.active && focus}` (line 99) is the **competing initial-focus claim** (§1.8, AC-11), and its `focus = true` default (line 34) is what carries the leak below into search results. Its select control (lines 124-144) is the per-row checkbox item 3 must keep (AC-22).                |
 | `src/lib/Tabs/TabsGroup/GroupListItem.tsx`, `src/lib/Tabs/Tab/TabListItem.tsx`  | **The live half of §1.8.** `GroupListItem.tsx:271` renders `<TabListItem group={group} tab={tab} key={tab.id} />` with no `focus` prop, and the file never mentions `focus` at all — so it cannot forward what it never receives. `TabListItem` spreads the rest into `TabDisplay`, which defaults it to `true`. `SearchView`'s `focus={false}` therefore never reaches a grouped tab. AC-11's two in-group fixtures exist for this. |
-| `src/lib/Tabs/elements/rowControls.ts`                                          | `rowControlProps` (`tabIndex: -1`), `useRowKeys`' `←`/`→` walk and the `dragActive` flag. AC-26, AC-29, AC-30 all pin its present behaviour. Any new key binding must be added **outside** this walk, not by widening it.                                                                            |
+| `src/lib/Tabs/elements/rowControls.ts`                                          | `rowControlProps` (`tabIndex: -1`), `useRowKeys`' `←`/`→` walk, `isPlainArrow`, the `↑` exit and the `dragActive` flag. AC-26, AC-29, AC-30 pin the walk; AC-40, AC-41, AC-42 pin the rest. **A new key may be added to this handler, but not to the walk** — `↑` is bound here so all three row kinds cannot diverge, and it is an exit from the list rather than a stop within it. Its propagation behaviour differs from `←`/`→` on purpose (C-16). |
 | `src/lib/Tabs/selection/SelectionContext.tsx`                                   | The reducer's action union is the contract keyboard selection must dispatch into (AC-20). Its `chrome.runtime` broadcast is the cross-surface path (E-13, E-15), and its unvalidated `handleMessage` is named in §11.                                                                               |
 | `src/lib/Tabs/selection/SelectionToolbar.tsx`                                   | Appears only when `selected.length` is non-zero and is the payoff for item 3. Must act identically on a keyboard-built selection (AC-20).                                                                                                                                                           |
 | `src/lib/Tabs/Window/WindowListItem.tsx`, `src/lib/Tabs/TabsGroup/GroupListItem.tsx` | Already carry keyboard-reachable "Select every tab in this window / group _X_" controls (§1.5). AC-22 keeps them unchanged; they remain the **explicit, named-target** route into a collapsed group that AC-19's range deliberately will not take.                                             |
@@ -940,8 +997,8 @@ All thirteen clarifications are closed. Recorded with their reasoning so nobody 
 | **DEC-1, DEC-2** (was NC-1, NC-2)             | **One custom command that opens the side panel, or focuses the UI where it already is. No toggle.** Per-state behaviour in §5.1's table.                                                                                                                                                                                                      | The side panel is the default, fully-featured home (SPEC-01 G-4), and C-8 makes it reachable from a command. No toggle: there is no `chrome.sidePanel.close()` (C-2), and a key that destroys a surface is worse than one that focuses it. Across windows the user is **not** teleported — side panels are per-window and SPEC-01 **G-2** already accepts one copy per window, so `openAnchorTab`'s focus-and-raise (`anchor.ts:51-59`) is deliberately not reused. **Amended 2026-09-29 (§15 A-1):** "focuses the UI where it already is" is specced as **leaves it intact**, because C-12 says Chrome offers no way to ask whether the panel is open or to move focus into it — a focus clause would be neither satisfiable nor verifiable. → AC-2, AC-3, AC-39 |
 | **DEC-3** (was NC-3)                          | **`Ctrl+Shift+K` / `Command+Shift+K`**, with the whole rejected field and its reasons recorded in §1.7a.                                                                                                                                                                                                                                      | C-10 leaves a narrow field: a required `Ctrl`/`Alt`, no `Ctrl+Alt`, Chrome's own chords unavailable, and `Ctrl+Shift+[0..9]` left for the `global`-scope commands that actually need it. The suggestion is not a guarantee — a chord another extension holds fails **silently** — so both failure modes are specced rather than assumed away. → AC-37, AC-7, AC-35                                                                                                     |
 | **DEC-4** (was NC-4)                          | **A custom command name, not the reserved `_execute_action`.**                                                                                                                                                                                                                                                                               | `_execute_action` dispatches no `onCommand` event, which removes exactly the branch DEC-1 and DEC-2 need. `openPanelOnActionClick: true` already covers the icon click, so the two paths stay distinct and neither has to serve both. **Recorded because `_execute_action` looks simpler and someone will propose it again** — and because `_execute_side_panel`, which looks like the obvious answer, does not exist (§10). → AC-1                                     |
-| **DEC-5** (was NC-5)                          | **Focus the search field — specced behind a measurement gate**, and keyed to "the document first receives focus" rather than to mount. The initial-focus race is resolved in §1.8: the field wins, `TabDisplay`'s `autoFocus` is **withdrawn rather than outrun**, and the active tab's row stays the entry point into the list, one `↓` away. | _As written 2026-09-29:_ side-panel focus-on-open was unverified and looked unreliable (§10), so the fallback was stated in advance rather than discovered in the field — record the shortfall as a platform limitation, and do not fake focus. A criterion written against mount alone would be untestably true in jsdom and false in Chrome, which is why AC-12 is keyed to the document receiving focus. **Amended 2026-09-29 (§15 A-4):** the collision is not only a forward risk — `GroupListItem.tsx:271` passes no `focus` prop, so grouped tabs already autofocus in search results today. That is the case for **deleting** the prop rather than threading it, and AC-11 gained two in-group fixtures. **Amended 2026-09-30 (§15 A-5):** the gate has been run. The panel does not get document focus on open, but a mount-time `window.focus()` **is** honoured (C-14), so AC-38 now forbids taking focus **the user did not ask for** instead of forbidding the ask. `F6` is the round trip (C-15), which is why Escape-to-close was dropped (NG-13). → AC-11, AC-12, AC-14, AC-38 |
-| **DEC-6…DEC-9** (was NC-6, NC-7, NC-8, NC-10) | **`Shift`+`↑`/`↓` extends a range; plain arrows stay unbound. `Ctrl`/`Cmd`+`A` selects all while focus is in the list, and the search field keeps it as select-all-text. "All" means the filtered result, not the whole browser. A range covers only the rows the user can see — a collapsed group it spans over is not included.**            | One principle does all four jobs: **G-8, selection covers only what the user can see.** Selecting eighty invisible tabs from a three-row filtered list is how someone closes what they meant to keep, and the same reasoning excludes a collapsed group a range sweeps over. AC-19 states the collapsed case **explicitly, because the opposite is a defensible reading** and someone will assume it. `Shift`+arrow both moves and extends, so none of this touches SPEC-04's walk (NG-6). → AC-17, AC-18, AC-19, AC-23 |
+| **DEC-5** (was NC-5)                          | **Focus the search field — specced behind a measurement gate**, and keyed to "the document first receives focus" rather than to mount. The initial-focus race is resolved in §1.8: the field wins, `TabDisplay`'s `autoFocus` is **withdrawn rather than outrun**, and the active tab's row stays the entry point into the list, one `↓` away. | _As written 2026-09-29:_ side-panel focus-on-open was unverified and looked unreliable (§10), so the fallback was stated in advance rather than discovered in the field — record the shortfall as a platform limitation, and do not fake focus. A criterion written against mount alone would be untestably true in jsdom and false in Chrome, which is why AC-12 is keyed to the document receiving focus. **Amended 2026-09-29 (§15 A-4):** the collision is not only a forward risk — `GroupListItem.tsx:271` passes no `focus` prop, so grouped tabs already autofocus in search results today. That is the case for **deleting** the prop rather than threading it, and AC-11 gained two in-group fixtures. **Amended 2026-09-30 (§15 A-5):** the gate has been run. The panel does not get document focus on open, but a mount-time `window.focus()` **is** honoured (C-14), so AC-38 now forbids taking focus **the user did not ask for** instead of forbidding the ask. `F6` is the round trip (C-15), which is why Escape-to-close was dropped (NG-13). **Amended 2026-09-30 (§15 A-6):** AC-14's `↓` entry shipped without a way back — `Shift+Tab` lands on whatever precedes the row in the DOM, not the field. `↑` is the mirror (AC-40). → AC-11, AC-12, AC-14, AC-38, AC-40 |
+| **DEC-6…DEC-9** (was NC-6, NC-7, NC-8, NC-10) | **`Shift`+`↑`/`↓` extends a range; no plain arrow moves focus from one row to another** _(restated 2026-09-30 — was "plain arrows stay unbound"; same rule, see Why)_. **`Ctrl`/`Cmd`+`A` selects all while focus is in the list, and the search field keeps it as select-all-text. "All" means the filtered result, not the whole browser. A range covers only the rows the user can see — a collapsed group it spans over is not included.** | One principle does all four jobs: **G-8, selection covers only what the user can see.** Selecting eighty invisible tabs from a three-row filtered list is how someone closes what they meant to keep, and the same reasoning excludes a collapsed group a range sweeps over. AC-19 states the collapsed case **explicitly, because the opposite is a defensible reading** and someone will assume it. `Shift`+arrow both moves and extends, so none of this touches SPEC-04's walk (NG-6). **Amended 2026-09-30 (§15 A-6):** "plain arrows stay unbound" is restated as the invariant it always meant — **no plain arrow moves focus from one row to another.** `←`/`→` move within a row, `↑` leaves the list (AC-40), `↓` in the field enters it (AC-14); none is row-to-row, so `Shift`+`↑`/`↓` is still unclaimed and this decision stands untouched. AC-41 is what keeps the modified and unmodified arrows apart. → AC-17, AC-18, AC-19, AC-23, AC-41 |
 | **DEC-10** (was NC-9)                         | **Reuse `App.tsx`'s existing debounced polite region; announce the running total, at the existing debounce.**                                                                                                                                                                                                                                 | A delta — "6 added" — is meaningless to someone who has lost count, which is exactly the user the announcement exists for. A second live region would queue against the first; a second debounce would be a second timing to keep in step with the first. → AC-24                                                                                                                                                                                                     |
 | **DEC-11** (was NC-11)                        | **The `commands` key is not a permission and adds no install warning. SPEC-01 AC-24 does not fire.**                                                                                                                                                                                                                                          | C-9, from Chrome's permissions list and permission-warning guidance. The five-file mirror stays untouched. AC-5 is **retained** as the guard that confirms this on a real install rather than trusting it, because no test that reads `manifest.json` can see an install warning. Web Store **re-review** triggers are addressed by no primary source — unknown, not "no". → AC-5, AC-6, NG-3                                                                            |
 | **DEC-12** (was NC-12)                        | **A command event does carry the activation `chrome.sidePanel.open()` requires — provided the call is the first synchronous statement in the listener.**                                                                                                                                                                                      | C-8. The proviso is the whole decision: it is invisible in code review, fatal at runtime, and has already killed this exact design twice in public (issues.chromium.org/issues/355266358, chrome-extensions-samples#1001). **Amended 2026-09-29 (§15 A-2):** the proviso is specced as **"nothing spends the activation first"** — no `await`, no `.then()`, no `sendMessage`, no other `chrome.*` call — not as the literal "first statement", which would have made AC-36 and AC-39 mutually exclusive. C-13 is what makes the operative reading safe: the event hands the listener the active tab, so there is nothing to await. → AC-36, AC-39, AC-8, A-4, C-13                       |
@@ -972,13 +1029,14 @@ Group per §1.9: **A** ships now, **B** waits for SPEC-04 to be implemented.
 | Item                                     | Criteria                                                     | Group |
 | ---------------------------------------- | ------------------------------------------------------------ | ----- |
 | **1. Keyboard shortcut opens the UI**    | AC-1 … AC-10, AC-35, AC-36, AC-37, AC-39                     | **A** |
-| **2. Focus lands in search**             | AC-11 … AC-16, AC-38                                         | **A** |
+| **2. Focus lands in search**             | AC-11 … AC-16, AC-38; **AC-40, AC-41, AC-42** (the exit and the modifier rule) | **A** |
 | **3. Range select and select-all**       | AC-17 … AC-27                                                | **B** |
 | Cross-surface / no regression            | AC-28 (both groups), AC-29, AC-30, AC-31                     | A + B |
 | Documentation & discoverability          | AC-32 (A), AC-35 (A), AC-33 (B, Could — deferred to PI-8)    | A + B |
 | Security of a global entry point         | AC-10, AC-25, AC-34                                          | A + B |
 | Inherited and re-asserted                | AC-6, AC-21, AC-22, AC-26, AC-27, AC-29, AC-30               | A + B |
-| Platform constraints made executable     | AC-5 (C-9), AC-36 (C-8, C-13), AC-37 (C-10), AC-3 (C-2, C-12, C-14), AC-12 + AC-38 (C-14); NG-9 (C-11), NG-13 (C-15) | **A** |
+| Platform constraints made executable     | AC-5 (C-9), AC-36 (C-8, C-13), AC-37 (C-10), AC-3 (C-2, C-12, C-14), AC-12 + AC-38 (C-14), AC-42 (C-16); NG-9 (C-11), NG-13 (C-15) | **A** |
+| The keyboard model, end to end           | `↓` in enters (AC-14) · `←`/`→` within a row (AC-29, SPEC-04 AC-34) · `↑` exits (AC-40) · modifiers ignored (AC-41) · `Shift`+`↑`/`↓` extends (AC-17, group B) · `F6` page↔panel (C-15) | A + B |
 | Measured, not derived                    | AC-38 — side panel **done** 2026-09-30 (§16), anchor tab and float outstanding; AC-31 outstanding (group B). See §13.1. | A + B |
 | Accepted risks                           | R-1 (§7.1), against AC-8 and AC-3; observed by the manual sweep | **A** |
 
@@ -1000,10 +1058,13 @@ Changes after approval, all from planning and building group A. User-decided; th
 
 | **A-5** _(2026-09-30)_ | **AC-38: "SHALL NOT force or fake focus" → "SHALL NOT take focus the user did not ask for"**, bounded by four conditions (on mount, once, only when the document lacks focus, only because a keypress asked for that surface). New constraints **C-14** (the measurement) and **C-15** (`F6`). New **NG-13** (Escape-to-close dropped). AC-3's assumption replaced by C-14 item 3. AC-12's rationale corrected. §13.1 item 1 closed for the side panel; §16 added. | **AC-38 as written forbade what the implementation now deliberately does**, and a spec that bans what the code does is worse than either position. The measurement is what earned the change: the panel does not get document focus from the open (so the gate's answer was "no"), but a mount-time `window.focus()` **is** honoured (so the earlier "nothing can be done" was wrong), and a second press cannot take focus back at all (so the loophole is unreachable). What stays forbidden is what the criterion was always about: a panel pulling focus off a page someone is reading. |
 
+| **A-6** _(2026-09-30)_ | **Three criteria added for the list's exit: AC-40** (plain `↑` returns to the search field, from any row and from a control inside one), **AC-41** (the handler ignores `Shift`/`Ctrl`/`Alt`/`Meta` arrows — `↑`, `←` and `→` alike), **AC-42** (no action during a drag, and the `↑` branch must not `stopPropagation()`). New constraint **C-16** (dnd-kit's sensor listens on the owner document). New §5.6. The "plain arrows stay unbound" wording restated as **"no plain arrow moves focus from one row to another"** in §5.3, NG-6, AC-14 and DEC-6…DEC-9. | **A code review flagged the spec as contradicting the code**, and the behaviour is wanted, so the spec was wrong. AC-14's `↓` entry shipped with no way back: `Shift+Tab` lands on whatever precedes the row in the DOM, not the field — found in real use within a minute. The restated invariant is what the model always meant; `↑` is an exit from the list, not a step within it, so `Shift`+`↑` stays free for group B. **Two sub-decisions recorded because they are behaviour changes, not details:** `←`/`→` no longer accept modifiers (so `Ctrl`+`→` no longer walks a row), and `↑` deliberately does not stop propagation so that a stale `dragActive` flag degrades to "focus also moved" instead of "the drag stopped responding". |
+
 **Status is unchanged at `approved`.** None of these opens a question: A-1 and A-2 make two criteria
 verifiable that were not, A-3 records a decision without changing a criterion, A-4 adds a verified
-fact and test coverage for it, and A-5 replaces an assumption with a measurement and corrects a
-criterion that the measurement had made wrong.
+fact and test coverage for it, A-5 replaces an assumption with a measurement and corrects a
+criterion that the measurement had made wrong, and A-6 records shipped behaviour the spec had
+accidentally forbidden — none of it reversing a decision.
 
 ---
 

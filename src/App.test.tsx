@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.tsx";
 import { reportFloatSearch } from "./lib/float";
+import { setRowDragActive } from "./lib/Tabs/elements/rowControls.ts";
 import { Theme } from "./lib/Theme";
 import { installChrome } from "./test/chromeStub.ts";
 
@@ -58,6 +59,11 @@ const mountApp = async () => {
 
 beforeEach(() => {
   installChrome({ windows: WINDOWS, tabs: TABS });
+  // `dragActive` is module state in rowControls.ts and the first thing the row
+  // key handler reads. This file mounts the whole App including DndContext, so
+  // a future test that starts a drag would leave it set and every key
+  // assertion after it would fail talking about focus instead of about drags.
+  setRowDragActive(false);
 });
 
 /**
@@ -126,6 +132,87 @@ describe("one Down from the field", () => {
     await userEvent.keyboard("{ArrowDown}");
 
     expect(document.activeElement).toHaveAttribute("data-tab-row");
+  });
+
+  /**
+   * The way back. `Down` put focus on a row and nothing brought it back:
+   * `Shift+Tab` lands on whatever precedes the row in the DOM, not the field,
+   * so the list was a one-way trip — reported from real use within a minute of
+   * the shortcut shipping.
+   */
+  it("comes back to the field on Up", async () => {
+    await mountApp();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(document.activeElement).toHaveAttribute("data-tab-row");
+
+    await userEvent.keyboard("{ArrowUp}");
+
+    expect(document.activeElement).toBe(screen.getByLabelText("search"));
+  });
+
+  // From any row, not only the first. Plain arrows are unbound between rows,
+  // so there is no "previous row" meaning to displace — and a key that works
+  // at the top and silently does nothing three rows down is worse than one
+  // that does not exist.
+  it("comes back from a row further down the list", async () => {
+    await mountApp();
+    await userEvent.keyboard("{ArrowDown}");
+    const rows = document.querySelectorAll<HTMLElement>("[data-tab-row]");
+    rows[rows.length - 1].focus();
+
+    await userEvent.keyboard("{ArrowUp}");
+
+    expect(document.activeElement).toBe(screen.getByLabelText("search"));
+  });
+
+  /**
+   * The guard that reserves `Shift`+`↑` for SPEC-05 group B's range selection.
+   * Without this test the guard can be deleted and every other test still
+   * passes — plain Up keeps working — while Shift+Up starts yanking focus to
+   * the search box, which would surface as "range selection is broken" in a
+   * different file months later.
+   */
+  it("leaves a modified Up alone", async () => {
+    await mountApp();
+    await userEvent.keyboard("{ArrowDown}");
+    const row = document.activeElement;
+
+    await userEvent.keyboard("{Shift>}{ArrowUp}{/Shift}");
+
+    expect(document.activeElement).toBe(row);
+  });
+
+  // The comment on the binding claims it works from a control inside a row,
+  // which is why it lives on the row rather than on the row's own button. Both
+  // other tests focus a row itself, so nothing held that claim up.
+  it("comes back from a control inside a row", async () => {
+    await mountApp();
+    const control = document.querySelector<HTMLElement>(
+      "main [data-tab-row] [data-row-control]",
+    );
+    expect(control).not.toBeNull();
+    control?.focus();
+
+    await userEvent.keyboard("{ArrowUp}");
+
+    expect(document.activeElement).toBe(screen.getByLabelText("search"));
+  });
+
+  /**
+   * While a drag is live the arrows belong to dnd-kit. This is what makes that
+   * true for Up, and it is load-bearing: the branch no longer stops
+   * propagation, but it still moves focus, which would pull the caret out of a
+   * row the user is dragging.
+   */
+  it("leaves Up alone while a drag is live", async () => {
+    await mountApp();
+    await userEvent.keyboard("{ArrowDown}");
+    const row = document.activeElement;
+    setRowDragActive(true);
+
+    await userEvent.keyboard("{ArrowUp}");
+
+    expect(document.activeElement).toBe(row);
   });
 
   // The field keeps every other key. A modified Down is somebody else's.

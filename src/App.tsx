@@ -45,7 +45,10 @@ import { srOnly } from "./lib/srOnly.ts";
 import { AudioTabs } from "./lib/Tabs/AudioTabs";
 import { CurrentTab } from "./lib/Tabs/CurrentTab";
 import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
-import { setRowDragActive } from "./lib/Tabs/elements/rowControls.ts";
+import {
+  isPlainArrow,
+  setRowDragActive,
+} from "./lib/Tabs/elements/rowControls.ts";
 import { TabAvatarsDisplay } from "./lib/Tabs/elements/TabAvatarsDisplay.tsx";
 import { SelectionContext, SelectionProvider } from "./lib/Tabs/selection";
 import { TabDisplay } from "./lib/Tabs/Tab/TabDisplay.tsx";
@@ -266,7 +269,13 @@ function App() {
                   </SearchIconWrapper>
                   <StyledInputBase
                     placeholder="Search…"
-                    inputProps={{ "aria-label": "search" }}
+                    inputProps={{
+                      "aria-label": "search",
+                      // How a row finds its way back here. The rows must not
+                      // know this component's markup, and an aria-label is a
+                      // name for a user, not a selector for us.
+                      "data-search-field": "",
+                    }}
                     inputRef={searchInput}
                     value={search}
                     onKeyDown={(event) => {
@@ -275,14 +284,7 @@ function App() {
                       // the list: plain arrows stay unclaimed between rows, so
                       // the row walk keeps Left and Right to itself.
                       if (event.key !== "ArrowDown") return;
-                      if (
-                        event.altKey ||
-                        event.ctrlKey ||
-                        event.metaKey ||
-                        event.shiftKey
-                      ) {
-                        return;
-                      }
+                      if (!isPlainArrow(event)) return;
                       // Scoped to <main>: the DragOverlay renders a row of its
                       // own outside it, and "the first row" would find that one
                       // mid-drag.
