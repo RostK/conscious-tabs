@@ -61,7 +61,61 @@ measurement.
 Run in the **side panel**, with tab rows converted and group/window rows not yet. That is enough:
 the 20–80 rows are tab rows.
 
-- [ ] **AC-27 · twenty rows, one toolbar each** _(the measurement the design rests on)_
+**Run 2026-09-30** by RostK:
+- **Setup:** NVDA 2026.2 (read from the installer the tester ran, `nvda_2026.2.exe`), Chrome 154.0.8037.92, Windows 11. The build was `accessible-rows` at `5c11c3b`, loaded unpacked.
+- **Recording:** transcribed from NVDA's Speech Viewer. Tab titles that carried personal email addresses are redacted to `‹Gmail tab›`.
+- **Scale:** about 6 tabs, not 20. The 80-row run was not done (see below).
+
+**Heard, entering rows by Tab from the search field:**
+
+```
+main landmark
+Open tabs  list
+‹Gmail tab›, mail.google.com  tool bar
+Switch to ‹Gmail tab›  button
+‹Gmail tab›, mail.google.com  tool bar
+Switch to ‹Gmail tab›  button
+Google Calendar - Week of 27 September 2026, calendar.google.com  tool bar
+Switch to Google Calendar - Week of 27 September 2026  button
+Anthropic Courses, anthropic.skilljar.com  tool bar
+Switch to Anthropic Courses  button
+```
+
+**`↓` from the search field:**
+
+```
+main landmark
+Open tabs  list
+NV Access, www.nvaccess.org  tool bar
+Switch to NV Access  button
+```
+
+**Left/Right on that row, then Tab out:**
+
+```
+Select NV Access  button
+Close NV Access  button
+Reorder NV Access  draggable  To pick up a draggable item, press the space bar. While dragging, …
+Close NV Access  button
+Select NV Access  button
+Switch to NV Access  button
+Extensions, extensions  tool bar
+Switch to Extensions  button
+Actions  content info landmark  Open full view — … button
+```
+
+**Verdict: the gate passes. The §13.1 retreat is NOT triggered, but naming is reworked.**
+- The title is heard **first**: the toolbar's name leads with it, and "tool bar" comes after. So no row makes you sit through a toolbar announcement before the tab.
+- The real cost is one the plan never predicted: **every row says its title twice**, once as the toolbar name and again in "Switch to …". NVDA does not shorten this on later rows, because each row is a different toolbar.
+- The tester set the bar at "better than Chrome's own tab strip", meaning title once and first, plus the state and position Chrome gives. A prototype (`proto/row-names`, `e7340ac`) was built and judged by ear:
+  - the toolbar name is `title, site, [current tab], [playing audio | muted], [selected], n of N`;
+  - the primary button is just "Switch".
+- Verdict on the prototype: **"sounds right"**. That becomes SPEC-04 AM-3 and plan unit T-2b.
+- The long "Reorder … draggable" instructions are dnd-kit's defaults; T-6 (AC-15) replaces them. The tester also heard the drag-start default, "draggable item ‹id›", which is the same fix.
+
+- [x] **AC-27 · twenty rows, one toolbar each** _(the measurement the design rests on)_
+      **Result 2026-09-30:** passed on the title-first criterion, run at about 6 rows. The title was
+      doubled, which led to AM-3; see the run notes above.
       **Do:** ~20 tabs open. From the search field, Tab down the list. Do not touch the mouse.
       **Record, verbatim:** what NVDA says on entering row 1, row 2 and row 3. Does it announce the
       toolbar before the tab's title? How many words before you hear which tab you are on?
@@ -72,22 +126,33 @@ the 20–80 rows are tab rows.
       controls move into a `toolbar` beside it. Cost: **two Tab stops per row**, 40 at 20 tabs. T-0
       and T-1 stand either way. Do not invent a third shape.
 
-- [ ] **AC-27 · eighty rows**
+- [ ] **AC-27 · eighty rows** — *not run 2026-09-30.* The six-row run already showed the full
+      name repeated on every row, with no suppression between rows. Re-run this against the AM-3
+      names (T-2b) during T-10, together with the scroll-into-view check below.
       **Do:** the same at ~80 tabs.
       **Record:** does the announcement shorten after the first few rows? Some NVDA configurations
       suppress a repeated container announcement; whether this one does is the whole question.
 
-- [ ] **AC-3 · does the list announce its own size, and each row's place in it?**
+- [x] **AC-3 · does the list announce its own size, and each row's place in it?**
       **Record:** what NVDA says on entering the list ("list with N items"?) and on each row ("item
       n of N"?). Is N the number of **rendered** rows?
       **Fail if:** N is wrong or absent. **Then:** add explicit `aria-posinset` / `aria-setsize` per
       T-1's named fallback — and only that; the memo cost is accepted knowingly.
+      **Result 2026-09-30: absent.** NVDA said "Open tabs list" with no count, and gave no position
+      on the rows.
+      - **The named fallback cannot fix it.** NVDA reports position only for the focused object,
+        and focus sits on a `button` inside the `listitem`, so `aria-posinset`/`aria-setsize` on the
+        item would never be read.
+      - **Replaced by AM-3.** ", n of N" goes at the end of each tab row's toolbar name, counted over
+        the tab rows actually rendered. It was heard in the prototype and approved.
 
 - [ ] **AC-7 / E-10 · does focus scroll into view at eighty rows?**
       **Do:** Tab to row 60. **Expect:** the browser scrolls it into view without help. This is the
       case `aria-activedescendant` handles worst, and the reason roving real focus was chosen.
 
-- [ ] **AC-34 / AC-35 · the walk, heard rather than asserted**
+- [x] **AC-34 / AC-35 · the walk, heard rather than asserted** — *passed 2026-09-30.* It went
+      Switch → Select → Close → Reorder and back without wrapping, each control saying its own name.
+      Tab then left the row for the next one.
       **Do:** on one row, Left and Right across every control; then Right on the last and Left on the
       first. **Expect:** each control announces its own name; the ends do not wrap. Then Tab — it
       must leave the row, not move within it.

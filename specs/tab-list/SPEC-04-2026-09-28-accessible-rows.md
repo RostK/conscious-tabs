@@ -5,7 +5,7 @@
 | **Spec ID**    | SPEC-04                                                                                                                                                                                                                                                                |
 | **Date**       | 2026-09-28                                                                                                                                                                                                                                                             |
 | **Module**     | `tab-list` (`src/lib/Tabs/Tab/`, `src/lib/Tabs/TabsGroup/`, `src/lib/Tabs/Window/`, `src/lib/Tabs/elements/rowControls.ts`, `src/lib/Tabs/elements/DragHandle.tsx`, `src/lib/Tabs/elements/TabGrid.tsx`, `src/lib/Tabs/Tabs.tsx`) — with edges into `ui-shell` (`src/App.tsx`) |
-| **Status**     | **approved 2026-09-29**, **amended 2026-09-29** (AM-1 on AC-29, AM-2 on AC-32/AC-33 — §13.2). All eight clarifications closed; see §13.                                                                                                                                  |
+| **Status**     | **approved 2026-09-29**, **amended 2026-09-29** (AM-1 on AC-29, AM-2 on AC-32/AC-33 — §13.2), **amended 2026-09-30** (AM-3 on AC-3/AC-6/AC-29, from the T-3 gate — §13.3). All eight clarifications closed; see §13. |
 | **Supersedes** | —                                                                                                                                                                                                                                                                      |
 
 ---
@@ -363,6 +363,11 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   each row `listitem` semantics. _(Today it exposes neither — §1.4.)_
   **Verify:** unit — `getByRole("list")` resolves, and `getAllByRole("listitem")` returns one per
   rendered row for the 2-, 5-, 8- and 20-row fixtures; manual screen-reader pass per AC-27.
+  **Amended 2026-09-30 (AM-3).** Measured with NVDA, the list semantics expose neither count nor
+  position, because focus sits on a button inside the item. The **position of a focused tab row**
+  SHALL therefore also be carried in its toolbar name as ", n of N", where N is the number of tab
+  rows rendered and n is this row's place among them, in document order. See AC-29. The `list` /
+  `listitem` structure stays.
 - **AC-4** _(Must)_ The window > group > tab hierarchy SHALL NOT be expressed structurally; a
   window's and a group's descendants remain siblings in one flat list, as they are today (§1.4).
   **Verify:** Non-goal NG-12 records this, and a unit test asserts the list is flat — no nested
@@ -381,6 +386,11 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   identifies its subject.
   **Verify:** automated — axe `button-name` and `aria-command-name` report zero nodes; plus a unit
   assertion that each tab-row control's accessible name contains that tab's title.
+  **Amended 2026-09-30 (AM-3).** There is one exception: a row's **primary** control, the one Tab
+  lands on. Its subject is supplied by the row toolbar it sits in, because a screen reader
+  announces that toolbar's name on entry. So the tab row's primary control is named `Switch`, and
+  the title is not repeated. Every other control on the row still names its tab (`Select …`,
+  `Close …`, `Reorder …`, `Mute …`).
 - **AC-7** _(Must)_ WHEN the keyboard model moves focus, the newly focused element SHALL be scrolled
   into view.
   **Verify:** unit — assert focus lands on a real element (not only an `aria-activedescendant`
@@ -502,6 +512,19 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   non-empty, that rows with distinct subjects have distinct names, and that AC-24's hostile-title
   case yields a literal-text name. Include two tabs open on the same URL with the same title and
   assert this does **not** fail.
+  **Amended 2026-09-30 (AM-3).** A **tab row's** toolbar name SHALL be, in this order and joined by
+  ", ":
+  1. the title, or "tab" if it has none;
+  2. where it lives (`hostOf`: host, the scheme, or "extension");
+  3. "current tab", if it is its window's active tab;
+  4. "muted", or else "playing audio", if either applies;
+  5. "selected", if it is selected for bulk actions;
+  6. "n of N", per AC-3.
+
+  The title SHALL come first and SHALL NOT be repeated by the primary control (AC-6). The name
+  SHALL follow changes to any of its parts without a remount.
+  **Verify:** unit — the full name for a tab in each state, the renumbering after a filter and after
+  a close, and the primary is named `Switch`; manual per AC-27.
   _(**Amended 2026-09-29.** The original demanded names be both subject-derived *and* distinct from
   every other toolbar. Those two halves conflict: two tabs open on the same page have the same title
   and the same URL, so they have the same subject and cannot be told apart by any subject-derived
@@ -807,6 +830,28 @@ the search list goes on rendering the tabs anyway (`:271`) and shows no chevron 
 It is an invisible side effect on live browser state. Dropping the primary action there does not
 merely decline to add a control; **it removes that.** Not fixed by this spec beyond the row's
 keyboard surface, and worth its own look — PI-8.
+
+### 13.3 Amendment — 2026-09-30, from the T-3 screen-reader gate
+
+| #        | Amendment |
+| -------- | --------- |
+| **AM-3** | **A tab row says its title once and first, then where it lives, its state, and "n of N"; its primary control is `Switch`.** This amends AC-3, AC-6 and AC-29. |
+
+**Why.** The T-3 run (NVDA 2026.2, Chrome 154; `plans/MANUAL-SWEEP-SPEC-04.md` §B) passed the gate as written: the title came before "tool bar", so §13.1's retreat was not triggered. But it found two things no criterion had foreseen:
+- **Every row said its title twice**, once in the toolbar's name and again in "Switch to …".
+- **AC-3's list semantics produced no count or position at all.** NVDA reports position only for the focused object, and focus sits on a button, so the fallback T-1 named (`aria-posinset` on the item) could not help either.
+
+The user set the bar as **better than Chrome's own tab strip**. That strip says the title once and first, with "selected" and "3 of 20". This spec now asks for that, plus the state Chrome does not report (playing audio, muted, selected for bulk actions).
+
+**How it was decided.** By ear, not on paper. A throwaway prototype (`proto/row-names`, `e7340ac`) was loaded unpacked and tabbed through with NVDA. The verdict was "sounds right".
+
+**What it reverses.**
+- AM-1 said tab rows "deliberately do not" take an ordinal, "because `index` churns". That objection was to a number carried as a **prop**, which would defeat the row memo (plan D-6). The position here is counted over the rendered rows and written into the name **outside React's render**, so it costs the memo nothing. PLAN-SPEC-04 T-2b decides the mechanism and measures it at 80 rows.
+- AM-1's distinctness rule still holds: position makes every tab row's name unique.
+
+**Rejected.**
+- **A site-only toolbar name** ("mail.google.com, tool bar, Switch to …"). It says the title once, but only after the site and "tool bar" on every row, which is the very pattern the gate exists to catch.
+- **Keeping the doubled title.** It is accessible, but a Gmail-length title makes every row twice as long to hear, on every row, and NVDA does not shorten it after the first few.
 
 ## 14. Traceability
 

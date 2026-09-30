@@ -21,7 +21,8 @@
 | T-0  | built (c90207c) | Wire axe in as a declared devDependency, and record today's numbers before any of them move. Measured 5/20/8/2 and 20 stops — matched the plan on the post-#22 tree. |
 | T-1  | built (383f4a1) | One `list`, one `listitem` per rendered row. Survives either outcome of the T-3 gate. |
 | T-2  | built (75b2a6e), reviewed, fix round 1 (see below) | The tab row becomes a `toolbar`. The shape the gate is about. nested-interactive now 0/0/3/1; baseline test updated with the old numbers in comments. One authorised edit outside the plan: `App.test.tsx` "comes back from a control inside a row" selector → `main [role="toolbar"] [data-row-control]:not([data-tab-row])`, because D-3 moved `data-tab-row` onto the primary button. |
-| T-3  | not started | **Gate — NVDA + Chrome, 20 and 80 rows.** A-7 is discharged here or the §13.1 retreat starts. |
+| T-3  | **passed 2026-09-30** | **Gate — NVDA + Chrome.** The §13.1 retreat is not triggered: the title is heard first. But every row said its title twice, and NVDA gave no count or position. That led to SPEC-04 AM-3 and new unit T-2b. The 80-row check moves to T-10. See sweep §B. |
+| T-2b | not started | **Name the tab row once** (AM-3): `title, site, state, n of N`, and the primary control is `Switch`. Added after T-3; runs before T-4. |
 | T-4  | not started | The group row. |
 | T-5  | not started | The window row. |
 | T-6  | not started | Reordering, pinned — including the hand-off nothing documents. |
@@ -74,7 +75,7 @@ Still open, carried forward rather than fixed now:
 
 Carried to T-8: `ListItemAvatar`/`ListItemText` render `<div>`s inside the primary `<button>`. That is non-conforming but harmless, and changing it moves layout the T-8 re-measure has to check.
 
-Next: **T-3, the user's NVDA session**, against a fresh `npm run build`. The branch is held locally, per the user's 2026-09-30 decision, and pushed after the gate.
+T-3 ran 2026-09-30 and passed; see its row above and sweep §B. Next: **T-2b** (AM-3), then T-4.
 
 ---
 
@@ -227,7 +228,7 @@ discovery.
 
   | Row kind | Toolbar name (AC-29)                              | Primary button name (AC-6, AC-32, AC-33)              |
   | -------- | ------------------------------------------------- | ------------------------------------------------------ |
-  | Tab      | `` `${title \|\| "tab"}, ${host}` ``              | `` `Switch to ${title \|\| "tab"}` ``                   |
+  | Tab      | **AM-3 (2026-09-30):** `title, site[, current tab][, muted \| playing audio][, selected], n of N` — was `` `${title \|\| "tab"}, ${host}` `` | **AM-3:** `Switch` — was `` `Switch to ${title \|\| "tab"}` `` |
   | Group    | `` `Group ${title \|\| "untitled"}` ``            | `Collapse group …` / `Expand group …`, `aria-expanded`  |
   | Window   | `` `Window ${n}, ${count} tab(s)` ``              | `Hide this window's tabs` / `Show …`, `aria-expanded`   |
 
@@ -474,6 +475,51 @@ harness, no production code).
   item count, add `aria-posinset`/`aria-setsize` per T-1's pitfall.
 - **ACs:** **AC-27** _(the side-panel third; the anchor tab and the float are T-10)_, A-7, E-16
 
+### T-2b · Name the tab row once — title first, then site, state and place
+
+_Added 2026-09-30 from the T-3 gate. SPEC-04 AM-3 (§13.3) amends AC-3, AC-6 and AC-29; the prototype
+`proto/row-names` (`e7340ac`) is the reference that was judged by ear, not a patch to merge._
+
+- **Track:** ui · **Files:** `src/lib/Tabs/Tab/TabDisplay.tsx`, `src/lib/Tabs/elements/RowList.tsx`,
+  `src/lib/Tabs/Tab/TabDisplay.test.tsx`, `src/lib/Tabs/elements/RowList.test.tsx`, and any existing
+  test that asserts `Switch to …` (grep first; `App.test.tsx` included)
+- **Scope:**
+  - `TabDisplay`: the toolbar name is built in the AM-3 order from `tab`, `hostOf`, `muted` and
+    `isSelected`, all of which are already in the component. There is no new prop (D-6).
+    The name goes on both `aria-label` and `data-row-label`. The primary control's `aria-label` becomes `Switch`.
+  - `RowList`: after commit, append `, n of N` to every `[data-row-label]` element in document order.
+    A `MutationObserver` on the list (`childList`, `subtree`, and `attributeFilter: ["data-row-label"]`)
+    re-numbers when rows are added, removed or renamed. It never observes `aria-label`, which it
+    writes itself, and it writes only when the value differs.
+  - Numbering is counted over **tab rows only**, the rows actually rendered, so a collapsed
+    group or window, or a search filter, changes N.
+- **Why the DOM, not a prop.** A position prop re-renders every row after an insertion, which is
+  exactly the cost D-6 was built to remove. Written after commit, the number costs the memo nothing.
+  React writes the base name into `aria-label` too, so a row rendered outside a `RowList` still has
+  a name. Examples are the drag overlay and a unit test rendering `TabDisplay` alone.
+- **Pitfall — React and the observer both write `aria-label`.** React writes only when
+  `toolbarName` changes, and then also changes `data-row-label`, which triggers the renumber. If
+  React ever writes on a render where the name did not change, the ", n of N" disappears until
+  the next mutation. Assert that a re-render with an unchanged tab keeps the position.
+- **Measure, don't assume.** At 80 rows, time one renumber pass (a filter keystroke, and a
+  close), compare against the pre-change keystroke cost, and record both in `LEARNINGS.md`.
+  If a pass costs more than a few milliseconds, stop and report.
+- **DoD:**
+  - The name is asserted for a plain tab, the active tab, audible, muted, selected, a combined
+    state, a no-title tab and a `data:` URL.
+  - The primary is named `Switch`, and every other control still contains the title (AC-6 as amended).
+  - Filtering renumbers (1…3 of 3). Closing a row renumbers the rest. A collapsed group drops its tabs from N.
+  - A title change updates the name without a remount, and a re-render keeps the position.
+  - AM-1's distinctness holds, including for two same-title tabs.
+  - The 80-row timing is recorded.
+  - `TabListItem.tsx` gains no prop.
+  - `npm test`, `npm run lint` and `npm run build` pass.
+- **ACs:** **AC-3** _(as amended)_, **AC-6** _(as amended)_, **AC-29** _(tab row, as amended)_, E-18
+- **Open for T-4/T-5 (not decided here):** the group and window rows would have the same doubling.
+  The group toolbar reads `Group X`, then its primary `Collapse group X`. Apply AM-3's principle
+  there too (title once, first; a short primary), but settle the wording by ear when T-4 is built,
+  not on paper now.
+
 ### T-4 · The group row
 
 - **Track:** ui · **Files:** `src/lib/Tabs/TabsGroup/GroupDisplay.tsx`,
@@ -689,7 +735,7 @@ harness, no production code).
 
 ## 4. Sequencing
 
-T-0 → T-1 → T-2 → **T-3 (gate)** → T-4 → T-5 → T-6 → T-7 → T-8 → T-9 → T-10.
+T-0 → T-1 → T-2 → **T-3 (gate)** → **T-2b** (added 2026-09-30, from the gate) → T-4 → T-5 → T-6 → T-7 → T-8 → T-9 → T-10.
 
 Single-agent and sequential, so each unit leaves the tree building and every step of the CI gate —
 `npm run lint`, `npm run test`, then `npm run build` (`.github/workflows/ci.yml:41-52`) — green.
