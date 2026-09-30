@@ -308,6 +308,7 @@ are already `listitem`s and that SPEC-04 AC-34…AC-37 are implemented facts, no
 
 ## 4. User stories
 
+  **Viability confirmed 2026-09-30 (§16 item 5):** the command does reopen the panel after a manual close, so this was dropped on cost and not on capability — closing destroys the panel's search text to solve what `F6` solves in one key with nothing lost.
 - **US-1** As a keyboard-only user, I want to open Conscious Tabs with a key, so that the extension
   is reachable at all without a mouse.
 - **US-2** As someone with eighty tabs open, I want to start typing the moment the manager appears,
@@ -1019,6 +1020,7 @@ spec refuses to let a derived number stand in for an observed one.
 | 2   | `window.focus()` **called on mount, from the panel document itself, is honoured.** With it, the first keystroke after the shortcut lands in the search field.                                                            | Reverses "nothing can be done". AC-12 is satisfiable. C-14 item 2. |
 | 3   | A **second** press, panel already open, **cannot** bring focus back. The plumbing was built to find out — worker messages the panel after opening, panel listens, **three presses heard** — and `window.focus()` was ignored: `document.hasFocus()` `false` before the call and `false` after. Transient activation is required and only the moment of creation has it. **The plumbing was then removed.** | Confirms AC-3's relaxation and C-12's second half. C-14 item 3.    |
 | 4   | **`F6` cycles focus between the page and the panel, in both directions.**                                                                                                                                               | The round trip needs nothing from us. C-15, and the reason for NG-13. |
+| 5   | **The command reopens the panel after the user has closed it by hand.** Checked because one Chromium report associates the "may only be called in response to a user gesture" failure with "reopening after manual close"; it does not reproduce here.                                                                     | The ordinary close-and-reopen flow works. It also means NG-13's Escape-to-close was *viable* rather than impossible — it was dropped on cost (it destroys the panel's search text), not on capability, and NG-13 says so. |
 
 **Outstanding**
 
