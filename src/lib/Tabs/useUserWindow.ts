@@ -26,6 +26,11 @@ const store = createBrowserStore<{ id?: number }>({
     chrome.windows.onCreated,
     chrome.windows.onRemoved,
     chrome.windows.onFocusChanged,
+    // A tab switch inside one window changes the answer without any window
+    // event: from the anchor's own window, leaving the anchor tab for a page
+    // makes that window the user's again, and window events alone left the
+    // card on another window until focus next moved.
+    chrome.tabs.onActivated,
   ],
   load: async () => ({ id: await resolveUserWindow() }),
 });

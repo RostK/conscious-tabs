@@ -158,6 +158,60 @@ describe("resolveUserWindow", () => {
     expect(await resolveUserWindow()).toBeUndefined();
   });
 
+  // Reported 2026-09-30 from the float and the anchor tab: open a link in a new
+  // tab and the current-tab card disappears. A tab that has not committed its
+  // first navigation has an empty `url` — where it is going is `pendingUrl` —
+  // and a window whose active tab had no url did not count as the user's, so
+  // the one window the user was in was skipped at the moment they acted in it.
+  it("keeps a window whose active tab has only just opened from a link", async () => {
+    atHost("/?host=float");
+    const stub = installChrome({
+      windows: [{ id: 1 }],
+      tabs: [
+        { id: 12, windowId: 1, active: true, url: "", pendingUrl: "https://example.com/next" },
+      ],
+    });
+    stub.windows.getLastFocused.mockResolvedValue({
+      id: 1,
+    } as chrome.windows.Window);
+
+    expect(await resolveUserWindow()).toBe(1);
+  });
+
+  it("does not hand that moment to a different window", async () => {
+    atHost("/?host=anchor");
+    const stub = installChrome({
+      windows: userWindows,
+      tabs: [
+        { id: 12, windowId: 1, active: true, url: "", pendingUrl: "https://example.com/next" },
+        browsing[1],
+      ],
+    });
+    stub.windows.getLastFocused.mockResolvedValue({
+      id: 1,
+    } as chrome.windows.Window);
+
+    expect(await resolveUserWindow()).toBe(1);
+  });
+
+  // The same empty `url` on our own anchor tab while it loads: where it is
+  // going is ours, so the window is still not the user's (AC-17).
+  it("still skips a window whose loading tab is on its way to one of ours", async () => {
+    atHost("/?host=float");
+    const stub = installChrome({
+      windows: [{ id: 3 }, { id: 1 }],
+      tabs: [
+        { id: 30, windowId: 3, active: true, url: "", pendingUrl: extensionUrl("index.html?host=anchor") },
+        ...browsing,
+      ],
+    });
+    stub.windows.getLastFocused.mockResolvedValue({
+      id: 3,
+    } as chrome.windows.Window);
+
+    expect(await resolveUserWindow()).toBe(1);
+  });
+
   // Measured 2026-09-22 against a live float: Chrome reports a Document
   // Picture-in-Picture window as `type: "normal"`, so an earlier version of
   // this that filtered on windowTypes did nothing at all. Its active tab is
