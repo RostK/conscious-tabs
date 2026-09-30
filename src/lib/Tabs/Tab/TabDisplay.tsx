@@ -137,9 +137,20 @@ export const TabDisplay: FC<{
   // Derived here, from `tab`, and never passed in: a new prop on TabListItem
   // would defeat its row memo (SPEC-04 D-6).
   const host = hostOf(tab.url);
-  const toolbarName = host
-    ? `${tab.title || "tab"}, ${host}`
-    : tab.title || "tab";
+  // SPEC-04 AM-3: the title once and first, then where it lives, then the state
+  // Chrome's own tab strip does not report. `RowList` appends ", n of N" to
+  // this after commit (it reads `data-row-label`), so the position never
+  // travels as a prop and never re-renders a row.
+  const sound = muted ? "muted" : tab.audible ? "playing audio" : "";
+  const toolbarName = [
+    tab.title || "tab",
+    host,
+    tab.active ? "current tab" : "",
+    sound,
+    isSelected ? "selected" : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <ListItemButton
@@ -151,7 +162,13 @@ export const TabDisplay: FC<{
       role="toolbar"
       // Never focused and not a tab stop: the primary button below is the stop.
       tabIndex={-1}
+      // React writes the base name here so a row outside a `RowList` (the drag
+      // overlay, a test rendering this alone) still has one. Inside a list,
+      // `RowList` reads `data-row-label` and overwrites this with the same name
+      // plus its position. React writes both only when the name changes, and
+      // never on a render where it did not, which is what keeps the position.
       aria-label={toolbarName}
+      data-row-label={toolbarName}
       dense
       onClick={handleActivate}
       onKeyDown={handleRowKeys}
@@ -186,7 +203,9 @@ export const TabDisplay: FC<{
         disableRipple
         data-tab-row=""
         data-active-tab={tab.active ? "" : undefined}
-        aria-label={`Switch to ${tab.title || "tab"}`}
+        // Not "Switch to <title>": the toolbar around it is named for the tab
+        // and is announced on entry, so the title would be heard twice (AM-3).
+        aria-label="Switch"
         onClick={handlePrimary}
         sx={{
           flex: 1,

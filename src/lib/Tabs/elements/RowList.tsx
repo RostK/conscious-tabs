@@ -1,5 +1,34 @@
 import { Box } from "@mui/material";
-import { FC, PropsWithChildren } from "react";
+import { FC, PropsWithChildren, useLayoutEffect, useRef } from "react";
+
+/**
+ * A tab row keeps its own name, without a position, in this attribute
+ * (`TabDisplay` writes it). SPEC-04 AM-3.
+ */
+const ROW_LABEL_ATTRIBUTE = "data-row-label";
+
+/**
+ * Says ", n of N" on every named row in the list: N is the rows rendered, n the
+ * row's place among them in document order, so a filter, a close, or a collapsed
+ * group changes both.
+ *
+ * Done here, in the DOM after commit, and not as a prop. A position handed to
+ * each row re-renders every row that follows an insertion, which is the cost
+ * the row memo exists to remove (PLAN-SPEC-04 D-6). React writes only the base
+ * name, and only when that name changes, so it never erases a position on a
+ * render where it did not also change the data attribute this reacts to. This
+ * writes only when the value differs, and `aria-label` is what it writes, so
+ * that is not observed.
+ */
+const numberRows = (list: HTMLElement) => {
+  const rows = list.querySelectorAll<HTMLElement>(`[${ROW_LABEL_ATTRIBUTE}]`);
+  rows.forEach((row, index) => {
+    const name = `${row.getAttribute(ROW_LABEL_ATTRIBUTE)}, ${index + 1} of ${rows.length}`;
+    if (row.getAttribute("aria-label") !== name) {
+      row.setAttribute("aria-label", name);
+    }
+  });
+};
 
 /**
  * The one `list` on the surface, shared by `TabsView` and `SearchView`.
@@ -17,9 +46,33 @@ import { FC, PropsWithChildren } from "react";
  * Render it only when there are rows: an empty container must not announce
  * itself as a list of zero, so callers mount it below their empty-state
  * early return.
+ *
+ * It also numbers the tab rows inside it (`numberRows`), and re-numbers when
+ * rows are added, removed or renamed.
  */
-export const RowList: FC<PropsWithChildren> = ({ children }) => (
-  <Box role="list" aria-label="Open tabs">
-    {children}
-  </Box>
-);
+export const RowList: FC<PropsWithChildren> = ({ children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    const renumber = () => numberRows(list);
+    renumber();
+    const observer = new MutationObserver(renumber);
+    observer.observe(list, {
+      childList: true,
+      subtree: true,
+      // Never `aria-label`: that is what `numberRows` writes, and watching it
+      // would have the observer wake itself.
+      attributes: true,
+      attributeFilter: [ROW_LABEL_ATTRIBUTE],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Box ref={ref} role="list" aria-label="Open tabs">
+      {children}
+    </Box>
+  );
+};

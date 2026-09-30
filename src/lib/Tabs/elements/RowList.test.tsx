@@ -1,8 +1,19 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { expectNoViolations,runAxe } from "../../../test/axe.ts";
-import { EXTENSION_ORIGIN, installChrome } from "../../../test/chromeStub.ts";
+import {
+  ChromeFixtures,
+  EXTENSION_ORIGIN,
+  installChrome,
+} from "../../../test/chromeStub.ts";
 import {
   COLLAPSED_GROUP,
   FIVE_TABS,
@@ -16,6 +27,8 @@ import { SearchView } from "../../../views/SearchView/index.tsx";
 import { TabsView } from "../../../views/TabsView/index.tsx";
 import { DropPlaceholder } from "../DnD";
 import { SelectionProvider } from "../selection";
+import { TabDisplay } from "../Tab/TabDisplay.tsx";
+import { TabItem } from "../types.ts";
 import { RowList } from "./RowList.tsx";
 
 // `isOver` comes from dnd-kit and needs a live drag to become true. Forcing it
@@ -312,5 +325,320 @@ describe("AC-31 · a drop placeholder is a row, so it is an item (E-14)", () => 
       expect(within(item).queryAllByRole("listitem")).toHaveLength(0);
     }
     expectNoViolations(await runAxe(container, STRUCTURE_RULES));
+  });
+});
+
+/**
+ * SPEC-04 AM-3 / AC-3. RowList says ", n of N" on every tab row, after commit,
+ * counted over the rows actually rendered.
+ *
+ * Every case that changes only a row's *place* is one where React has nothing
+ * to do: `stableTab` hands back the same object, the row memo skips it, and its
+ * base name is unchanged. Only the observer can renumber those, which is the
+ * mechanism these are here to prove.
+ */
+describe("AM-3 · RowList numbers the tab rows", () => {
+  const names = () =>
+    screen.getAllByRole("toolbar").map((row) => row.getAttribute("aria-label"));
+
+  const fire = (event: unknown) => {
+    act(() => {
+      (event as { fire: () => void }).fire();
+    });
+  };
+
+  const tabRow = (id: number, over: Partial<chrome.tabs.Tab> = {}) => ({
+    id,
+    index: id - 1,
+    windowId: 1,
+    groupId: -1,
+    active: false,
+    highlighted: false,
+    title: `Tab ${id}`,
+    url: `https://example.com/${id}`,
+    ...over,
+  });
+
+  const oneWindow = [
+    { id: 1, alwaysOnTop: false, type: "normal" as const, focused: true },
+  ];
+
+  const renderTabs = async (fixtures: ChromeFixtures, ready: string) => {
+    installChrome(fixtures);
+    const view = render(
+      <SelectionProvider>
+        <TabsView />
+      </SelectionProvider>,
+    );
+    await screen.findAllByText(ready);
+    return view;
+  };
+
+  const searchOf = (text: string) => (
+    <SelectionProvider>
+      <SearchView search={text} onMatches={() => undefined} />
+    </SelectionProvider>
+  );
+
+  const rowItem = (id: number): TabItem => ({
+    type: "tab",
+    id,
+    index: id,
+    windowId: 1,
+    groupId: -1,
+    active: false,
+    highlighted: false,
+    title: `Row ${id}`,
+    url: "https://example.com/",
+  });
+
+  it("counts tab rows only, in order, and says the state each one is in", async () => {
+    await renderList(MIXED_WINDOWS);
+
+    // Two window rows and the group row are listitems but not tab rows: they
+    // are neither numbered nor counted, so N is 5 and not 8.
+    expect(names()).toEqual([
+      "Plain tab, example.com, 1 of 5",
+      "Grouped one, example.com, 2 of 5",
+      "Grouped two, example.com, playing audio, 3 of 5",
+      "Muted tab, example.com, muted, 4 of 5",
+      "Another plain tab, example.com, 5 of 5",
+    ]);
+  });
+
+  it("gives every row of twenty its own name", async () => {
+    await renderList(TWENTY_TABS);
+
+    expect(new Set(names()).size).toBe(20);
+    expect(names()[0]).toBe("Tab 1, example.com, 1 of 20");
+    expect(names()[19]).toBe("Tab 20, example.com, 20 of 20");
+  });
+
+  // AM-1: the same title on the same page is the same subject, and position is
+  // what tells the two apart — where they used to be allowed to collide.
+  it("tells two tabs with the same title on the same page apart", async () => {
+    const same = { title: "Inbox", url: "https://mail.example.com/" };
+    await renderTabs(
+      { windows: oneWindow, tabs: [tabRow(1, same), tabRow(2, same)] },
+      "Inbox",
+    );
+
+    expect(names()).toEqual([
+      "Inbox, mail.example.com, 1 of 2",
+      "Inbox, mail.example.com, 2 of 2",
+    ]);
+  });
+
+  it("renumbers when a search filters the list down (1 … 3 of 3)", async () => {
+    installChrome({
+      windows: oneWindow,
+      tabs: [
+        tabRow(1, { title: "Alpha one" }),
+        tabRow(2, { title: "Beta" }),
+        tabRow(3, { title: "Alpha two" }),
+        tabRow(4, { title: "Gamma" }),
+        tabRow(5, { title: "Alpha three" }),
+      ],
+    });
+    // Every URL matches this, so all five are listed to begin with.
+    const view = render(searchOf("example"));
+    await screen.findByText("Gamma");
+    expect(names()).toHaveLength(5);
+    expect(names()[2]).toBe("Alpha two, example.com, 3 of 5");
+
+    view.rerender(searchOf("alpha"));
+
+    await waitFor(() => {
+      expect(names()).toEqual([
+        "Alpha one, example.com, 1 of 3",
+        "Alpha two, example.com, 2 of 3",
+        "Alpha three, example.com, 3 of 3",
+      ]);
+    });
+  });
+
+  it("renumbers the rest when a row is closed", async () => {
+    const fixtures = FIVE_TABS.build();
+    await renderTabs(fixtures, FIVE_TABS.ready);
+    expect(names()[4]).toBe("Tab 5, example.com, 5 of 5");
+
+    fixtures.tabs!.splice(1, 1);
+    fire(chrome.tabs.onRemoved);
+
+    await waitFor(() => {
+      expect(names()).toEqual([
+        "Tab 1, example.com, 1 of 4",
+        "Tab 3, example.com, 2 of 4",
+        "Tab 4, example.com, 3 of 4",
+        "Tab 5, example.com, 4 of 4",
+      ]);
+    });
+  });
+
+  it("does not count the tabs of a group that starts collapsed", async () => {
+    await renderList(COLLAPSED_GROUP);
+
+    expect(names()).toEqual(["Outside the group, example.com, 1 of 1"]);
+  });
+
+  it("drops the tabs of a group from N when it collapses", async () => {
+    const fixtures: ChromeFixtures = {
+      windows: oneWindow,
+      groups: [
+        {
+          id: 500,
+          title: "Reading",
+          color: "purple",
+          collapsed: false,
+          windowId: 1,
+        },
+      ],
+      tabs: [
+        tabRow(1, { groupId: 500, title: "In group one" }),
+        tabRow(2, { groupId: 500, title: "In group two" }),
+        tabRow(3, { title: "Outside" }),
+      ],
+    };
+    await renderTabs(fixtures, "Outside");
+    expect(names()).toEqual([
+      "In group one, example.com, 1 of 3",
+      "In group two, example.com, 2 of 3",
+      "Outside, example.com, 3 of 3",
+    ]);
+
+    // The stub hands out its `groups` array itself, not a copy, so the store's
+    // last snapshot would change under it and the refresh would look like
+    // nothing new (LEARNINGS 2026-09-24). Real Chrome answers with fresh
+    // objects, so: a new array, and an answer that is a copy of it.
+    fixtures.groups = [{ ...fixtures.groups![0], collapsed: true }];
+    chrome.tabGroups.query = vi.fn(async () =>
+      structuredClone(fixtures.groups),
+    ) as unknown as typeof chrome.tabGroups.query;
+    fire(chrome.tabGroups.onUpdated);
+
+    await waitFor(() => {
+      expect(names()).toEqual(["Outside, example.com, 1 of 1"]);
+    });
+  });
+
+  it("follows a rename, an audio change and a selection on the same row, keeping its place", async () => {
+    const fixtures = FIVE_TABS.build();
+    await renderTabs(fixtures, FIVE_TABS.ready);
+    const row = screen.getAllByRole("toolbar")[1];
+    expect(row).toHaveAttribute("aria-label", "Tab 2, example.com, 2 of 5");
+
+    fixtures.tabs![1] = { ...fixtures.tabs![1], title: "Renamed" };
+    fire(chrome.tabs.onUpdated);
+    await waitFor(() => {
+      expect(row).toHaveAttribute("aria-label", "Renamed, example.com, 2 of 5");
+    });
+
+    fixtures.tabs![1] = { ...fixtures.tabs![1], audible: true };
+    fire(chrome.tabs.onUpdated);
+    await waitFor(() => {
+      expect(row).toHaveAttribute(
+        "aria-label",
+        "Renamed, example.com, playing audio, 2 of 5",
+      );
+    });
+
+    // Becoming the current tab changes the row's class and nothing in its
+    // subtree, so this is the case only the attribute half of the observer
+    // catches: a name that changed without a child being added or removed.
+    fixtures.tabs![1] = { ...fixtures.tabs![1], active: true };
+    fire(chrome.tabs.onActivated);
+    await waitFor(() => {
+      expect(row).toHaveAttribute(
+        "aria-label",
+        "Renamed, example.com, current tab, playing audio, 2 of 5",
+      );
+    });
+
+    fireEvent.click(row, { ctrlKey: true });
+    await waitFor(() => {
+      expect(row).toHaveAttribute(
+        "aria-label",
+        "Renamed, example.com, current tab, playing audio, selected, 2 of 5",
+      );
+    });
+    // Never a remount: the element the reader is on is the element that changed.
+    expect(screen.getAllByRole("toolbar")[1]).toBe(row);
+    expect(names()).toHaveLength(5);
+  });
+
+  // The pitfall in the plan: React and the observer both write `aria-label`.
+  // React writes only when the name changes, and the observer re-numbers off the
+  // data attribute that changes with it — so a render where nothing changed must
+  // leave the position alone. A write on every render would erase it, and
+  // nothing would put it back until the next mutation.
+  it("keeps its position when a row re-renders with the same tab", async () => {
+    const list = () => (
+      <SelectionProvider>
+        <RowList>
+          <div role="listitem">
+            <TabDisplay tab={rowItem(1)} />
+          </div>
+          <div role="listitem">
+            <TabDisplay tab={rowItem(2)} />
+          </div>
+        </RowList>
+      </SelectionProvider>
+    );
+    installChrome();
+
+    const view = render(list());
+    await act(async () => undefined);
+    const numbered = [
+      "Row 1, example.com, 1 of 2",
+      "Row 2, example.com, 2 of 2",
+    ];
+    expect(names()).toEqual(numbered);
+
+    // Fresh objects, equal contents: what a browser event's rebuild produces.
+    // Read at once, without yielding: the observer runs in a microtask, and
+    // anything it later put right would hide a render that had erased the
+    // position in the meantime — a screen reader can be told in that gap.
+    view.rerender(list());
+    expect(names()).toEqual(numbered);
+    await act(async () => undefined);
+    expect(names()).toEqual(numbered);
+  });
+
+  // Bare elements, so nothing but RowList can be what puts a position on them:
+  // a real row has favicons and effects whose own mutations would number a
+  // list that never numbered itself.
+  it("numbers what it mounts with at once, and follows rows added and removed", async () => {
+    const row = (label: string) => (
+      <div key={label} role="listitem" data-row-label={label} aria-label={label} />
+    );
+    const list = (...labels: string[]) => (
+      <RowList>{labels.map(row)}</RowList>
+    );
+    const listed = () =>
+      screen.getAllByRole("listitem").map((item) => item.getAttribute("aria-label"));
+
+    const view = render(list("a", "b"));
+    expect(listed()).toEqual(["a, 1 of 2", "b, 2 of 2"]);
+
+    view.rerender(list("a", "x", "b"));
+    await waitFor(() => {
+      expect(listed()).toEqual(["a, 1 of 3", "x, 2 of 3", "b, 3 of 3"]);
+    });
+
+    view.rerender(list("b"));
+    await waitFor(() => {
+      expect(listed()).toEqual(["b, 1 of 1"]);
+    });
+  });
+
+  it("leaves a row outside any list with the name it has on its own", () => {
+    installChrome();
+    render(
+      <SelectionProvider>
+        <TabDisplay tab={rowItem(1)} />
+      </SelectionProvider>,
+    );
+
+    expect(names()).toEqual(["Row 1, example.com"]);
   });
 });

@@ -83,6 +83,17 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `RowList` rendered as an empty `role="list"` — a wrapper needs its own "has rows" gate.
   Evidence: `src/lib/Tabs/elements/RowList.test.tsx` (`stall`), `src/views/TabsView/index.tsx`.
 
+- 2026-09-30 — **A row's position (", n of N") costs nothing when `RowList` writes it into the DOM after
+  commit, not when it is passed as a prop.** `TabDisplay` writes its base name to `aria-label` and
+  `data-row-label`; `RowList` appends the position in a `MutationObserver` that watches `childList` +
+  `subtree` + `attributeFilter: ["data-row-label"]` — never `aria-label`, which it writes itself.
+  Measured at 80 rows in jsdom: one pass is 0.1–0.8 ms for a narrowing filter, 2.3 ms for a close
+  and 3.5–4.3 ms for the worst case (69 rows re-added on Backspace), against 120–370 ms of React work
+  for the same interactions, so on vs off is inside run-to-run noise. Two test traps: favicon and
+  effect mutations fire the observer too, so assert synchronously right after `rerender` or a
+  React-erased position looks healed; and only a class-only change (the tab becoming current)
+  proves the attribute half of the observer — renames heal through `childList`. Evidence:
+  `src/lib/Tabs/elements/RowList.tsx` (`numberRows`), `src/lib/Tabs/elements/RowList.test.tsx`.
 ## What Doesn't Work
 
 - 2026-07-30 — `.gitignore` patterns `*.local` and `.env*.local` do **not** match a bare

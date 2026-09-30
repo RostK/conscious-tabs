@@ -22,7 +22,7 @@
 | T-1  | built (383f4a1) | One `list`, one `listitem` per rendered row. Survives either outcome of the T-3 gate. |
 | T-2  | built (75b2a6e), reviewed, fix round 1 (see below) | The tab row becomes a `toolbar`. The shape the gate is about. nested-interactive now 0/0/3/1; baseline test updated with the old numbers in comments. One authorised edit outside the plan: `App.test.tsx` "comes back from a control inside a row" selector → `main [role="toolbar"] [data-row-control]:not([data-tab-row])`, because D-3 moved `data-tab-row` onto the primary button. |
 | T-3  | **passed 2026-09-30** | **Gate — NVDA + Chrome.** The §13.1 retreat is not triggered: the title is heard first. But every row said its title twice, and NVDA gave no count or position. That led to SPEC-04 AM-3 and new unit T-2b. The 80-row check moves to T-10. See sweep §B. |
-| T-2b | not started | **Name the tab row once** (AM-3): `title, site, state, n of N`, and the primary control is `Switch`. Added after T-3; runs before T-4. |
+| T-2b | **built 2026-09-30** | **Name the tab row once** (AM-3): `title, site, state, n of N`, and the primary control is `Switch`. Added after T-3; runs before T-4. |
 | T-4  | not started | The group row. |
 | T-5  | not started | The window row. |
 | T-6  | not started | Reordering, pinned — including the hand-off nothing documents. |
