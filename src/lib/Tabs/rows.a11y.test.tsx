@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -49,19 +50,23 @@ const rowsOf = (container: HTMLElement) =>
  * asks for: these four assertions were red the moment T-2 landed, at 5, 20, 8
  * and 2, and were then updated to what T-2 leaves behind. See MANUAL-SWEEP §A.
  *
- * After T-2 only tab rows are toolbars, so what remains is the group and
+ * After T-2 only tab rows are toolbars, so what remained was the group and
  * window rows not yet converted: 0 + 0, then 2 windows + 1 group, then 1 group.
- * T-4 and T-5 take the last three to zero, and T-7 converts the lot.
+ * T-4 took the group rows to zero, and these two went red at 3 -> 2 and 1 -> 0
+ * the moment it landed, then were updated to what it leaves behind. T-5 takes
+ * the last two (the window rows) to zero, and T-7 converts the lot.
  */
 const BASELINE: readonly [string, RowFixture, number, number][] = [
   // was 5 before T-2
   [FIVE_TABS.name, FIVE_TABS, 0, 5],
   // was 20 before T-2
   [TWENTY_TABS.name, TWENTY_TABS, 0, 20],
-  // was 8 before T-2; 3 = the two window rows and the group row
-  [MIXED_WINDOWS.name, MIXED_WINDOWS, 3, 8],
-  // was 2 before T-2; 1 = the group row
-  [COLLAPSED_GROUP.name, COLLAPSED_GROUP, 1, 2],
+  // was 8 before T-2, and 3 after it (the two window rows and the group row);
+  // 2 = the two window rows, now that the group row is a toolbar (T-4)
+  [MIXED_WINDOWS.name, MIXED_WINDOWS, 2, 8],
+  // was 2 before T-2, and 1 after it (the group row); 0 now that it is a
+  // toolbar (T-4). There is no window row in this fixture.
+  [COLLAPSED_GROUP.name, COLLAPSED_GROUP, 0, 2],
 ];
 
 describe("AC-1 · nested-interactive, while the rows are converted", () => {
@@ -78,6 +83,33 @@ describe("AC-1 · nested-interactive, while the rows are converted", () => {
       expect(rowsOf(container)).toBe(rows);
     },
   );
+});
+
+// T-4, through the real list: the group row inside `RowList`, with its
+// `listitem`, and the count E-1 asks for — what the group holds, not what is
+// rendered, so a collapsed group still says how many tabs it hides.
+describe("AC-28, AC-29 · the group row in the list", () => {
+  it("is one named toolbar with its chevron as the only stop, expanded or not", async () => {
+    const open = await renderList(MIXED_WINDOWS);
+    const openRow = screen.getByRole("toolbar", { name: /, group,/ });
+
+    expect(openRow).toHaveAttribute("aria-label", "Reading, group, 2 tabs");
+    expect(openRow.closest('[role="listitem"]')).not.toBeNull();
+    expect(
+      within(openRow).getByRole("button", { name: "Tabs", expanded: true }),
+    ).toHaveAttribute("tabindex", "0");
+    open.unmount();
+
+    await renderList(COLLAPSED_GROUP);
+    const shutRow = screen.getByRole("toolbar", { name: /, group,/ });
+
+    // One tab of the group's is hidden by the collapse, and still counted.
+    expect(shutRow).toHaveAttribute("aria-label", "Reading, group, 1 tab");
+    expect(
+      within(shutRow).getByRole("button", { name: "Tabs", expanded: false }),
+    ).toHaveAttribute("tabindex", "0");
+    expect(screen.queryByText("Hidden in group")).toBeNull();
+  });
 });
 
 describe("AC-9 · Tab stops — T-0 baseline, updated in T-2", () => {

@@ -22,7 +22,11 @@ import {
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
-import { rowControlProps, selectedProps } from "../elements/rowControls.ts";
+import {
+  rowControlProps,
+  rowPrimaryProps,
+  selectedProps,
+} from "../elements/rowControls.ts";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { SelectionContext } from "../selection";
 import { GroupForm } from "../selection/GroupForm.tsx";
@@ -30,6 +34,19 @@ import { TabListItem } from "../Tab/TabListItem.tsx";
 import { GroupDisplay } from "./GroupDisplay.tsx";
 import { handleDrop } from "./handleDrop.ts";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
+
+/**
+ * The chevron's accessible name — SPEC-04 AC-6, AC-33.
+ *
+ * A PROPOSAL, to be judged by ear (PLAN-SPEC-04 T-2b, "Open for T-4/T-5"), like
+ * the toolbar's name in GroupDisplay. It is stable on purpose: an APG disclosure
+ * button keeps one name and lets `aria-expanded` speak, so a screen reader says
+ * "Tabs, button, expanded" and "Tabs, button, collapsed". "Expand"/"Collapse" in
+ * the name would say the state twice, and change the name under the user as they
+ * press it. The toolbar around it already said which group, so this does not.
+ * Changing the wording is this one line.
+ */
+const CHEVRON_NAME = "Tabs";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
@@ -124,15 +141,14 @@ export const GroupListItem: FC<
     handleMenuClose();
   }, [group]);
 
+  // Menu, close, then the handle last — the one control whose operation needs
+  // the arrow-key pair goes at the end of the toolbar (SPEC-04 AC-30). It also
+  // carries `edge="end"`, the negative margin on whatever sits flush with the
+  // row's right edge, which moved here from Close: the same three buttons keep
+  // the same -12px, so the chip's reservation in GroupDisplay is unchanged.
   const itemAction = useMemo(() => {
     return (
       <>
-        <DragHandle
-          label={`Reorder group ${group.title || ""}`.trim()}
-          setActivatorNodeRef={setActivatorNodeRef}
-          attributes={attributes}
-          onKeyDown={onKeyDown}
-        />
         <IconButton
           onClick={handleOpenMenuClick}
           {...rowControlProps}
@@ -144,12 +160,18 @@ export const GroupListItem: FC<
         <ItemButton
           className="close-button"
           onClick={handleDelete}
-          edge="end"
           {...rowControlProps}
           aria-label={`Close every tab in group ${group.title || ""}`.trim()}
         >
           <Close />
         </ItemButton>
+        <DragHandle
+          edge="end"
+          label={`Reorder group ${group.title || ""}`.trim()}
+          setActivatorNodeRef={setActivatorNodeRef}
+          attributes={attributes}
+          onKeyDown={onKeyDown}
+        />
       </>
     );
   }, [handleDelete, group.title, setActivatorNodeRef, attributes, onKeyDown]);
@@ -177,17 +199,48 @@ export const GroupListItem: FC<
     [dispatch, group.tabs, isSelected],
   );
 
+  // What the row's own click does in the tab list, for the keyboard. The row
+  // keeps its `onClick` for the pointer, and the chevron sits inside it, so the
+  // click is stopped here or it would toggle twice and end where it started.
+  //
+  // A modifier click is not stopped: it is the row's gesture for selecting
+  // (AC-18), and the row has a branch for it that returns before collapsing.
+  // Handling it here would either collapse on a Ctrl-click or copy that branch.
+  //
+  // No `collapsible` guard, unlike the row: the chevron is only rendered where
+  // the row collapses (`expanded === undefined`), so it cannot be reached in a
+  // surface that forces groups open.
+  const handleToggle = useCallback<MouseEventHandler>(
+    async (e) => {
+      if (e.ctrlKey || e.metaKey) return;
+      e.stopPropagation();
+      await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
+    },
+    [group.collapsed, group.id],
+  );
+
   const pre = useMemo(() => {
     return (
       <>
         {expanded === undefined && (
-          // Indicator only — the row's click collapses the group.
-          <IconButton tabIndex={-1} aria-hidden>
+          // The row's primary action, and so its one Tab stop (SPEC-04 D-5,
+          // AC-32, AC-33). Not inside `.itemAction`, so it is never one of the
+          // controls the row hides at rest.
+          <IconButton
+            {...rowPrimaryProps}
+            aria-label={CHEVRON_NAME}
+            aria-expanded={!group.collapsed}
+            onClick={handleToggle}
+          >
             {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
         )}
         <ItemButton
-          {...rowControlProps}
+          // Where there is no chevron — search results, D-8 — select-all is the
+          // toolbar's first control and takes the stop, or the row would have
+          // none. Everywhere else the chevron has it and this is reached by
+          // Left/Right.
+          {...(expanded === undefined ? rowControlProps : rowPrimaryProps)}
           aria-label={
             isSelected
               ? `Deselect every tab in group ${group.title || ""}`.trim()
@@ -201,7 +254,14 @@ export const GroupListItem: FC<
         </ItemButton>
       </>
     );
-  }, [expanded, group.collapsed, group.title, handleSelectButton, isSelected]);
+  }, [
+    expanded,
+    group.collapsed,
+    group.title,
+    handleSelectButton,
+    handleToggle,
+    isSelected,
+  ]);
   return (
     <>
       {outerDZ.isOver && !outerDZ.isSelf ? <DropPlaceholder /> : null}
@@ -246,6 +306,12 @@ export const GroupListItem: FC<
                     // actually hides with: this said `visibility: visible`,
                     // which stopped meaning anything when rows moved to
                     // opacity, and had been quietly doing nothing since.
+                    //
+                    // The Menu is a portal, so focus is outside this toolbar
+                    // while it is open (SPEC-04 E-15). Nothing here keeps or
+                    // restores a position across that, on purpose: the row's
+                    // Tab stop is fixed (D-5), so there is no roving state to
+                    // lose, and AC-36 forbids remembering one.
                     open && {
                       [`& .itemAction`]: {
                         opacity: 1,
