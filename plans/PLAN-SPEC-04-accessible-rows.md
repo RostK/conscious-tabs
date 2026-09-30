@@ -18,9 +18,18 @@
 
 | Unit | State       | Note |
 | ---- | ----------- | ---- |
-| T-0  | not started | Wire axe in as a declared devDependency, and record today's numbers before any of them move. |
-| T-1  | not started | One `list`, one `listitem` per rendered row. Survives either outcome of the T-3 gate. |
-| T-2  | not started | The tab row becomes a `toolbar`. The shape the gate is about. |
+| T-0  | built (c90207c) | Wire axe in as a declared devDependency, and record today's numbers before any of them move. Measured 5/20/8/2 and 20 stops — matched the plan on the post-#22 tree. |
+| T-1  | built (383f4a1) | One `list`, one `listitem` per rendered row. Survives either outcome of the T-3 gate. |
+| T-2  | built (75b2a6e), **review open** | The tab row becomes a `toolbar`. The shape the gate is about. nested-interactive now 0/0/3/1; baseline test updated with the old numbers in comments. One authorised edit outside the plan: `App.test.tsx` "comes back from a control inside a row" selector → `main [role="toolbar"] [data-row-control]:not([data-tab-row])`, because D-3 moved `data-tab-row` onto the primary button. |
+
+**Run state, 2026-09-30 (paused for a reboot, mid-review).** `/code-review` (medium) found two
+things, not yet fixed: (1) **blocking** — `useRowKeys` dropped `row` from `stops` for every row, but
+the group and window rows (`GroupDisplay`, `WindowDisplay`) are still focusable and still use it, so
+Right from a group/window row no longer reaches its controls; keep the row as a stop when
+`row.tabIndex >= 0`, and add a group/window arrow test. (2) discuss — `TabsView`/`SearchView`
+render an empty `RowList` before the first reads resolve (E-4). plan-verifier and
+architecture-reviewer were running and must be re-run. Then: fix loop → a real-browser pass →
+`pr-self-review` → T-3 (the user's NVDA session).
 | T-3  | not started | **Gate — NVDA + Chrome, 20 and 80 rows.** A-7 is discharged here or the §13.1 retreat starts. |
 | T-4  | not started | The group row. |
 | T-5  | not started | The window row. |
