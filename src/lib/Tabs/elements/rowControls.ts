@@ -94,7 +94,31 @@ export const rowControlsSx = {
  * ever half-legible behind an icon; the 24px before it are the ramp.
  */
 export const rowTailMaskSx = (controls: number) => ({
+  /*
+   * The text takes no clicks, and that is not a detail of the mask — it is the
+   * price of it.
+   *
+   * `ListItemText` spans the whole row, controls included; the mask hides its
+   * tail but a mask changes *painting*, not hit-testing, and it makes the
+   * element a stacking context that tests above the absolutely positioned
+   * buttons. Measured at the float's width: of the close button's 37px, **11
+   * were clickable** — the icon was drawn in a place the pointer could not
+   * reach, which is worse than being hidden.
+   *
+   * Nothing is lost by refusing the clicks. The text is not interactive, so a
+   * click passes through to the row beneath, which activates the tab — exactly
+   * what clicking a title should do.
+   */
+  // Both rules carry both properties on purpose: a computed key beside a
+  // literal one makes TypeScript infer a union of their value shapes, which
+  // MUI's `sx` then refuses. Same shape, no union. `maskImage: "none"` is the
+  // resting state either way.
+  "& .MuiListItemText-root": {
+    pointerEvents: "none",
+    maskImage: "none",
+  },
   [revealedRow.map((state) => `${state} .MuiListItemText-root`).join(", ")]: {
+    pointerEvents: "none",
     maskImage: `linear-gradient(to right, #000 calc(100% - ${
       controls + 24
     }px), transparent calc(100% - ${controls}px))`,
