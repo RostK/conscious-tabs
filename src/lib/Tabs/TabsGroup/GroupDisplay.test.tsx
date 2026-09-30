@@ -119,6 +119,42 @@ describe("clicking a group row", () => {
     });
   });
 
+  /**
+   * The row used to collapse the group wherever it was rendered, and in search
+   * results that was an invisible change to the browser: `GroupListItem` passes
+   * `expandedGroups` there, which renders the group's tabs regardless of
+   * `collapsed` and renders no chevron — so the click reached
+   * `chrome.tabGroups.update`, the tab strip collapsed, and nothing on screen
+   * moved. The user found out later, somewhere else.
+   */
+  it("does not collapse the group where the surface forces it open", () => {
+    const { container } = render(
+      <GroupDisplay group={group({ id: 7 })} collapsible={false} />,
+    );
+
+    fireEvent.click(rowOf(container));
+
+    expect(chrome.tabGroups.update).not.toHaveBeenCalled();
+  });
+
+  // Still selects: only the collapse is withheld, and a modifier click never
+  // reached the toggle anyway.
+  it("still selects on a modifier click where it cannot collapse", () => {
+    const onCtrlClick = vi.fn();
+    const { container } = render(
+      <GroupDisplay
+        group={group({ id: 7 })}
+        collapsible={false}
+        onCtrlClick={onCtrlClick}
+      />,
+    );
+
+    fireEvent.click(rowOf(container), { ctrlKey: true });
+
+    expect(onCtrlClick).toHaveBeenCalled();
+    expect(chrome.tabGroups.update).not.toHaveBeenCalled();
+  });
+
   it("selects without collapsing on a modifier click", () => {
     const onCtrlClick = vi.fn();
     const { container } = render(

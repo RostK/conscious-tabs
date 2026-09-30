@@ -235,6 +235,10 @@ export const GroupListItem: FC<
                 <GroupDisplay
                   onCtrlClick={handleSelectButton}
                   group={group}
+                  // The same condition the chevron is gated on: a surface that
+                  // forces groups open has no collapse to offer, and offering
+                  // it anyway changed the browser silently.
+                  collapsible={expanded === undefined}
                   sx={[
                     // Hold the controls open while this row's own menu is,
                     // so the menu is not left anchored to something that has

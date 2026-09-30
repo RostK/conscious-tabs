@@ -25,7 +25,16 @@ export const GroupDisplay: FC<{
   itemAction?: ReactNode;
   sx?: ComponentProps<typeof ListItemButton>["sx"];
   onCtrlClick?: MouseEventHandler;
-}> = ({ group, onCtrlClick, itemAction, pre, sx }) => {
+  /**
+   * Whether this row's click collapses the group.
+   *
+   * False where the surface forces groups open — search results — and the
+   * point is not that the toggle would be pointless there but that it was
+   * *harmful*: `chrome.tabGroups.update` is a change to the browser, and the
+   * row would make it while showing nothing. See the click handler.
+   */
+  collapsible?: boolean;
+}> = ({ group, onCtrlClick, itemAction, pre, sx, collapsible = true }) => {
   const rowKeys = useRowKeys();
   const handleClick = useCallback<MouseEventHandler>(
     async (e) => {
@@ -40,9 +49,21 @@ export const GroupDisplay: FC<{
         onCtrlClick?.(e);
         return;
       }
+      /*
+       * Where the surface forces groups open, this row does not collapse them.
+       *
+       * It used to, unconditionally. In search results `GroupListItem` passes
+       * `expandedGroups`, which renders the group's tabs regardless of
+       * `collapsed` and renders no chevron at all — so a click here collapsed
+       * the user's real tab group in Chrome and **nothing on screen changed**.
+       * The tabs stayed listed, there was no chevron to turn, and they found
+       * out later from the tab strip. A control whose only evidence is
+       * somewhere else is worse than one that does nothing.
+       */
+      if (!collapsible) return;
       await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
     },
-    [group.collapsed, group.id, onCtrlClick],
+    [collapsible, group.collapsed, group.id, onCtrlClick],
   );
 
   return (
