@@ -127,7 +127,15 @@ export const TabDisplay: FC<{
         aria-label={isSelected ? "Deselect tab" : "Select tab"}
         sx={{
           position: "absolute",
-          left: -8,
+          /*
+           * Flush with the row, not eight pixels past it. At -8 the button's
+           * box began outside the viewport — the glyph was fully visible, so
+           * nothing looked wrong, while eight of its thirty-seven pixels were
+           * unclickable, and at the screen edge where a pointer naturally
+           * lands. The icon moves 8px right with it and still sits over the
+           * favicon, which is what the z-index below is for.
+           */
+          left: 0,
           backgroundColor: "background.paper",
           // Above the favicon, not behind it. Both are positioned — this one
           // absolutely, the favicon by the Badge that AudioBadge wraps it in —
