@@ -80,7 +80,7 @@ describe("AC-1 · nested-interactive, while the rows are converted", () => {
   );
 });
 
-describe("AC-9 · Tab stops, before the rows change", () => {
+describe("AC-9 · Tab stops — T-0 baseline, updated in T-2", () => {
   it("costs 20 stops for 20 plain tabs, not 80", async () => {
     const user = userEvent.setup();
     const { container } = await renderList(TWENTY_TABS);

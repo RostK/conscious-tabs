@@ -1,6 +1,7 @@
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { rowControlProps } from "../elements/rowControls.ts";
 import { GroupItem } from "../types.ts";
 import { GroupDisplay } from "./GroupDisplay.tsx";
 
@@ -80,6 +81,59 @@ describe("a group name long enough to reach the row's controls", () => {
     );
 
     expect(chipOf(container)).toHaveTextContent("Reading");
+  });
+});
+
+/**
+ * The walk from a row that is still itself a focus target.
+ *
+ * The tab row is a `role="toolbar"` at tabIndex -1 now and never holds focus,
+ * so `useRowKeys` stopped counting the row as a stop (SPEC-04 D-9). The group
+ * row has not been converted yet (T-4) — it is still a focusable
+ * `ListItemButton` — and lost Right/Left when the row was dropped for every
+ * kind: focus on the row matched no stop, so nothing moved, and its controls
+ * were unreachable by keyboard. The row stays the first stop while it is the
+ * thing focused.
+ */
+describe("walking a group row's controls from the row", () => {
+  const renderRow = () =>
+    render(
+      <GroupDisplay
+        group={group()}
+        itemAction={
+          <>
+            <button {...rowControlProps} aria-label="Actions">
+              a
+            </button>
+            <button {...rowControlProps} aria-label="Close">
+              x
+            </button>
+          </>
+        }
+      />,
+    );
+
+  it("goes from the row to its first control with Right and back with Left", () => {
+    const { getByRole } = renderRow();
+    const row = document.querySelector(
+      ".MuiListItemButton-root",
+    ) as HTMLElement;
+    row.focus();
+    expect(document.activeElement).toBe(row);
+
+    fireEvent.keyDown(row, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(getByRole("button", { name: "Actions" }));
+
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(getByRole("button", { name: "Close" }));
+
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowLeft" });
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(row);
+
+    // The row is the end of the walk: nothing before it.
+    fireEvent.keyDown(row, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(row);
   });
 });
 

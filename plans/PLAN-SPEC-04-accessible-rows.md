@@ -20,28 +20,7 @@
 | ---- | ----------- | ---- |
 | T-0  | built (c90207c) | Wire axe in as a declared devDependency, and record today's numbers before any of them move. Measured 5/20/8/2 and 20 stops — matched the plan on the post-#22 tree. |
 | T-1  | built (383f4a1) | One `list`, one `listitem` per rendered row. Survives either outcome of the T-3 gate. |
-| T-2  | built (75b2a6e), **review open** | The tab row becomes a `toolbar`. The shape the gate is about. nested-interactive now 0/0/3/1; baseline test updated with the old numbers in comments. One authorised edit outside the plan: `App.test.tsx` "comes back from a control inside a row" selector → `main [role="toolbar"] [data-row-control]:not([data-tab-row])`, because D-3 moved `data-tab-row` onto the primary button. |
-
-**Run state, 2026-09-30 (paused for a reboot, mid-review).** `/code-review` (medium) found two
-things, not yet fixed: (1) **blocking** — `useRowKeys` dropped `row` from `stops` for every row, but
-the group and window rows (`GroupDisplay`, `WindowDisplay`) are still focusable and still use it, so
-Right from a group/window row no longer reaches its controls; keep the row as a stop when
-`row.tabIndex >= 0`, and add a group/window arrow test. (2) discuss — `TabsView`/`SearchView`
-render an empty `RowList` before the first reads resolve (E-4). architecture-reviewer finished:
-**0 violations**, 4 smells — the one to decide is S-01: `TabDisplay` `cloneElement`s `edge="end"`
-onto the handle by component type (`TabDisplay.tsx:277-281`, with an `as` cast) only because T-2's
-DoD says `TabListItem.tsx` must not be in the diff; setting `<DragHandle edge="end">` in
-`TabListItem.tsx:79-84` adds no `TabListItem` prop and leaves the memo alone, so it meets D-6 as
-D-6 is actually written. The others: `RowList` is a deep import rather than a barrel export,
-the list/listitem contract is split between the views and `lib/Tabs`, and `rowFixtures.tsx` is
-tab-list-specific but lives in `src/test/`. plan-verifier finished: **no blocking gaps, 0 NOT
-FOUND, accept-with-gaps**. Three PARTIALs:
-- AC-6: the tab row's select control is still named "Select tab" / "Deselect tab" with no title in it, and no unit of this plan changes that. A plan or spec decision is needed.
-- AC-16: no test yet asserts that `aria-selected` and `aria-multiselectable` are absent. T-7 or T-8 can take it.
-- AC-24: deferred to T-8 by the plan.
-
-It also noted that T-2 updated the AC-9 test to 80 controls and left its "before the rows change" title stale. All three reviews are now in; next is the fix loop. Then: fix loop → a real-browser pass →
-`pr-self-review` → T-3 (the user's NVDA session).
+| T-2  | built (75b2a6e), reviewed, fix round 1 (see below) | The tab row becomes a `toolbar`. The shape the gate is about. nested-interactive now 0/0/3/1; baseline test updated with the old numbers in comments. One authorised edit outside the plan: `App.test.tsx` "comes back from a control inside a row" selector → `main [role="toolbar"] [data-row-control]:not([data-tab-row])`, because D-3 moved `data-tab-row` onto the primary button. |
 | T-3  | not started | **Gate — NVDA + Chrome, 20 and 80 rows.** A-7 is discharged here or the §13.1 retreat starts. |
 | T-4  | not started | The group row. |
 | T-5  | not started | The window row. |
@@ -50,6 +29,30 @@ It also noted that T-2 updated the AC-9 test to 80 controls and left its "before
 | T-8  | not started | Names, hostile input, and the 400 px re-measure the reorder invalidates. |
 | T-9  | not started | `LEARNINGS.md`, and the stale numbers in it. |
 | T-10 | not started | The rest of the manual sweep. |
+
+**Run state, 2026-09-30.** All three review gates ran over T-0…T-2: `/code-review` (medium),
+architecture-reviewer (0 violations, 4 smells) and plan-verifier (0 NOT FOUND, accept-with-gaps).
+Fix round 1 closed:
+
+- **Blocking — group and window rows lost Left/Right.** `useRowKeys` now keeps the row as a stop
+  when it is itself focusable (`row.tabIndex >= 0`), because the group and window rows stay
+  focusable until T-4/T-5. See D-9's second update.
+- **AC-6 — the select control names its tab** ("Select ‹title›").
+- **E-4 — no empty list while loading.** Neither view renders `RowList` until it has a row.
+- **Architecture S-01 — user decision.** The drag handle's `edge="end"` is set where
+  `TabListItem` builds the handle, not cloned onto it by `TabDisplay`. T-2's DoD is relaxed to
+  "no new prop, comparator untouched".
+
+Still open, carried forward rather than fixed now:
+
+- **AC-16:** a test that `aria-selected` and `aria-multiselectable` stay absent. T-7 or T-8.
+- **Architecture S-02…S-04:** `RowList` is a deep import rather than a barrel export; the
+  list/listitem contract is split between the views and `lib/Tabs`; `rowFixtures.tsx` lives in
+  `src/test/`. All three are discuss-only.
+- **Cross-spec, R-8:** `SPEC-05` still quotes the old "Select tab" label in its table
+  (`specs/ui-shell/SPEC-05-2026-09-29-keyboard-access.md:86`).
+
+Next: a real-browser pass, then `pr-self-review`, then T-3 (the user's NVDA session).
 
 ---
 
@@ -244,6 +247,13 @@ discovery.
   a shared `isPlainArrow` predicate, which `App` uses for its half of the model, so a change to
   the walk's key rules is a change to two call sites. And the `dragActive` guard now runs before
   the key test rather than after it, covering every key rather than only the walk's.
+
+  **Updated again 2026-09-30, fix round 1 (review finding).** Dropping the row outright was right
+  for the tab row only. `useRowKeys` also serves the group and window rows, which stay focusable
+  `ListItemButton`s until T-4 and T-5 convert them, and they lost Left/Right the moment the row
+  left `stops`. The row is now a stop exactly when it is itself focusable
+  (`row.tabIndex >= 0`), read off the element with no new prop. T-4 and T-5 need do nothing here:
+  setting their row to `tabIndex={-1}` drops it from the walk by construction.
 - **D-10 — axe arrives as `axe-core` in `devDependencies`, not as `vitest-axe`.** AC-25 says
   "`vitest-axe` **or equivalent**", and the defect it names is depending on
   `eslint-plugin-jsx-a11y`'s transitive copy. `axe-core@4.13.0` is already resolved in
@@ -408,8 +418,9 @@ harness, no production code).
   lands on the primary button; Enter and Space on the primary button call the same handler the row's
   `onClick` calls; a Ctrl-click on the row still selects and does nothing else; the drag handle is the
   final `[data-row-control]` in document order; `data-tab-row` / `data-active-tab` are on the primary
-  button and `App.test.tsx`'s four assertions pass **unmodified**; `TabListItem.tsx` is not in the
-  diff; `npm test` / `npm run lint` / `npm run build` pass.
+  button and `App.test.tsx`'s four assertions pass **unmodified**; `TabListItem` gains no prop and its
+  memo comparator is untouched (D-6), per the user's 2026-09-30 decision to set the handle's `edge`
+  at its source; `npm test` / `npm run lint` / `npm run build` pass.
 - **ACs:** **AC-5**, **AC-6**, **AC-7** _(unit half)_, **AC-9**, **AC-10**, **AC-16**, **AC-17**,
   **AC-18**, **AC-24** _(tab row)_, **AC-28**, **AC-29** _(tab row)_, **AC-30** _(tab row)_,
   **AC-32** _(tab row)_, **AC-34**, **AC-35**, **AC-36**, E-5, E-11, E-13

@@ -279,10 +279,15 @@ export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
     // reserves Shift+arrow for selection, and Ctrl/Alt+arrow are the browser's.
     if (!isPlainArrow(event)) return;
     const row = event.currentTarget;
-    // Not the row itself: it is a toolbar at tabIndex -1 and never holds
-    // focus, so it could not match `activeElement`, and Left from the first
-    // control would `focus()` a non-focusable div. (SPEC-04 D-9.)
+    // The row is a stop only while it can hold focus. The tab row is a
+    // toolbar at tabIndex -1 and never does, so it could not match
+    // `activeElement`, and Left from the first control would `focus()` a
+    // non-focusable div (SPEC-04 D-9). The group and window rows are still
+    // focusable `ListItemButton`s until T-4 and T-5 convert them, and without
+    // the row here Right from a focused one finds no stop and does nothing —
+    // their controls are unreachable, and Left from the first cannot come back.
     const stops: HTMLElement[] = [
+      ...(row.tabIndex >= 0 ? [row] : []),
       ...row.querySelectorAll<HTMLElement>("[data-row-control]"),
     ];
     const at = stops.indexOf(document.activeElement as HTMLElement);

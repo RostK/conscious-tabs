@@ -42,6 +42,12 @@ export const TabsView: FC = () => {
     );
   }
 
+  // Nothing to put in a list yet: the reads have not both landed, so `windows`
+  // is empty for want of looking, not for want of tabs. An empty `RowList`
+  // would announce a list of zero (SPEC-04 E-4); before it existed the view
+  // rendered nothing here, and still does.
+  if (windows.length === 0) return null;
+
   return (
     <RowList>
       {windows.map((window) => (

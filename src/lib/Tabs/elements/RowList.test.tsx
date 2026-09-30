@@ -164,6 +164,77 @@ describe("E-4 / E-3 · nothing to show is not a list of zero", () => {
   });
 });
 
+/**
+ * E-4 again, for the other way to have nothing: not having looked yet.
+ *
+ * The two reads behind each view resolve independently, and the empty-state
+ * early return waits for both, so until they land the view falls through to
+ * its list. Rendering `RowList` there announces "Open tabs, list, 0 items" on
+ * every open, and `RowList` says it renders only when there are rows.
+ *
+ * The delay is on one read at a time, so neither order can hide it: the
+ * windows land first in practice, but a view must not depend on that.
+ */
+describe("E-4 · no list before there is a row to put in it", () => {
+  const slow = (read: "tabs" | "windows", delayMs: number) => {
+    installChrome(FIVE_TABS.build());
+    if (read === "tabs") {
+      const real = chrome.tabs.query;
+      chrome.tabs.query = ((info?: chrome.tabs.QueryInfo) =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(real(info ?? {}) as never), delayMs);
+        })) as typeof chrome.tabs.query;
+    } else {
+      const real = chrome.windows.getAll;
+      chrome.windows.getAll = ((info?: chrome.windows.QueryOptions) =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(real(info ?? {}) as never), delayMs);
+        })) as typeof chrome.windows.getAll;
+    }
+  };
+
+  const views = [
+    [
+      "TabsView",
+      () => (
+        <SelectionProvider>
+          <TabsView />
+        </SelectionProvider>
+      ),
+    ],
+    [
+      "SearchView",
+      () => (
+        <SelectionProvider>
+          <SearchView search="example" onMatches={() => undefined} />
+        </SelectionProvider>
+      ),
+    ],
+  ] as const;
+
+  const reads = ["tabs", "windows"] as const;
+
+  for (const [name, view] of views) {
+    for (const read of reads) {
+      it(`${name} renders no list while the ${read} read is in flight`, async () => {
+        slow(read, 60);
+
+        render(view());
+
+        // Long enough for the other read to have landed, short of this one.
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(screen.queryByRole("list")).toBeNull();
+
+        // Precondition for the assertion above: the rows do arrive, and the
+        // list with them — so its absence was not the view rendering nothing
+        // at all.
+        expect(await screen.findAllByRole("listitem")).toHaveLength(5);
+        expect(screen.getAllByRole("list")).toHaveLength(1);
+      });
+    }
+  }
+});
+
 describe("AC-31 · a drop placeholder is a row, so it is an item (E-14)", () => {
   it("is a listitem between two rows and satisfies the list rules", async () => {
     const { container } = render(

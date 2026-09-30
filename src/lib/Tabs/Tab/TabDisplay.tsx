@@ -12,19 +12,10 @@ import {
   ListItemSecondaryAction,
   ListItemText,
 } from "@mui/material";
-import {
-  cloneElement,
-  FC,
-  isValidElement,
-  MouseEventHandler,
-  ReactElement,
-  ReactNode,
-  useCallback,
-} from "react";
+import { FC, MouseEventHandler, ReactNode, useCallback } from "react";
 
 import { activateTab, closeTab, setMuted } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
-import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import {
   rowControlProps,
@@ -225,7 +216,7 @@ export const TabDisplay: FC<{
         {...rowControlProps}
         {...selectedProps(isSelected)}
         onClick={handleHighlight}
-        aria-label={isSelected ? "Deselect tab" : "Select tab"}
+        aria-label={`${isSelected ? "Deselect" : "Select"} ${tab.title || "tab"}`}
         sx={{
           position: "absolute",
           /*
@@ -269,16 +260,12 @@ export const TabDisplay: FC<{
         >
           <Close />
         </ItemButton>
-        {/* Last, and so the final control in the toolbar (AC-30). `edge="end"`
-            moved here from Close with it: it is a negative margin on whatever
-            sits flush with the row's right edge, so the width the tail mask
-            reserves is unchanged. The handle is built by TabListItem, which
-            this change may not touch, so the edge is set here. */}
-        {isValidElement(dragHandle) && dragHandle.type === DragHandle
-          ? cloneElement(dragHandle as ReactElement<{ edge?: "end" }>, {
-              edge: "end",
-            })
-          : dragHandle}
+        {/* Last, and so the final control in the toolbar (AC-30). It carries
+            `edge="end"` — a negative margin on whatever sits flush with the
+            row's right edge, which moved here from Close — so the width the
+            tail mask reserves is unchanged. TabListItem builds the handle and
+            sets that edge on it. */}
+        {dragHandle}
       </ListItemSecondaryAction>
     </ListItemButton>
   );

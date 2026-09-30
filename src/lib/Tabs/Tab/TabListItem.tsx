@@ -77,6 +77,8 @@ const TabListItemRow: FC<
                 tab={tab}
                 dragHandle={
                   <DragHandle
+                    // Last control in the row, flush with its right edge.
+                    edge="end"
                     label={`Reorder ${tab.title || "tab"}`}
                     setActivatorNodeRef={setActivatorNodeRef}
                     attributes={attributes}
