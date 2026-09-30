@@ -5,7 +5,7 @@
 | **Spec ID**    | SPEC-04                                                                                                                                                                                                                                                                |
 | **Date**       | 2026-09-28                                                                                                                                                                                                                                                             |
 | **Module**     | `tab-list` (`src/lib/Tabs/Tab/`, `src/lib/Tabs/TabsGroup/`, `src/lib/Tabs/Window/`, `src/lib/Tabs/elements/rowControls.ts`, `src/lib/Tabs/elements/DragHandle.tsx`, `src/lib/Tabs/elements/TabGrid.tsx`, `src/lib/Tabs/Tabs.tsx`) — with edges into `ui-shell` (`src/App.tsx`) |
-| **Status**     | **approved 2026-09-29** — all eight clarifications closed; see §13. Ready for `plan-implementation`.                                                                                                                                                                    |
+| **Status**     | **approved 2026-09-29**, **amended 2026-09-29** (AM-1 on AC-29, AM-2 on AC-32/AC-33 — §13.2). All eight clarifications closed; see §13.                                                                                                                                  |
 | **Supersedes** | —                                                                                                                                                                                                                                                                      |
 
 ---
@@ -239,8 +239,8 @@ What APG asks of a toolbar, and what this list already does
 | One Tab stop into the widget; Tab/Shift+Tab move out                | **Already true** — `rowControlProps` holds controls at `tabIndex: -1`; measured 1 stop per row.   |
 | Arrows move among the controls                                      | **Already true** — `useRowKeys` walks `[data-row-control]` on Left/Right.                         |
 | Roving tabindex (used in APG's own worked example)                  | **Already true** in shape; the roving element becomes a button rather than the row (§1.0).        |
-| Use `toolbar` only for a group of **3 or more** controls            | **Satisfied by every row kind** — measured 4 on a plain tab, window and collapsed-group row, 5 on an audible tab row and a group row (§1.4a). |
-| Each toolbar needs its own label when there is more than one        | **New obligation.** Nothing names a row today. AC-28.                                             |
+| Use `toolbar` only for a group of **3 or more** controls            | **Satisfied by every row kind** — measured 4 on a plain tab, window and collapsed-group row, 5 on an audible tab row and a group row (§1.4a); 4 on a search-result group row, which has no primary action (AC-32). |
+| Each toolbar needs its own label when there is more than one        | **New obligation.** Nothing names a row today. A label on *each* — ARIA says nothing about uniqueness, which is why AC-29 was amended on 2026-09-29. AC-29. |
 | "Avoid controls whose operation requires the arrow-key pair. If unavoidable, include only one and **make it the last element in the toolbar**." | **Violated today, in both row kinds that have one.** AC-30. |
 
 That last row is the one the repo had to be measured for, and it is the only place the chosen
@@ -495,15 +495,34 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   primary-action button together with its secondary controls.
   **Verify:** unit — `getAllByRole("toolbar")` returns one per rendered row; each toolbar's
   `listitem` ancestor exists; each toolbar contains the row's full control census from §1.4a.
-- **AC-29** _(Must)_ Every row toolbar SHALL have a non-empty accessible name that distinguishes it
-  from every other toolbar in the list, and that name SHALL be derived from the row's subject.
-  **Verify:** unit — collect every toolbar's accessible name for the mixed fixture and assert they
-  are all non-empty and all distinct, and that AC-24's hostile-title case yields a literal-text
-  name. _(ARIA requires a label on each toolbar when a page has more
-  than one; an eighty-tab list has eighty. The name SHALL NOT be the literal string
-  `"Actions for {title}"` on a group row: `GroupListItem` already gives its `MoreVert` button the
-  name `Actions for group {title}`, measured in §1.4a, and two controls in one row answering to the
-  same phrase is worse than no name.)_
+- **AC-29** _(Must)_ Every row toolbar SHALL have a **non-empty** accessible name derived from its
+  row's subject, and two toolbars SHALL have distinct names **wherever their subjects are distinct**.
+  Two rows with the same subject SHALL be permitted the same name.
+  **Verify:** unit — collect every toolbar's accessible name for the mixed fixture; assert all are
+  non-empty, that rows with distinct subjects have distinct names, and that AC-24's hostile-title
+  case yields a literal-text name. Include two tabs open on the same URL with the same title and
+  assert this does **not** fail.
+  _(**Amended 2026-09-29.** The original demanded names be both subject-derived *and* distinct from
+  every other toolbar. Those two halves conflict: two tabs open on the same page have the same title
+  and the same URL, so they have the same subject and cannot be told apart by any subject-derived
+  name. That is not an exotic case — it happens whenever someone duplicates a tab. The requirement
+  was unsatisfiable for a case that occurs constantly, and the distinctness half was **stricter than
+  the standard it exists to satisfy**: ARIA says only "Authors MUST supply a label on each toolbar
+  when the application contains more than one toolbar"
+  (<https://www.w3.org/TR/wai-aria-1.2/#toolbar>) — a label on each, with nothing said about
+  uniqueness. So this is a correction, not a concession.)_
+  _(Still binding: the name SHALL NOT be the literal string `"Actions for {title}"` on a group row.
+  `GroupListItem` already gives its `MoreVert` button the name `Actions for group {title}`, measured
+  in §1.4a, and two controls in one row answering to the same phrase is worse than no name.)_
+  - **Note, not a requirement.** A **window** row's name may take an ordinal ("Window 2 of 3"), which
+    is how two windows holding five tabs each are told apart — `WindowDisplay` names its switch
+    button `Switch to this window, ${tabs.length} tab(s)` today, so two five-tab windows are
+    currently indistinguishable by name. That is a genuine improvement and the plan may take it.
+  - **Tab rows do not take a position in their name**, deliberately. `index` is part of a tab's
+    identity (`TabItem.index`) and changes whenever anything before it closes or moves, so a
+    positional name would make a row rename itself for reasons that have nothing to do with that
+    row — a screen-reader user would hear churn caused by a tab they never touched. Two tabs on the
+    same page are allowed to share a name instead; AC-29 permits it.
 - **AC-30** _(Must)_ WHERE a row has a drag handle, that handle SHALL be the **last** control in its
   toolbar's DOM order.
   **Verify:** unit — for a tab row and a group row, assert the drag handle is the final
@@ -513,16 +532,32 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   between rows during a drag SHALL either be a `listitem` or be removed from the accessibility tree.
   **Verify:** automated — axe `aria-required-children` and `aria-required-parent` report zero nodes
   **while a drag is in progress**, with a `DropPlaceholder` mounted between two rows.
-- **AC-32** _(Must)_ WHEN a row's primary action is invoked from the keyboard, it SHALL perform
-  exactly what clicking the row body performs today — activate the tab, collapse/expand the group,
-  expand/collapse the window.
-  **Verify:** unit — Enter and Space on the primary-action button of each row kind call the same
-  handler the row's `onClick` calls today; existing behavioural assertions pass unmodified.
-- **AC-33** _(Must)_ The expand/collapse chevrons on group and window rows SHALL become named
-  controls and SHALL NOT be `aria-hidden`.
-  **Verify:** unit — assert an accessible name on each chevron and that its expanded state is
-  exposed; assert no `aria-hidden` remains on them. _(Measured: 3 such decorations in the mixed
-  fixture — E-12.)_
+- **AC-32** _(Must)_ WHERE a row has a primary action, invoking it from the keyboard SHALL perform
+  exactly what clicking that row's body performs today — activate the tab, collapse/expand the
+  group, expand/collapse the window. **A group row rendered in search results has no primary
+  action**, and its toolbar SHALL begin at the select-all control.
+  **Verify:** unit — Enter and Space on the primary-action button of each row kind in the tab list
+  call the same handler the row's `onClick` calls today; and a group row rendered under
+  `SearchView`'s conditions exposes a toolbar whose first control is select-all, with no
+  primary-action button. Existing behavioural assertions pass unmodified.
+  _(**Amended 2026-09-29.** Grounded in the code: `GroupListItem.tsx:183` gates the chevron on
+  `expanded === undefined`, and `SearchView/index.tsx:58` passes `expandedGroups`, so a
+  search-result group row renders **no chevron at all** — and `GroupListItem.tsx:271`
+  (`!group.collapsed || expanded`) renders its tabs regardless of collapsed state. There is nothing
+  for a primary action to mirror, and a row that has no primary action is not a gap in this
+  criterion. See E-17 for what the body click does do there.)_
+  _(Rejected alternative: render the chevron unconditionally so every group row has a primary
+  action. It loses twice — it makes a control permanently visible that is not visible today, and it
+  lets people collapse groups from inside search results, a behaviour change nobody asked for.
+  Inventing an affordance to satisfy a criterion is the criterion's problem, not the product's.)_
+- **AC-33** _(Must)_ WHERE a row renders an expand/collapse chevron, that chevron SHALL become a
+  named control and SHALL NOT be `aria-hidden`. This criterion SHALL NOT be read as requiring a
+  chevron on a row that does not have one.
+  **Verify:** unit — assert an accessible name on each rendered chevron and that its expanded state
+  is exposed; assert no `aria-hidden` remains on them; assert a search-result group row still
+  renders none. _(Measured: 3 such decorations in the mixed fixture — E-12. Scoped 2026-09-29
+  alongside AC-32: group rows in search results render no chevron, so "on group and window rows"
+  would have demanded one be invented.)_
 
 ### 5.8 The walk is pinned, not changed
 
@@ -557,7 +592,7 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
 | -------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **E-1**  | A collapsed group                                                    | The group row is present, its tabs are not rendered at all (measured: 2 rows, 2 violations). Row counts and any set-size figure must reflect what is rendered, not what exists. |
 | **E-2**  | A single window                                                      | `WindowListItem` renders **no** window row when `single` is true. The list must not claim a container that is not there.                                                        |
-| **E-3**  | Search view                                                          | `SearchView` renders `Tabs` with `expandedGroups` and `focus={false}`, with **no** window rows. A second container shape for the same components.                               |
+| **E-3**  | Search view                                                          | `SearchView` renders `Tabs` with `expandedGroups` and `focus={false}`, with **no** window rows. A second container shape for the same components — and the one where a group row has no primary action (AC-32, E-17). |
 | **E-4**  | The list is empty                                                    | "No other tabs are open." — a `Box`, not a list. An empty container must not announce itself as a list of zero.                                                                 |
 | **E-5**  | A tab with no title                                                  | Controls already fall back to `"tab"` in their names (`Close ${tab.title \|\| "tab"}`). The row's own name must not become empty.                                               |
 | **E-6**  | A row that unmounts mid-drag                                         | A tab row unmounts as soon as it is picked up (`!isDragging &&`); a group row does not. `rowControls.ts` documents this asymmetry as the reason the drag flag exists.           |
@@ -566,11 +601,13 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
 | **E-9**  | A group whose actions menu is open                                   | `GroupListItem` holds the controls visible while its `Menu` is open. Focus is inside a portal, outside the row's DOM subtree.                                                   |
 | **E-10** | A list of eighty rows                                                | Focus must be scrolled into view (AC-7). This is the case `aria-activedescendant` handles worst.                                                                                |
 | **E-11** | A tab that is neither audible nor muted                              | No mute control. Rows are **not** uniform in control count — 3, 4 or 5 (§1.3). Any model that assumes a fixed cell or stop count per row is wrong.                              |
-| **E-12** | The `aria-hidden` expand indicators on group and window rows         | Three in the mixed fixture. Decorative today because the row's own click expands. The row stops being clickable, so they become the row's primary-action button (AC-33, §1.0).                                       |
+| **E-12** | The `aria-hidden` expand indicators on group and window rows         | Three in the mixed fixture. Decorative today because the row's own click expands. The row stops being clickable, so where a chevron is rendered it becomes that row's primary-action button (AC-33, §1.0). Search-result group rows render none — E-17.                                       |
 | **E-13** | A row control that is `opacity: 0` and receives focus programmatically | Must reveal (AC-10). `visibility: hidden` must never be used: it takes the element out of `focus()` entirely and fails intermittently.                                          |
 | **E-14** | A `DropPlaceholder` mounted between two rows mid-drag                | `list` may own only `listitem`. The placeholder must be a `listitem` or be out of the accessibility tree, or `aria-required-children` fires — a new violation traded for the old one (AC-31).      |
 | **E-15** | A group row whose actions `Menu` is open                             | The menu is a portal, so focus leaves the toolbar's DOM subtree. The roving state must survive that and restore on close; and the menu button's name (`Actions for group …`) must stay distinct from the toolbar's own (AC-29). |
 | **E-16** | Eighty rows, each an announced toolbar                               | The one unmeasured risk. Nothing documents what NVDA, JAWS or VoiceOver say on entering 20–80 toolbars in one scrollable list. Gated by AC-27, with a named retreat in §13.1.                    |
+| **E-17** | A group row in search results                                        | Renders **no chevron** (`GroupListItem.tsx:183` gates it on `expanded === undefined`; `SearchView` passes `expandedGroups`), and its tabs show regardless of collapsed state (`:271`). Its body click nevertheless still calls `chrome.tabGroups.update({collapsed: !collapsed})` — a real change to the browser with **no visible effect in the search list and no chevron to show it**. Dropping the primary action here (AC-32) removes that invisible side effect rather than merely declining to add a control. |
+| **E-18** | Two tabs open on the same page                                       | Same title, same URL, same subject — so the same toolbar name. Permitted by AC-29, and the reason its original distinctness half was unsatisfiable. |
 
 ---
 
@@ -703,6 +740,10 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   region. AC-16 deliberately keeps selection on the per-row checkbox, which is correct but says
   nothing about the whole; this is the cheap way to add the whole without inventing invalid ARIA.
   Explicitly **not** an AC — NG-11.
+- **PI-8** Look at the group row's body click in search results. It toggles the real tab group's
+  `collapsed` state with no visible effect in the search list and no chevron to show it (E-17,
+  AM-2). This spec removes it from the keyboard surface; the pointer behaviour is untouched and
+  is probably a latent defect of its own.
 
 ---
 
@@ -747,6 +788,26 @@ This shape has real precedent at the scale we care about and is source-verified 
 Recorded as a decision with a trigger rather than a vague risk note, so a future session inherits the
 alternative instead of rediscovering it.
 
+### 13.2 Amendments — 2026-09-29, during implementation planning
+
+Both found by planning against the spec rather than by reading it, which is the point of planning.
+Recorded here because a criterion that was wrong once will be re-proposed unless the reason it was
+wrong is written down.
+
+| #         | Amendment                                                                                                                                                                                                                                                                                                                                 |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AM-1**  | **AC-29 relaxed from "all distinct" to "distinct wherever subjects are distinct".** The original was self-contradictory — it demanded subject-derived names *and* global distinctness, and two tabs on the same page have the same subject. It was also **stricter than ARIA**, which requires only "a label on each toolbar" with nothing about uniqueness. A correction, not a concession. Window rows may still take an ordinal (a real improvement); tab rows deliberately do not, because `index` churns. E-18. |
+| **AM-2**  | **AC-32 carved out search-result group rows, which have no primary action**; AC-33 scoped to rows that actually render a chevron. Grounded in `GroupListItem.tsx:183`, `:271` and `SearchView/index.tsx:58`. The rejected alternative — render the chevron unconditionally — would add a permanently visible control the product does not have and let users collapse groups from inside search results. E-17. |
+
+**AM-2 turned out to be stronger than the defect it was raised for.** The premise was "a search-result
+group row's body click does nothing, so there is nothing to mirror". The code says otherwise:
+`GroupDisplay`'s `handleClick` calls `chrome.tabGroups.update(group.id, { collapsed: !group.collapsed })`
+**unconditionally**, so that click really does collapse the user's tab group in the browser — while
+the search list goes on rendering the tabs anyway (`:271`) and shows no chevron to say what happened.
+It is an invisible side effect on live browser state. Dropping the primary action there does not
+merely decline to add a control; **it removes that.** Not fixed by this spec beyond the row's
+keyboard surface, and worth its own look — PI-8.
+
 ## 14. Traceability
 
 | AC                                | Where it lands                                                                                       |
@@ -760,10 +821,11 @@ alternative instead of rediscovering it.
 | AC-22, AC-23                      | `rowControls.ts` (`rowControlsSx`, `rowTailMaskSx`, `rowTailReserveSx`), manual at 400px + `harness/`  |
 | AC-24                             | Every accessible-name construction site; a hostile-title unit test                                     |
 | AC-25, AC-26, AC-27               | A new `vitest-axe` (or equivalent) `devDependency` + check, and a recorded NVDA result in this file     |
-| AC-28, AC-29, AC-33               | `Tab/TabDisplay.tsx`, `TabsGroup/GroupDisplay.tsx`, `Window/WindowDisplay.tsx` — the row elements    |
+| AC-28, AC-29                      | `Tab/TabDisplay.tsx`, `TabsGroup/GroupDisplay.tsx`, `Window/WindowDisplay.tsx` — the row elements    |
+| AC-33                             | `TabsGroup/GroupListItem.tsx` and `Window/WindowDisplay.tsx` — only where a chevron is rendered     |
 | AC-30                             | `Tab/TabDisplay.tsx` and `TabsGroup/GroupListItem.tsx` — DOM order of the secondary action only     |
 | AC-31                             | `Tabs.tsx`, `elements/TabGrid.tsx`, `DnD/DropPlaceholder.tsx`                                          |
-| AC-32                             | The primary-action button on each row kind; the handlers themselves are unchanged                      |
+| AC-32                             | The primary-action button on each row kind; `GroupListItem.tsx` + `SearchView/index.tsx` for the search-result carve-out. The handlers themselves are unchanged |
 | AC-34, AC-35, AC-36, AC-37        | `elements/rowControls.ts` — pinned, not rewritten                                                    |
 
 ## 15. Measurement log
@@ -794,3 +856,17 @@ Added **2026-09-29**, on branch `fix/avatar-favicon-alt`, for the toolbar decisi
   AC-29 forbids naming a group row's toolbar with the same phrase.
 - The `image-alt` finding of 2026-09-28 is fixed in the working tree: `TabAvatarsDisplay.tsx`
   carries `alt=""` and `TabAvatarsDisplay.test.tsx` guards it (§1.5).
+
+Read **2026-09-29**, for the AM-1 / AM-2 amendments (§13.2):
+
+- `GroupListItem.tsx:183` gates the chevron on `expanded === undefined`; `SearchView/index.tsx:58`
+  passes `expandedGroups`; `GroupListItem.tsx:271` renders the group's tabs on
+  `!group.collapsed || expanded`. A search-result group row therefore has no chevron and cannot
+  show a collapsed state.
+- `GroupDisplay.tsx` `handleClick` calls `chrome.tabGroups.update(group.id, { collapsed: !group.collapsed })`
+  with no surface check, so the body click changes real browser state even where nothing renders it.
+- `SearchView` renders `Tabs` directly and never `WindowListItem`, so search results contain no
+  window rows at all (E-3).
+- `WindowDisplay` names its switch button `Switch to this window, ${tabs.length} tab(s)`, so two
+  windows holding five tabs each are today indistinguishable by name — the gap the optional
+  ordinal under AC-29 closes.

@@ -12,7 +12,7 @@ in plans, not here.
 | SPEC-01 | 2026-09-22 | Floating tab manager window           | `ui-shell` | implemented (2026-09-23) | —                            | [ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md](ui-shell/SPEC-01-2026-09-22-floating-tab-manager-window.md) |
 | SPEC-02 | 2026-09-23 | Tab audio controls                    | `tab-list` | implemented              | —                            | [tab-list/SPEC-02-2026-09-23-tab-audio-controls.md](tab-list/SPEC-02-2026-09-23-tab-audio-controls.md)                   |
 | SPEC-03 | 2026-09-24 | Favicons from the browser's own store | `tab-list` | implemented (2026-09-24) | — (supersedes SPEC-01 AC-22) | [tab-list/SPEC-03-2026-09-24-local-favicons.md](tab-list/SPEC-03-2026-09-24-local-favicons.md)                           |
-| SPEC-04 | 2026-09-28 | Accessible rows (`nested-interactive`) | `tab-list` | approved (2026-09-29)    | —                            | [tab-list/SPEC-04-2026-09-28-accessible-rows.md](tab-list/SPEC-04-2026-09-28-accessible-rows.md)                         |
+| SPEC-04 | 2026-09-28 | Accessible rows (`nested-interactive`) | `tab-list` | approved (2026-09-29, amended) | —                            | [tab-list/SPEC-04-2026-09-28-accessible-rows.md](tab-list/SPEC-04-2026-09-28-accessible-rows.md)                         |
 | SPEC-05 | 2026-09-29 | Keyboard access to what Chrome cannot do | `ui-shell` | approved (2026-09-29)    | — (supersedes SPEC-01 NG-10) | [ui-shell/SPEC-05-2026-09-29-keyboard-access.md](ui-shell/SPEC-05-2026-09-29-keyboard-access.md)                         |
 
 ## Status values
