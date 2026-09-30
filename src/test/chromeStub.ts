@@ -52,18 +52,39 @@ const matchesPattern = (pattern: string, url?: string): boolean => {
     : url === pattern;
 };
 
+/**
+ * One bound command, which is the ordinary state and therefore the default.
+ *
+ * A test that cares about the shortcut being *unbound* says so — that is the
+ * interesting case, and Chrome reports it as an empty `shortcut`, identically
+ * whether the user cleared it or another extension already held the chord.
+ */
+const BOUND_COMMAND: chrome.commands.Command = {
+  name: "open-conscious-tabs",
+  description: "Open Conscious Tabs",
+  shortcut: "Ctrl+Shift+K",
+};
+
 export interface ChromeFixtures {
   tabs?: Partial<chrome.tabs.Tab>[];
   windows?: Partial<chrome.windows.Window>[];
   groups?: Partial<chrome.tabGroups.TabGroup>[];
   /** What `chrome.tabs.getCurrent()` resolves to — undefined outside a tab. */
   currentTab?: Partial<chrome.tabs.Tab>;
+  /**
+   * What `chrome.commands.getAll()` reports. Defaults to one bound command;
+   * pass `[]` for an extension with none, or a `shortcut: ""` entry for the
+   * unbound case.
+   */
+  commands?: Partial<chrome.commands.Command>[];
 }
 
 export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
   const tabs = (fixtures.tabs ?? []) as chrome.tabs.Tab[];
   const windows = (fixtures.windows ?? []) as chrome.windows.Window[];
   const groups = (fixtures.groups ?? []) as chrome.tabGroups.TabGroup[];
+  const commands = (fixtures.commands ??
+    [BOUND_COMMAND]) as chrome.commands.Command[];
 
   return {
     runtime: {
@@ -128,6 +149,16 @@ export const createChromeStub = (fixtures: ChromeFixtures = {}) => {
     sidePanel: {
       open: vi.fn(async () => undefined),
       setPanelBehavior: vi.fn(async () => undefined),
+    },
+    commands: {
+      // Cloned like everything else here: `getAll` crosses a process boundary
+      // in the real thing, and handing out the fixture array would let one
+      // test's mutation look like state the stub always had.
+      getAll: vi.fn(async () => structuredClone(commands)),
+      // `event()` records its listeners and can fire them, which is the whole
+      // of what a command test needs: the worker registers a handler at import
+      // and the test has to reach it.
+      onCommand: event(),
     },
     sessions: {
       MAX_SESSION_RESULTS: 25,

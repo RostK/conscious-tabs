@@ -31,8 +31,7 @@ export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;
   single: boolean;
-  focus?: boolean;
-}> = ({ focus, single, window, tabsStructure }) => {
+}> = ({ single, window, tabsStructure }) => {
   // flatMap, not a reduce that spreads: spreading the accumulator copies
   // everything gathered so far on every item, which is quadratic in the number
   // of rows for a result that is the same list either way.
@@ -148,7 +147,7 @@ export const WindowListItem: FC<{
         </Dropzone>
       )}
       {(single || isOpen) && (
-        <Tabs focus={focus} tabsStructure={tabsStructure} window={window} />
+        <Tabs tabsStructure={tabsStructure} window={window} />
       )}
     </>
   );

@@ -10,6 +10,15 @@
   "action": {
     "default_title": "Open Conscious Tabs"
   },
+  "commands": {
+    "open-conscious-tabs": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Open Conscious Tabs"
+    }
+  },
   "background": {
     "service_worker": "src/worker/index.ts",
     "type": "module"

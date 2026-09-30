@@ -57,7 +57,6 @@ export const SearchView: FC<{
         <Tabs
           expandedGroups
           key={"w" + window.id}
-          focus={false}
           tabsStructure={tabsStructure.filter(
             ({ windowId }) => window.id === windowId,
           )}
