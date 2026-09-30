@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { useRef } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useInitialFocus } from "./useInitialFocus.ts";
 
@@ -18,6 +18,12 @@ const Probe = () => {
 /** jsdom reports the document focused; the interesting case is the other one. */
 const documentUnfocused = () =>
   vi.spyOn(document, "hasFocus").mockReturnValue(false);
+
+beforeEach(() => {
+  // jsdom has no window.focus, and the hook now calls it — unstubbed, every
+  // test that reaches that line prints "Not implemented" into the run.
+  vi.spyOn(window, "focus").mockImplementation(() => {});
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -65,6 +71,31 @@ describe("useInitialFocus", () => {
     window.dispatchEvent(new Event("focus"));
 
     expect(document.activeElement).toBe(row);
+  });
+
+  /**
+   * Measured on Chrome 154: a panel opened by the shortcut is not given
+   * document focus, and asking for it works — where a *second* press cannot,
+   * because an existing document has no activation to spend. jsdom cannot
+   * answer whether Chrome grants it; what this asserts is the rule we apply.
+   */
+  it("asks for focus when the document was not given any", () => {
+    documentUnfocused();
+    const focus = vi.spyOn(window, "focus").mockImplementation(() => {});
+
+    render(<Probe />);
+
+    expect(focus).toHaveBeenCalled();
+  });
+
+  // And does not ask when it already has focus, which would be the theft the
+  // rule against forcing focus is actually about.
+  it("does not ask for focus it already has", () => {
+    const focus = vi.spyOn(window, "focus").mockImplementation(() => {});
+
+    render(<Probe />);
+
+    expect(focus).not.toHaveBeenCalled();
   });
 
   // Already focused means the caret is where it needs to be and nothing is

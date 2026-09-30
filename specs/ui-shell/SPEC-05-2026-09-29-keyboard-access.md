@@ -135,8 +135,10 @@ reasonable.
 | C-9  | The `commands` manifest key is **not a permission** and adds **no install warning**. It appears in neither Chrome's permissions list nor its permission-warning guidance, and `src/test/manifest.test.ts` asserts only on `manifest.permissions`. **SPEC-01 AC-24 therefore does not fire.** _(No primary source addresses Web Store **re-review** triggers either way; that is unknown, not "no".)_ | https://developer.chrome.com/docs/extensions/reference/permissions-list · https://developer.chrome.com/docs/extensions/develop/concepts/permission-warnings                          |
 | C-10 | `suggested_key` constraints: at most **four** suggested shortcuts per extension; every chord must include `Ctrl` or `Alt`; **`Ctrl+Alt` combinations are forbidden** (AltGr); `global` scope is limited to `Ctrl+Shift+[0..9]`; OS and Chrome shortcuts always win and cannot be overridden; **a chord another extension already holds silently fails to register** rather than erroring; users remap at `chrome://extensions/shortcuts`; and `chrome.commands.getAll()` reports `shortcut` as an **empty string** when a command is unassigned. | https://developer.chrome.com/docs/extensions/reference/api/commands                                                                                                                 |
 | C-11 | `documentPictureInPicture.requestWindow()` is exposed only on a **top-level `Window`** and throws `NotAllowedError` without transient activation. A service worker has no `window`, and relaying through `runtime.sendMessage` does not transfer activation. **No command can open the float** — this is architectural, not a limitation to work around. | https://developer.mozilla.org/en-US/docs/Web/API/DocumentPictureInPicture/requestWindow · C-4                                                                                       |
-| C-12 | **Chrome exposes no API to ask whether the side panel is open, and none to move focus into an open one.** There is no `sidePanel.isOpen()` and no `sidePanel.focus()` — the API surface is `open`, `setOptions`, `getOptions`, `setPanelBehavior`, `getPanelBehavior`. Combined with C-2 (no `close()`), the panel is a surface this extension can create but cannot interrogate or steer. That `sidePanel.open()` on an already-open panel leaves it open is **expected behaviour, not documented behaviour**. | https://developer.chrome.com/docs/extensions/reference/api/sidePanel · C-2 (w3c/webextensions#521) |
+| C-12 | **Chrome exposes no API to ask whether the side panel is open, and none to move focus into an open one.** There is no `sidePanel.isOpen()` and no `sidePanel.focus()` — the API surface is `open`, `setOptions`, `getOptions`, `setPanelBehavior`, `getPanelBehavior`. Combined with C-2 (no `close()`), the panel is a surface this extension can create but cannot interrogate or steer. That `sidePanel.open()` on an already-open panel leaves it open is **expected behaviour, not documented behaviour**. **The "cannot focus an open one" half is now measured, not inferred** — C-14 item 3. | https://developer.chrome.com/docs/extensions/reference/api/sidePanel · C-2 (w3c/webextensions#521) · C-14 |
 | C-13 | `chrome.commands.onCommand` **passes the active tab to the listener**: `CommandEvent extends chrome.events.Event<(command: string, tab: chrome.tabs.Tab) => void>`. So `tab.windowId` and `tab.url` are both in hand **before the first statement runs**. This is what makes AC-36's operative reading safe — there is nothing to await in order to know which window to open in, or whether the active tab is one of our own pages (AC-39). | `node_modules/@types/chrome/index.d.ts:1264` (`onCommand` declared at `:1278`), verified in this working tree 2026-09-29 |
+| C-14 | **Focus on open, measured — the first hard numbers this question has had.** (1) A side panel opened by the keyboard command **does not receive document focus**; typing after the shortcut goes to the page behind it. (2) `window.focus()` **called on mount, from the panel document itself, is honoured** — with it, the first keystroke after the shortcut lands in the search field. (3) A **second** press, with the panel already open, **cannot** bring focus back: the message reaches the panel, but `document.hasFocus()` is `false` before `window.focus()` and `false` after. **Transient activation is required and only the moment of creation carries it.** | Measured on **Chrome 154.0.8037.92, 2026-09-30** — §16. Supersedes the low-confidence Chrome 148/149 claim in §10. |
+| C-15 | **`F6` cycles focus between the page and the side panel, in both directions.** The keyboard round trip is therefore complete with nothing from this extension: the shortcut opens the panel and puts the caret in the field (C-14 item 2), and `F6` moves in and out thereafter. **This is why no Escape-to-close handler was added** — NG-13. | Measured on Chrome 154.0.8037.92, 2026-09-30 — §16. |
 
 C-3 and C-8 together are what makes item 1 buildable at all: the gesture constraint is met, and the
 codebase already has a user-visible failure path for the case where the open is refused anyway.
@@ -296,11 +298,17 @@ are already `listitem`s and that SPEC-04 AC-34…AC-37 are implemented facts, no
 - **NG-12** Announcing anything about the shortcut across surfaces, or syncing a selection to a
   server, a device or a profile. Selection already crosses documents via `chrome.runtime`
   messaging (C-6) and that is the whole of it.
+- **NG-13** An **Escape-to-close** handler on the side panel. **Considered and dropped, 2026-09-30.**
+  It was on the table as the way out of a panel the keyboard had just entered — but closing the panel
+  destroys its search text, which is state the user typed, to solve a problem **`F6` already solves
+  in one key with nothing lost** (C-15, measured: `F6` cycles page↔panel in both directions). A
+  keyboard user's exit does not have to be a demolition. Recorded so it is not proposed again.
 
 ---
 
 ## 4. User stories
 
+  **Viability confirmed 2026-09-30 (§16 item 5):** the command does reopen the panel after a manual close, so this was dropped on cost and not on capability — closing destroys the panel's search text to solve what `F6` solves in one key with nothing lost.
 - **US-1** As a keyboard-only user, I want to open Conscious Tabs with a key, so that the extension
   is reachable at all without a mouse.
 - **US-2** As someone with eighty tabs open, I want to start typing the moment the manager appears,
@@ -368,10 +376,16 @@ worse than one that focuses it.
   and no surface-destroying call. _(**Deliberately says "intact", not "focused".** C-12: Chrome
   exposes no API to ask whether the side panel is open, and none to move focus into an open one, so
   a focus clause here could be neither satisfied nor verified. What is testable is that nothing is
-  disturbed. No toggle either: C-2, there is no `chrome.sidePanel.close()`. Note the honest status
-  of the premise — that `sidePanel.open()` on an already-open panel leaves it open is **expected
-  behaviour, not documented behaviour**, which is why the manual sweep **observes** it rather than a
-  unit test asserting it.)_
+  disturbed. **The assumption this relaxation rested on is now a measurement** (C-14 item 3, Chrome
+  154.0.8037.92, 2026-09-30): the plumbing to focus an already-open panel was built specifically to
+  find out — the worker messaged the panel after opening, the panel listened, all three presses were
+  heard — and `window.focus()` was ignored every time, `document.hasFocus()` false before the call
+  and false after. Only the moment of creation carries the activation. The plumbing was then removed.
+  **So this criterion is not a concession to uncertainty; it is the measured ceiling.** `F6` is the
+  user's own route back into an open panel (C-15). No toggle either: C-2, there is no
+  `chrome.sidePanel.close()`. And the premise that `sidePanel.open()` on an already-open panel leaves
+  it open remains **expected behaviour, not documented behaviour**, which is why the manual sweep
+  **observes** it rather than a unit test asserting it.)_
 - **AC-4** _(Must)_ The command SHALL declare a non-empty, user-facing `description` in the
   manifest, so that it is named and rebindable at `chrome://extensions/shortcuts`.
   **Verify:** unit — assert the description is non-empty and is not the command's internal id;
@@ -433,9 +447,11 @@ worse than one that focuses it.
   press.
   **Verify:** unit — `userEvent.keyboard("doc")` immediately after mount produces `search === "doc"`;
   manual in all three surfaces per AC-38. _(Deliberately keyed to "the document first receives
-  focus", not "mount": whether the side panel takes document focus when opened programmatically is
-  unverified and looks unreliable — see AC-38 and §13 DEC-5. A criterion written against mount would
-  be untestably true in jsdom and false in Chrome.)_
+  focus", not "mount", because the panel does **not** get document focus from the open itself — now
+  measured, C-14 item 1. What closes the gap is the mount-time `window.focus()` of C-14 item 2, which
+  AC-38 permits under its four conditions; the caret is therefore in the field for the first
+  keystroke after the shortcut. A criterion written against mount alone would be untestably true in
+  jsdom and false in Chrome.)_
 - **AC-13** _(Must)_ The auto-focused search field SHALL carry its existing accessible name, and
   focusing it SHALL NOT suppress the document's heading or landmark structure for a screen-reader
   user arriving at a freshly opened surface.
@@ -608,18 +624,26 @@ ever covers rows the user can see.**
   `Ctrl+Alt`, and are not in a deny-set naming Chrome's bindings (`Ctrl+Shift+A`, `+T`, `+B`, `+C`,
   `+D`, `+I`, `+J`, `+M`, `+N`, `+O`, `+W`). _(§1.7a. The deny-set is the executable form of that
   table, so the reasoning cannot be lost to a later edit.)_
-- **AC-38** _(Must)_ The focus-on-open behaviour of AC-12 SHALL be **measured in a real Chrome** on
-  all three surfaces — side panel, anchor tab and float — before item 2 is called done; AND IF the
-  side panel does not take document focus when opened programmatically, THEN the shortfall SHALL be
-  recorded as a platform limitation and the caret SHALL still be in the search field the moment the
-  document does receive focus — the application SHALL NOT attempt to force or fake focus.
-  **Verify:** manual — record, per surface, whether the document had focus on open and where the
-  caret was, in the measurement log. _(§13 DEC-5. Official docs are silent; a chromium-extensions
-  thread reports the side panel not receiving focus when opened by icon **or** shortcut, with no
-  Google reply — https://groups.google.com/a/chromium.org/g/chromium-extensions/c/nb058-YrrWc. A
-  third-party claim of a fix in Chrome 148/149 could not be verified against the tracker and is
-  recorded as low-confidence. No source distinguishes a toolbar click from a programmatic open. This
-  is exactly the kind of claim this project has been burned by deriving instead of measuring.)_
+- **AC-38** _(Must)_ The application SHALL NOT take focus **the user did not ask for**. Claiming
+  focus for a surface is permitted only under all four of these conditions together: **on mount**,
+  **once**, **only when the document does not already have focus**, and **only because a keypress
+  asked for that surface**. AND the focus-on-open behaviour of AC-12 SHALL be measured in a real
+  Chrome on all three surfaces — side panel, anchor tab, float — before item 2 is called done.
+  **Verify:** unit — the focus call fires once, from mount, guarded on `document.hasFocus()` being
+  `false`, and is wired to **no other event** (not a later command press, not `visibilitychange`,
+  not `focus`, not a message from the worker). Manual — per surface, record in §16 whether the
+  document had focus on open, whether the call was honoured, and where the caret landed.
+  _(**Amended 2026-09-30 (§15 A-5). This criterion used to forbid forcing or faking focus outright,
+  and the implementation deliberately asks for it — a spec that bans what the code does is worse
+  than either position.** C-14 is the measurement that reversed it: a panel opened by the command
+  does **not** receive document focus, but `window.focus()` on mount **is** honoured, so the
+  keystroke after the shortcut lands in the search field. What stays forbidden is the thing the
+  criterion was always about — **a panel pulling focus off a page someone is reading.** The four
+  conditions are what make that a rule rather than a loophole: mount-only and once means it cannot
+  fire while the user is elsewhere; the `hasFocus()` guard means it cannot steal what it already
+  has; and "a keypress asked for this surface" is the user's own request, which is the whole
+  difference. C-14 item 3 shows the loophole is not even reachable — a later press cannot take focus
+  back, because only the moment of creation carries the activation.)_
 - **AC-39** _(Should)_ WHEN the active tab in the focused window is one of the extension's own pages
   (`isOwnPage`), the command SHALL NOT add a second copy of the UI to that window; AND IF that
   determination cannot be made without spending the transient activation C-8 requires, THEN AC-2's
@@ -647,7 +671,7 @@ ever covers rows the user can see.**
 | **E-6**  | The suggested key is **already bound by the OS or another application**               | Chrome never sees the key. Nothing in the app may depend on the command ever firing (AC-7).                                                                                                    |
 | **E-7**  | The user **cleared** the shortcut at `chrome://extensions/shortcuts`                   | Identical to E-6 from the app's side. Every existing entry point still works.                                                                                                                  |
 | **E-8**  | Surface opens with **zero tabs to show**                                              | `TabsView` renders "No other tabs are open." Focus still lands somewhere real and named — never on a detached or removed node.                                                                  |
-| **E-9**  | Focus-on-open in the **float**, whose app runs in an iframe                           | Focus must cross into the iframe's document. Not assumed to work: `float.ts:330-334` appends the frame after dressing the window, so the app may not be mounted when the float is first painted. |
+| **E-9**  | Focus-on-open in the **float**, whose app runs in an iframe                           | Focus must cross into the iframe's document. Not assumed to work: `float.ts:330-334` appends the frame after dressing the window, so the app may not be mounted when the float is first painted. **Still unmeasured** — §16's outstanding table; AC-38 is not satisfied until it is recorded. |
 | **E-10** | Select-all with a filter active and **zero matches**                                  | Selection unchanged, one announcement of the unchanged state or none — never "0 tabs selected" alternating with a stale count.                                                                  |
 | **E-11** | A range spanning a **collapsed group**                                                | AC-19: the collapsed group's tabs are **not** selected. A collapsed group's tabs are not rendered (SPEC-04 E-1), and G-8 says selection covers only what the user can see.                       |
 | **E-12** | The **range anchor row is closed** from another window mid-range                      | `SelectionContext` already deselects removed tabs (`SelectionContext.tsx:76-81`). The anchor must degrade to "no anchor" rather than leaving a range hanging off a dead id.                     |
@@ -731,10 +755,14 @@ one and weakens the criterion it came from.
 - **NFR-3 Privacy posture.** AC-6, AC-27, NG-3, NG-4. Five permissions, no storage, no host
   permissions, no content scripts. The zero-host-permission, stores-nothing promise appears verbatim
   in `PRIVACY.md` and `store-listing.md`; AC-5 is the guard if the platform forces a change.
-- **NFR-4 Accessibility.** AC-11, AC-13, AC-14, AC-24, AC-28, AC-29, AC-30. This spec is *about*
-  accessibility, so the bar is that it does not buy keyboard reach at the cost of screen-reader
-  coherence: one initial focus, announced changes, an unchanged tab-stop budget, and the same model
-  in a ~400 px always-on-top window as in the panel.
+- **NFR-4 Accessibility.** AC-11, AC-13, AC-14, AC-24, AC-28, AC-29, AC-30, AC-38. This spec is
+  *about* accessibility, so the bar is that it does not buy keyboard reach at the cost of
+  screen-reader coherence: one initial focus, announced changes, an unchanged tab-stop budget, and
+  the same model in a ~400 px always-on-top window as in the panel. **The round trip is complete
+  without us**: the shortcut gets the user in and the caret into the field (C-14), and `F6` moves
+  focus out and back in both directions (C-15) — which is why the exit is not a close (NG-13).
+  Taking focus is bounded by AC-38 precisely so that "reachable by keyboard" never becomes "steals
+  the keyboard".
 - **NFR-5 Security.** AC-10, AC-25, AC-34, NG-8. Three distinct surfaces: (a) a global key is an
   **un-gestured, un-aimed entry point** and must therefore be able to do nothing destructive;
   (b) tab titles and URLs remain untrusted page-supplied strings and must never reach an
@@ -831,7 +859,10 @@ one and weakens the criterion it came from.
     thread reports no focus on open by icon or shortcut, with no Google reply —
     https://groups.google.com/a/chromium.org/g/chromium-extensions/c/nb058-YrrWc. A third-party
     claim of a fix in Chrome 148/149 could not be verified against the tracker and is recorded as
-    **low-confidence**. This is why AC-38 is a measurement gate rather than an assumption.
+    **low-confidence**. This is why AC-38 was a measurement gate rather than an assumption —
+    **and the gate has since been run: superseded by C-14, measured on Chrome 154.0.8037.92,
+    2026-09-30 (§16).** The thread's report was right about the panel not receiving focus, and
+    silent on the part that mattered: a mount-time `window.focus()` is honoured.
   - `_execute_side_panel`: **fabricated.** Present in AI search summaries, absent from both the
     commands reference and the side-panel guide. Recorded so it is not proposed again (AC-1).
 
@@ -909,7 +940,7 @@ All thirteen clarifications are closed. Recorded with their reasoning so nobody 
 | **DEC-1, DEC-2** (was NC-1, NC-2)             | **One custom command that opens the side panel, or focuses the UI where it already is. No toggle.** Per-state behaviour in §5.1's table.                                                                                                                                                                                                      | The side panel is the default, fully-featured home (SPEC-01 G-4), and C-8 makes it reachable from a command. No toggle: there is no `chrome.sidePanel.close()` (C-2), and a key that destroys a surface is worse than one that focuses it. Across windows the user is **not** teleported — side panels are per-window and SPEC-01 **G-2** already accepts one copy per window, so `openAnchorTab`'s focus-and-raise (`anchor.ts:51-59`) is deliberately not reused. **Amended 2026-09-29 (§15 A-1):** "focuses the UI where it already is" is specced as **leaves it intact**, because C-12 says Chrome offers no way to ask whether the panel is open or to move focus into it — a focus clause would be neither satisfiable nor verifiable. → AC-2, AC-3, AC-39 |
 | **DEC-3** (was NC-3)                          | **`Ctrl+Shift+K` / `Command+Shift+K`**, with the whole rejected field and its reasons recorded in §1.7a.                                                                                                                                                                                                                                      | C-10 leaves a narrow field: a required `Ctrl`/`Alt`, no `Ctrl+Alt`, Chrome's own chords unavailable, and `Ctrl+Shift+[0..9]` left for the `global`-scope commands that actually need it. The suggestion is not a guarantee — a chord another extension holds fails **silently** — so both failure modes are specced rather than assumed away. → AC-37, AC-7, AC-35                                                                                                     |
 | **DEC-4** (was NC-4)                          | **A custom command name, not the reserved `_execute_action`.**                                                                                                                                                                                                                                                                               | `_execute_action` dispatches no `onCommand` event, which removes exactly the branch DEC-1 and DEC-2 need. `openPanelOnActionClick: true` already covers the icon click, so the two paths stay distinct and neither has to serve both. **Recorded because `_execute_action` looks simpler and someone will propose it again** — and because `_execute_side_panel`, which looks like the obvious answer, does not exist (§10). → AC-1                                     |
-| **DEC-5** (was NC-5)                          | **Focus the search field — specced behind a measurement gate**, and keyed to "the document first receives focus" rather than to mount. The initial-focus race is resolved in §1.8: the field wins, `TabDisplay`'s `autoFocus` is **withdrawn rather than outrun**, and the active tab's row stays the entry point into the list, one `↓` away. | Side-panel focus-on-open is unverified and looks unreliable (§10). A criterion written against mount would be untestably true in jsdom and false in Chrome. The fallback is stated in advance rather than discovered in the field: record the shortfall as a platform limitation, and never fake focus. **Amended 2026-09-29 (§15 A-4):** the collision is not only a forward risk — `GroupListItem.tsx:271` passes no `focus` prop, so grouped tabs already autofocus in search results today. That is the case for **deleting** the prop rather than threading it, and AC-11 gained two in-group fixtures. → AC-11, AC-12, AC-14, AC-38                                              |
+| **DEC-5** (was NC-5)                          | **Focus the search field — specced behind a measurement gate**, and keyed to "the document first receives focus" rather than to mount. The initial-focus race is resolved in §1.8: the field wins, `TabDisplay`'s `autoFocus` is **withdrawn rather than outrun**, and the active tab's row stays the entry point into the list, one `↓` away. | _As written 2026-09-29:_ side-panel focus-on-open was unverified and looked unreliable (§10), so the fallback was stated in advance rather than discovered in the field — record the shortfall as a platform limitation, and do not fake focus. A criterion written against mount alone would be untestably true in jsdom and false in Chrome, which is why AC-12 is keyed to the document receiving focus. **Amended 2026-09-29 (§15 A-4):** the collision is not only a forward risk — `GroupListItem.tsx:271` passes no `focus` prop, so grouped tabs already autofocus in search results today. That is the case for **deleting** the prop rather than threading it, and AC-11 gained two in-group fixtures. **Amended 2026-09-30 (§15 A-5):** the gate has been run. The panel does not get document focus on open, but a mount-time `window.focus()` **is** honoured (C-14), so AC-38 now forbids taking focus **the user did not ask for** instead of forbidding the ask. `F6` is the round trip (C-15), which is why Escape-to-close was dropped (NG-13). → AC-11, AC-12, AC-14, AC-38 |
 | **DEC-6…DEC-9** (was NC-6, NC-7, NC-8, NC-10) | **`Shift`+`↑`/`↓` extends a range; plain arrows stay unbound. `Ctrl`/`Cmd`+`A` selects all while focus is in the list, and the search field keeps it as select-all-text. "All" means the filtered result, not the whole browser. A range covers only the rows the user can see — a collapsed group it spans over is not included.**            | One principle does all four jobs: **G-8, selection covers only what the user can see.** Selecting eighty invisible tabs from a three-row filtered list is how someone closes what they meant to keep, and the same reasoning excludes a collapsed group a range sweeps over. AC-19 states the collapsed case **explicitly, because the opposite is a defensible reading** and someone will assume it. `Shift`+arrow both moves and extends, so none of this touches SPEC-04's walk (NG-6). → AC-17, AC-18, AC-19, AC-23 |
 | **DEC-10** (was NC-9)                         | **Reuse `App.tsx`'s existing debounced polite region; announce the running total, at the existing debounce.**                                                                                                                                                                                                                                 | A delta — "6 added" — is meaningless to someone who has lost count, which is exactly the user the announcement exists for. A second live region would queue against the first; a second debounce would be a second timing to keep in step with the first. → AC-24                                                                                                                                                                                                     |
 | **DEC-11** (was NC-11)                        | **The `commands` key is not a permission and adds no install warning. SPEC-01 AC-24 does not fire.**                                                                                                                                                                                                                                          | C-9, from Chrome's permissions list and permission-warning guidance. The five-file mirror stays untouched. AC-5 is **retained** as the guard that confirms this on a real install rather than trusting it, because no test that reads `manifest.json` can see an install warning. Web Store **re-review** triggers are addressed by no primary source — unknown, not "no". → AC-5, AC-6, NG-3                                                                            |
@@ -918,17 +949,19 @@ All thirteen clarifications are closed. Recorded with their reasoning so nobody 
 
 ### 13.1 What is still unmeasured, and deliberately so
 
-Two obligations survive as **criteria**, not as open questions. Neither blocks approval; both block
-"done", and both exist because a number derived from source is not the same thing as a number
-observed in a browser.
+These survive as **criteria**, not as open questions. Neither blocks approval; both block "done",
+and both exist because a number derived from source is not the same thing as a number observed in a
+browser.
 
-1. _Focus on open_ (AC-38) — whether a surface actually takes document focus when opened
-   programmatically. Chrome's docs are silent, the one public report says it does not, and the
-   claimed fix could not be verified (§10). Measured on all three surfaces before item 2 is called
-   done, with the fallback already written down so nobody has to invent one under pressure.
+1. ~~_Focus on open_ (AC-38)~~ — **measured 2026-09-30 on Chrome 154.0.8037.92; see C-14 and §16.**
+   The answer to the gate's question was "no, the panel does not get document focus" — and then
+   "but `window.focus()` on mount is honoured", which is the finding that reversed the earlier
+   conclusion that nothing could be done. The **side panel** is measured; the **anchor tab** and the
+   **float** rows of AC-38's sweep are still outstanding, and item 2 is not done until they are
+   recorded in §16.
 2. _The cost of a selection_ (AC-31) — the twenty-seven key presses in §1.5 are derived from
    `useRowKeys`' stop list and DOM order, **not observed**. Measured before that figure is quoted
-   anywhere user-facing.
+   anywhere user-facing. Group B, so not yet due.
 
 ---
 
@@ -945,16 +978,18 @@ Group per §1.9: **A** ships now, **B** waits for SPEC-04 to be implemented.
 | Documentation & discoverability          | AC-32 (A), AC-35 (A), AC-33 (B, Could — deferred to PI-8)    | A + B |
 | Security of a global entry point         | AC-10, AC-25, AC-34                                          | A + B |
 | Inherited and re-asserted                | AC-6, AC-21, AC-22, AC-26, AC-27, AC-29, AC-30               | A + B |
-| Platform constraints made executable     | AC-5 (C-9), AC-36 (C-8, C-13), AC-37 (C-10), AC-3 (C-2, C-12); NG-9 (C-11) | **A** |
-| Measured, not derived                    | AC-31, AC-38 — see §13.1                                     | A + B |
+| Platform constraints made executable     | AC-5 (C-9), AC-36 (C-8, C-13), AC-37 (C-10), AC-3 (C-2, C-12, C-14), AC-12 + AC-38 (C-14); NG-9 (C-11), NG-13 (C-15) | **A** |
+| Measured, not derived                    | AC-38 — side panel **done** 2026-09-30 (§16), anchor tab and float outstanding; AC-31 outstanding (group B). See §13.1. | A + B |
 | Accepted risks                           | R-1 (§7.1), against AC-8 and AC-3; observed by the manual sweep | **A** |
 
 ---
 
-## 15. Amendment log — 2026-09-29
+## 15. Amendment log
 
-Four changes after approval, all from planning group A. User-decided; the spec was already
+Changes after approval, all from planning and building group A. User-decided; the spec was already
 `approved`, so each is recorded here rather than folded in silently.
+
+**2026-09-29** — A-1 to A-4. **2026-09-30** — A-5.
 
 | #       | Change                                                                                                                                                                                                                                                                                                                                | Why                                                                                                                                                                                                                                                                                       |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -963,6 +998,34 @@ Four changes after approval, all from planning group A. User-decided; the spec w
 | **A-3** | **AC-8 unchanged; risk recorded as R-1** in the new §7.1.                                                                                                                                                                                                                                                                             | The fallback means a repeat press whose open rejects opens an anchor tab the user did not ask for. Accepted rather than weakening AC-8: `openAnchorTab` is find-or-create so the blast radius is one tab, and C-12 makes the conditional alternative unbuildable.                           |
 | **A-4** | **§1.8 records a live defect**, not only a forward risk; AC-11 gained two in-group fixtures; §9 gained a `GroupListItem` / `TabListItem` row.                                                                                                                                                                                          | `GroupListItem.tsx:271` passes no `focus` prop and never mentions `focus`, so `TabDisplay`'s `focus = true` default already autofocuses grouped tabs — including in search results. Strengthens the case for deleting the prop rather than threading it.                                    |
 
+| **A-5** _(2026-09-30)_ | **AC-38: "SHALL NOT force or fake focus" → "SHALL NOT take focus the user did not ask for"**, bounded by four conditions (on mount, once, only when the document lacks focus, only because a keypress asked for that surface). New constraints **C-14** (the measurement) and **C-15** (`F6`). New **NG-13** (Escape-to-close dropped). AC-3's assumption replaced by C-14 item 3. AC-12's rationale corrected. §13.1 item 1 closed for the side panel; §16 added. | **AC-38 as written forbade what the implementation now deliberately does**, and a spec that bans what the code does is worse than either position. The measurement is what earned the change: the panel does not get document focus from the open (so the gate's answer was "no"), but a mount-time `window.focus()` **is** honoured (so the earlier "nothing can be done" was wrong), and a second press cannot take focus back at all (so the loophole is unreachable). What stays forbidden is what the criterion was always about: a panel pulling focus off a page someone is reading. |
+
 **Status is unchanged at `approved`.** None of these opens a question: A-1 and A-2 make two criteria
-verifiable that were not, A-3 records a decision without changing a criterion, and A-4 adds a
-verified fact and test coverage for it.
+verifiable that were not, A-3 records a decision without changing a criterion, A-4 adds a verified
+fact and test coverage for it, and A-5 replaces an assumption with a measurement and corrects a
+criterion that the measurement had made wrong.
+
+---
+
+## 16. Measurement log
+
+Facts with a date and a build behind them. Added because AC-38 and AC-31 are the two places this
+spec refuses to let a derived number stand in for an observed one.
+
+**Chrome 154.0.8037.92 · 2026-09-30 · side panel, opened by the keyboard command**
+
+| #   | Observation                                                                                                                                                                                                            | Consequence                                                        |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1   | A side panel opened by the command **does not receive document focus.** Typing after the shortcut goes to the page behind it.                                                                                            | AC-38's gate answered: "no". C-14 item 1.                          |
+| 2   | `window.focus()` **called on mount, from the panel document itself, is honoured.** With it, the first keystroke after the shortcut lands in the search field.                                                            | Reverses "nothing can be done". AC-12 is satisfiable. C-14 item 2. |
+| 3   | A **second** press, panel already open, **cannot** bring focus back. The plumbing was built to find out — worker messages the panel after opening, panel listens, **three presses heard** — and `window.focus()` was ignored: `document.hasFocus()` `false` before the call and `false` after. Transient activation is required and only the moment of creation has it. **The plumbing was then removed.** | Confirms AC-3's relaxation and C-12's second half. C-14 item 3.    |
+| 4   | **`F6` cycles focus between the page and the panel, in both directions.**                                                                                                                                               | The round trip needs nothing from us. C-15, and the reason for NG-13. |
+| 5   | **The command reopens the panel after the user has closed it by hand.** Checked because one Chromium report associates the "may only be called in response to a user gesture" failure with "reopening after manual close"; it does not reproduce here.                                                                     | The ordinary close-and-reopen flow works. It also means NG-13's Escape-to-close was *viable* rather than impossible — it was dropped on cost (it destroys the panel's search text), not on capability, and NG-13 says so. |
+
+**Outstanding**
+
+| Measurement                                         | Criterion | Status                                       |
+| --------------------------------------------------- | --------- | -------------------------------------------- |
+| Focus on open — **anchor tab**                      | AC-38     | Not yet recorded. Item 2 is not done without it. |
+| Focus on open — **float** (app in an iframe, C-7, E-9) | AC-38     | Not yet recorded. Item 2 is not done without it. |
+| Key presses to build a nine-tab selection           | AC-31     | Not yet recorded; group B, not yet due.      |

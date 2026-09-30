@@ -29,6 +29,32 @@ export const useInitialFocus = (ref: RefObject<HTMLElement | null>): void => {
     // owed. Listening anyway would arm a claim for the next alt-tab back.
     if (document.hasFocus()) return;
 
+    /*
+     * Ask for the focus the panel was not given. Measured on Chrome 154.
+     *
+     * A side panel opened by the keyboard shortcut does not receive document
+     * focus, so the caret placed above sits in a document nobody is typing
+     * into — press the key, type, and the words go to the page behind. There is
+     * no sidePanel API for this, but a document may focus *itself*, and here it
+     * is honoured: with this line the first keystroke after the shortcut lands
+     * in the search field.
+     *
+     * **Why this is not the theft AC-38 forbids.** That rule exists so a panel
+     * does not take focus from the page someone is reading. This runs only when
+     * the document does not have focus, only on mount, and only because the
+     * user pressed a key asking for this surface. Answering that is not taking.
+     *
+     * **What it cannot do, established rather than assumed.** A *second* press,
+     * with the panel already open, cannot bring focus back. The worker can tell
+     * the panel it was asked for and the message arrives — measured, three
+     * presses heard — but `window.focus()` from an existing document is
+     * ignored: `document.hasFocus()` is false before the call and false after.
+     * Transient activation is required and a panel that has been sitting open
+     * has none. That plumbing was built, measured, and removed; SPEC-05 AC-3
+     * asks only that an already-open surface be left intact, and this is why.
+     */
+    window.focus();
+
     const claimIfUnclaimed = () => {
       if (document.activeElement === document.body) ref.current?.focus();
     };
