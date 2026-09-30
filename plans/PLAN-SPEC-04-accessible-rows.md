@@ -34,7 +34,13 @@ DoD says `TabListItem.tsx` must not be in the diff; setting `<DragHandle edge="e
 `TabListItem.tsx:79-84` adds no `TabListItem` prop and leaves the memo alone, so it meets D-6 as
 D-6 is actually written. The others: `RowList` is a deep import rather than a barrel export,
 the list/listitem contract is split between the views and `lib/Tabs`, and `rowFixtures.tsx` is
-tab-list-specific but lives in `src/test/`. plan-verifier was still running and must be re-run. Then: fix loop → a real-browser pass →
+tab-list-specific but lives in `src/test/`. plan-verifier finished: **no blocking gaps, 0 NOT
+FOUND, accept-with-gaps**. Three PARTIALs:
+- AC-6: the tab row's select control is still named "Select tab" / "Deselect tab" with no title in it, and no unit of this plan changes that. A plan or spec decision is needed.
+- AC-16: no test yet asserts that `aria-selected` and `aria-multiselectable` are absent. T-7 or T-8 can take it.
+- AC-24: deferred to T-8 by the plan.
+
+It also noted that T-2 updated the AC-9 test to 80 controls and left its "before the rows change" title stale. All three reviews are now in; next is the fix loop. Then: fix loop → a real-browser pass →
 `pr-self-review` → T-3 (the user's NVDA session).
 | T-3  | not started | **Gate — NVDA + Chrome, 20 and 80 rows.** A-7 is discharged here or the §13.1 retreat starts. |
 | T-4  | not started | The group row. |
