@@ -2,6 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { FC, useCallback, useEffect, useMemo } from "react";
 
 import { Tabs } from "../../lib/Tabs";
+import { RowList } from "../../lib/Tabs/elements/RowList.tsx";
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 
@@ -52,7 +53,7 @@ export const SearchView: FC<{
   }
 
   return (
-    <>
+    <RowList>
       {(windows ?? []).map((window) => (
         <Tabs
           expandedGroups
@@ -62,6 +63,6 @@ export const SearchView: FC<{
           )}
         />
       ))}
-    </>
+    </RowList>
   );
 };

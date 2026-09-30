@@ -3,6 +3,7 @@ import {
   CheckBoxOutlined,
   Close,
 } from "@mui/icons-material";
+import { Box } from "@mui/material";
 import {
   FC,
   MouseEventHandler,
@@ -135,14 +136,19 @@ export const WindowListItem: FC<{
     <>
       {!single && (
         <Dropzone>
-          <WindowDisplay
-            pre={pre}
-            tabs={flatTabs}
-            isOpen={isOpen}
-            handleOpenClick={handleOpen}
-            handleActivateClick={handleActivate}
-            itemAction={itemAction}
-          />
+          {/* Around the header only. The placeholder below is itself a
+              listitem (TabGrid), so wrapping the whole Dropzone body would
+              nest one inside another and fire aria-required-parent. */}
+          <Box role="listitem">
+            <WindowDisplay
+              pre={pre}
+              tabs={flatTabs}
+              isOpen={isOpen}
+              handleOpenClick={handleOpen}
+              handleActivateClick={handleActivate}
+              itemAction={itemAction}
+            />
+          </Box>
           {isOver && <DropPlaceholder />}
         </Dropzone>
       )}

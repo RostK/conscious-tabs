@@ -2,6 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { FC } from "react";
 
 import { WindowListItem } from "../../lib/Tabs";
+import { RowList } from "../../lib/Tabs/elements/RowList.tsx";
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 
@@ -42,7 +43,7 @@ export const TabsView: FC = () => {
   }
 
   return (
-    <>
+    <RowList>
       {windows.map((window) => (
         <WindowListItem
           // Stable across focus changes on purpose. Keying on window.focused
@@ -59,6 +60,6 @@ export const TabsView: FC = () => {
           single={windows.length === 1}
         />
       ))}
-    </>
+    </RowList>
   );
 };

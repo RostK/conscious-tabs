@@ -12,6 +12,7 @@ export const TabGrid: FC<
 > = ({ children, sx }) => {
   return (
     <Grid
+      role="listitem"
       xs={12}
       sm={6}
       md={4}
