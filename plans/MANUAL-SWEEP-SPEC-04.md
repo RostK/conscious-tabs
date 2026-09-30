@@ -13,25 +13,44 @@ a result — write what you heard, verbatim where the wording is the question.
 
 ## A. Before the rows change  *(T-0 — from the test suite, not the browser)*
 
-- [ ] **AC-1 · today's `nested-interactive` node count, per fixture**
+- [x] **AC-1 · today's `nested-interactive` node count, per fixture**
       **Do:** run `src/lib/Tabs/rows.a11y.test.tsx` against the unmodified tree.
       **Record:** the count for each of the four fixtures, and the axe-core version.
       **Expect, from §1.1 of the spec:** 5 plain tabs → **5**; 20 plain tabs → **20**;
       2 windows / 1 group / 6 tabs → **8**; 1 window / 1 collapsed group / 2 tabs → **2**.
+      **Recorded 2026-09-30, axe-core 4.13.0, `main` at `f99b6b2`:** 5, 20, 8, 2 — identical to the
+      expected figures, and to the spec's 2026-09-28 measurement, even though PRs #20–#22 (row
+      controls made clickable, Up returns to search) landed in between. Asserted by
+      `rows.a11y.test.tsx`; each equals the rendered row count (`.MuiListItemButton-root`).
       **Why this cannot wait:** AC-1 and AC-9 are comparisons. After the first row changes role there
       is no "today" left to compare against.
 
-- [ ] **AC-9 · today's Tab-stop budget**
+- [x] **AC-9 · today's Tab-stop budget**
       **Record:** the number of Tab stops the 20-plain-tab fixture costs. **Expect 20.**
       Record the `[data-row-control]` count too — 3 per plain tab row, 4 with mute, 4 on a window
       row, 5 on a group row.
+      **Recorded 2026-09-30:** **20** Tab stops (a `userEvent.tab()` loop, asserted), none of them
+      a `[data-row-control]`; **60** `[data-row-control]` elements (asserted) — 20 rows plus
+      60 controls is the 80 stops the list would cost if every control were focusable.
+      The other three fixtures were measured once, not asserted: 5 / 8 / 2 stops and
+      15 / 27 / 7 `[data-row-control]`.
+
+**AC-2 · no rule is switched off** — `rows.a11y.test.tsx` also scans every `.ts`/`.tsx` under `src/`
+for an axe `rules` block naming `nested-interactive` and for `disableOtherRules`; both absent.
+Falsified by planting a `rules: { "nested-interactive": … }` block in `src/test/axe.ts` (the scan
+failed naming it), then removing it.
+
+**Fixture shapes, so the numbers can be reproduced** (`src/test/rowFixtures.tsx`): the 2-window
+fixture renders 2 window rows + 1 group row + 5 tab rows, because only the focused window is
+expanded (window 2 contributes its header and its one tab stays hidden); the collapsed-group fixture
+renders the group row + the 1 tab outside it (the other is hidden by the collapse).
 
 | Fixture | `nested-interactive` before | after | Tab stops before | after |
 | ------- | --------------------------- | ----- | ---------------- | ----- |
-| 5 plain tabs | | | | |
-| 20 plain tabs | | | | |
-| 2 windows, 1 group, 6 tabs | | | | |
-| 1 window, 1 collapsed group, 2 tabs | | | | |
+| 5 plain tabs | 5 | | 5 | |
+| 20 plain tabs | 20 | | 20 | |
+| 2 windows, 1 group, 6 tabs | 8 | | 8 | |
+| 1 window, 1 collapsed group, 2 tabs | 2 | | 2 | |
 
 ## B. The gate  *(T-3 — stop here if the first one fails)*
 
