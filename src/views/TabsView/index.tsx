@@ -50,7 +50,7 @@ export const TabsView: FC = () => {
 
   return (
     <RowList>
-      {windows.map((window) => (
+      {windows.map((window, index) => (
         <WindowListItem
           // Stable across focus changes on purpose. Keying on window.focused
           // remounted the whole subtree every time the user switched windows —
@@ -64,6 +64,9 @@ export const TabsView: FC = () => {
             ({ windowId }) => window.id === windowId,
           )}
           single={windows.length === 1}
+          // Of the rendered windows, not `allWindows`: the ones with nothing to
+          // show are filtered out above, and counting them would skip a number.
+          index={index}
         />
       ))}
     </RowList>

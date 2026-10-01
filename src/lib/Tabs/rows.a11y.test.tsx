@@ -53,17 +53,19 @@ const rowsOf = (container: HTMLElement) =>
  * After T-2 only tab rows are toolbars, so what remained was the group and
  * window rows not yet converted: 0 + 0, then 2 windows + 1 group, then 1 group.
  * T-4 took the group rows to zero, and these two went red at 3 -> 2 and 1 -> 0
- * the moment it landed, then were updated to what it leaves behind. T-5 takes
- * the last two (the window rows) to zero, and T-7 converts the lot.
+ * the moment it landed, then were updated to what it leaves behind. T-5 took
+ * the last two (the window rows) to zero: the mixed fixture went red at 2 -> 0
+ * the moment it landed (`expected +0 to be 2`), and was updated to what it
+ * leaves behind. Every fixture is now at zero; T-7 converts the lot.
  */
 const BASELINE: readonly [string, RowFixture, number, number][] = [
   // was 5 before T-2
   [FIVE_TABS.name, FIVE_TABS, 0, 5],
   // was 20 before T-2
   [TWENTY_TABS.name, TWENTY_TABS, 0, 20],
-  // was 8 before T-2, and 3 after it (the two window rows and the group row);
-  // 2 = the two window rows, now that the group row is a toolbar (T-4)
-  [MIXED_WINDOWS.name, MIXED_WINDOWS, 2, 8],
+  // was 8 before T-2, 3 after it (the two window rows and the group row), and
+  // 2 after T-4 (the two window rows); 0 now that they are toolbars too (T-5)
+  [MIXED_WINDOWS.name, MIXED_WINDOWS, 0, 8],
   // was 2 before T-2, and 1 after it (the group row); 0 now that it is a
   // toolbar (T-4). There is no window row in this fixture.
   [COLLAPSED_GROUP.name, COLLAPSED_GROUP, 0, 2],
@@ -109,6 +111,114 @@ describe("AC-28, AC-29 · the group row in the list", () => {
       within(shutRow).getByRole("button", { name: "Tabs", expanded: false }),
     ).toHaveAttribute("tabindex", "0");
     expect(screen.queryByText("Hidden in group")).toBeNull();
+  });
+});
+
+// T-5, through the real list: the window row inside `RowList`, with its
+// `listitem`. The wording is a proposal awaiting a listen (WindowListItem's
+// `toolbarName`), so the exact strings are asserted once, here and in
+// WindowDisplay.test.tsx.
+describe("AC-28, AC-29 · the window row in the list", () => {
+  const windowToolbars = () =>
+    screen.getAllByRole("toolbar", { name: /^Window \d/ });
+
+  it("is one named toolbar per window, with its chevron as the only stop", async () => {
+    await renderList(MIXED_WINDOWS);
+    const [current, other] = windowToolbars();
+
+    // Five tabs in the focused window (the group's two included), one in the
+    // other. Only the focused one says so.
+    expect(current).toHaveAttribute(
+      "aria-label",
+      "Window 1, 5 tabs, current window",
+    );
+    expect(other).toHaveAttribute("aria-label", "Window 2, 1 tab");
+    expect(windowToolbars()).toHaveLength(2);
+
+    for (const [row, expanded] of [
+      [current, true],
+      [other, false],
+    ] as const) {
+      expect(row.closest('[role="listitem"]')).not.toBeNull();
+      const chevron = within(row).getByRole("button", {
+        name: "Tabs",
+        expanded,
+      });
+      expect(chevron).toHaveAttribute("tabindex", "0");
+      expect([...row.querySelectorAll("[tabindex='0']")]).toEqual([chevron]);
+    }
+  });
+
+  it("walks chevron, select, close, switch — the switch button last", async () => {
+    await renderList(MIXED_WINDOWS);
+    const [current] = windowToolbars();
+
+    expect(
+      [...current.querySelectorAll("[data-row-control]")].map((control) =>
+        control.getAttribute("aria-label"),
+      ),
+    ).toEqual([
+      "Tabs",
+      "Select every tab in this window",
+      "Close this window and its 5 tabs",
+      "Switch to this window, 5 tabs",
+    ]);
+  });
+
+  // The count alone is not a subject: two windows with the same number of tabs
+  // have to be told apart, which is what the ordinal is for (D-7).
+  it("tells apart two windows that hold the same number of tabs", async () => {
+    await renderList({
+      name: "two windows of two tabs",
+      ready: "Tab 1",
+      build: () => ({
+        windows: [
+          { id: 1, focused: true, type: "normal" },
+          { id: 2, focused: false, type: "normal" },
+        ],
+        tabs: [
+          { id: 1, windowId: 1, index: 0, title: "Tab 1", url: "https://a.test/1" },
+          { id: 2, windowId: 1, index: 1, title: "Tab 2", url: "https://a.test/2" },
+          { id: 3, windowId: 2, index: 0, title: "Tab 3", url: "https://a.test/3" },
+          { id: 4, windowId: 2, index: 1, title: "Tab 4", url: "https://a.test/4" },
+        ],
+      }),
+    });
+
+    const names = windowToolbars().map((row) => row.getAttribute("aria-label"));
+    expect(names).toEqual(["Window 1, 2 tabs, current window", "Window 2, 2 tabs"]);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  // `TabsView` drops a window with nothing to show, and the ordinal counts what
+  // is rendered: the third window is "Window 2", not "Window 3".
+  it("numbers the windows that are rendered, not every window there is", async () => {
+    await renderList({
+      name: "an empty window between two",
+      ready: "Tab 1",
+      build: () => ({
+        windows: [
+          { id: 1, focused: true, type: "normal" },
+          { id: 2, focused: false, type: "normal" },
+          { id: 3, focused: false, type: "normal" },
+        ],
+        tabs: [
+          { id: 1, windowId: 1, index: 0, title: "Tab 1", url: "https://a.test/1" },
+          { id: 3, windowId: 3, index: 0, title: "Tab 3", url: "https://a.test/3" },
+        ],
+      }),
+    });
+
+    expect(
+      windowToolbars().map((row) => row.getAttribute("aria-label")),
+    ).toEqual(["Window 1, 1 tab, current window", "Window 2, 1 tab"]);
+  });
+
+  // E-2: no window row, so nothing to name and nothing to number.
+  it("renders no window toolbar for a single window", async () => {
+    await renderList(FIVE_TABS);
+
+    expect(screen.queryAllByRole("toolbar", { name: /^Window \d/ })).toEqual([]);
   });
 });
 

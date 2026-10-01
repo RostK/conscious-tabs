@@ -24,7 +24,7 @@
 | T-3  | **passed 2026-09-30** | **Gate — NVDA + Chrome.** The §13.1 retreat is not triggered: the title is heard first. But every row said its title twice, and NVDA gave no count or position. That led to SPEC-04 AM-3 and new unit T-2b. The 80-row check moves to T-10. See sweep §B. |
 | T-2b | **built 2026-09-30** | **Name the tab row once** (AM-3): `title, site, state, n of N`, and the primary control is `Switch`. Added after T-3; runs before T-4. |
 | T-4  | **built 2026-09-30**, wording awaits a listen | The group row: a toolbar named `Work, group, 3 tabs`, with the chevron as its primary, named `Tabs` plus `aria-expanded`. In search there is no chevron (D-8 over the DoD line that said otherwise), and select-all is the Tab stop. Drift: `81886bf`'s `collapsible` guard is kept. SPEC-04 E-15's "roving state must survive" is stale against D-5/AC-36 and is left for the next amendment. |
-| T-5  | not started | The window row. |
+| T-5  | **built 2026-10-01**, wording awaits a listen | The window row: a toolbar named `Window 1, 12 tabs[, current window]`, numbered over the windows actually rendered. Its chevron is the primary, named `Tabs` plus `aria-expanded`, matching the group row rather than the plan's changing Hide/Show name. Switch stays last. `nested-interactive` is now 0 on every fixture. |
 | T-6  | not started | Reordering, pinned — including the hand-off nothing documents. |
 | T-7  | not started | The whole list under axe, mid-drag included, in all three hosts. |
 | T-8  | not started | Names, hostile input, and the 400 px re-measure the reorder invalidates. |
