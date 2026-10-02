@@ -94,6 +94,28 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   React-erased position looks healed; and only a class-only change (the tab becoming current)
   proves the attribute half of the observer — renames heal through `childList`. Evidence:
   `src/lib/Tabs/elements/RowList.tsx` (`numberRows`), `src/lib/Tabs/elements/RowList.test.tsx`.
+- 2026-10-02 — **`scroll-padding` on the scroller is what keeps a focused row out from under a
+  sticky header or a fixed footer.** Chrome scrolls a newly focused element into view only when it
+  is outside the viewport, and a row under one of those bars is inside it. Measured at 86 rows and
+  400px: Shift+Tab left the focused row wholly under the header, Tab left it wholly under the
+  action bar. Each bar now writes its own height to `scroll-padding-top`/`-bottom` on its
+  document's root and follows it with a `ResizeObserver`; the same presses then bring the row to
+  the middle of what is visible. On the bar's `ownerDocument`, because the float runs the app in
+  an iframe. Evidence: `src/lib/useScrollPadding.ts`, `plans/MANUAL-SWEEP-SPEC-04.md`
+  ("Chromium pass").
+- 2026-10-02 — **A browser pass with real key presses found two defects that 430 passing tests did
+  not.** Both needed layout or a real re-render: the focused row hidden under a bar, and focus
+  lost after a drop into a group. The pass ran in the layout harness with `elementFromPoint` and
+  `getBoundingClientRect` probes and a log of `focusin`/`focusout`, and took everything off the
+  manual sweep that does not need a screen reader. Do it before asking a person to listen.
+  Evidence: `plans/MANUAL-SWEEP-SPEC-04.md`, commits `d78826e`, `084f456`.
+- 2026-10-02 — **Three implementer agents in parallel worked because their file lists were
+  disjoint and each was told which files the others held.** T-6, T-7 and T-8 ran at once from one
+  base commit; each staged its work, and three `git diff --cached --binary` patches applied
+  cleanly on top of each other. A defect one agent found in a file it did not own (the window
+  row's `div` in a `button`) came back as an `it.fails` test and a note, not as an edit.
+  Evidence: commits `39b3e40`, `66faf4a`, `da0c186`.
+
 ## What Doesn't Work
 
 - 2026-07-30 — `.gitignore` patterns `*.local` and `.env*.local` do **not** match a bare
@@ -258,6 +280,19 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `App.test.tsx`'s `main [data-tab-row] [data-row-control]`, which no plan had listed: grep the
   tests, not just `App.tsx`, for every selector a moved hook appears in. Evidence:
   `src/lib/Tabs/Tab/TabDisplay.test.tsx`, `src/App.test.tsx`.
+- 2026-10-02 — **A fake that accepts a write and changes nothing hides everything that happens
+  after the write.** The harness's `chrome.tabs.move` returned a resolved promise and moved no
+  tab, so a keyboard drop never re-rendered the list, and "focus returns to the handle" passed in
+  the browser as it had in jsdom. Making `move`, `group` and `ungroup` really mutate and fire
+  their events showed focus falling to the body the first time a tab was dropped into a group.
+  Evidence: `harness/fakeChrome.ts`.
+- 2026-10-02 — **"Was not called", asserted straight after the event, passes whether or not
+  anything fired.** `activateTab` is several awaits long, so the call has not happened yet either
+  way. Use a positive control: do something afterwards that *does* activate a tab, wait for it,
+  and compare the whole call list. Likewise an "arrow leaves focus alone" test must start on a
+  control that has a neighbour in that direction, or it passes with the guard deleted. Both were
+  caught by falsifying. Evidence: `src/App.test.tsx` (`activatedAfterAControl`),
+  `src/lib/Tabs/elements/rowControls.test.tsx`.
 
 ## Codebase Patterns
 
@@ -340,6 +375,20 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   stops. The stop does not rove: nothing reassigns `tabIndex`, so coming back to a row always
   lands on its first control. Evidence: `src/lib/Tabs/rows.a11y.test.tsx` (the AC-9 block),
   `src/lib/Tabs/elements/rowControls.ts` (`rowPrimaryProps`).
+- 2026-10-02 — **dnd-kit restores focus after a keyboard drag once; a drop that rebuilds the row
+  needs a second answer.** A drop that moves a tab into or out of a group re-renders the row under
+  a different parent, so the handle dnd-kit just focused is removed. `App` records the dropped
+  row with `oweFocusTo`, and that row's `DragHandle` takes focus as it mounts when nobody else
+  holds it. The record lapses after 3 s and is not consumed by the first claim, because the row
+  mounts twice: once when the drag ends, again when Chrome reports the move. Keyboard drops only.
+  It is a module flag beside `dragActive`, for the same reason: a context would re-render every
+  row. Evidence: `src/lib/Tabs/elements/rowControls.ts`, `src/lib/Tabs/elements/DragHandle.tsx`.
+- 2026-10-02 — **Drag announcements are worded from what each drop zone's handler does, in one
+  file, and never say an id.** `"tab"` is "before ‹tab›" (plus "in its group" when the target is
+  grouped), `"group"` is "before group", `"group-inner"` is "into group", `"window-end"` and
+  `"in-window"` are the end and the start of a window. The zone types are bare strings, so a
+  renamed zone compiles and falls back to "Dropped ‹subject›"; `announcements.test.ts` is the
+  only guard. Evidence: `src/lib/Tabs/DnD/announcements.ts`.
 
 ## Decisions
 
@@ -523,6 +572,30 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `role` and `tabindex`; that test is the alarm if an upgrade reverses the order. Evidence:
   `node_modules/@mui/material/ButtonBase/ButtonBase.js:263` and `:309`,
   `src/lib/Tabs/Tab/TabDisplay.test.tsx`.
+- 2026-10-02 — **MUI `ButtonBase component="div"` is a real button to assistive technology and
+  moves no pixel.** It sets `role="button"`, fires `onClick` on Enter at keydown and on Space at
+  keyup (only when the event's target is the element itself), and prevents Space from scrolling.
+  That is how a control whose children are `div`s and a `p` stops being invalid HTML inside a
+  `<button>`. Measured at 400px: every control kept its position. `user-event` does not
+  synthesise a click for a `div`, so an Enter or Space test on it exercises MUI's handling, not
+  the browser's. Evidence: `node_modules/@mui/material/ButtonBase/ButtonBase.js:203-268`,
+  `src/lib/Tabs/Tab/TabDisplay.tsx`, `src/lib/Tabs/Window/WindowDisplay.tsx`.
+- 2026-10-02 — **In jsdom, axe's `color-contrast` is inapplicable on this list, not undecided, so a
+  green run says nothing about contrast.** A plain coloured element comes back `incomplete`,
+  because jsdom has no painted colours. Text that is `overflow: hidden` (every `noWrap` line here)
+  has no size, is treated as clipped, and drops out as `inapplicable`. A violations-only run shows
+  neither. Ask for `incomplete` and `passes` too, and assert both exactly. Evidence:
+  `src/lib/Tabs/rows.a11y.test.tsx` (the two contrast cases).
+- 2026-10-02 — **dnd-kit details that cost time.** Its `KeyboardSensor` adds its document
+  `keydown` listener in a `setTimeout`, so an Escape sent in the same instant as the pick-up is
+  not seen; only automation is that fast. Its live region is `[id^="DndLiveRegion"]`, separate
+  from the app's own `role="status"`. Outside a `DndContext`, `attributes` carry
+  `aria-describedby=""`. Focus restore runs in `requestAnimationFrame`. Evidence:
+  `src/App.test.tsx` ("reordering from the keyboard"), `src/lib/Tabs/elements/DragHandle.test.tsx`.
+- 2026-10-02 — **`it.fails` records a known defect in a file its finder may not edit.** The test
+  stays green while the defect stands and goes red the moment someone fixes it, which is the
+  prompt to turn it into a plain `it`. Used once, for the window row's `div` inside a `button`,
+  and converted in the same session. Evidence: commit `39b3e40`.
 
 ## Recurring Errors & Fixes
 
@@ -550,6 +623,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   which asks the same question and survives rows legitimately having some. When a test's
   assertion is "there is no X", write down what makes that true, because it is a
   precondition, not a property. Evidence: `src/lib/Tabs/Tab/TabDisplay.test.tsx`.
+- 2026-10-02 — **A hidden preview pane paints about two frames a second, and everything that
+  waits for a frame looks broken.** `requestAnimationFrame`, `ResizeObserver` and screenshots all
+  lagged: dnd-kit's focus restore read as "focus lost", and `scroll-padding` read as stale for
+  seconds. Count frames first (`requestAnimationFrame` in a one-second loop), and give each step
+  1.5–3 s when the count is low. Evidence: `plans/MANUAL-SWEEP-SPEC-04.md` ("A trap in the tool").
+- 2026-10-02 — **The harness page went blank with "Element type is invalid … got: undefined"
+  after files were rewritten under a running Vite.** Vite had read `App.tsx` at the instant
+  `git apply` was writing it and cached an empty module, so the default export was undefined.
+  Tests and the build were green throughout. Fix: `touch` the file, or restart the server, and
+  check what is served with `curl …/@fs/…/App.tsx` before suspecting the code.
 
 ## Session Notes
 

@@ -25,11 +25,11 @@
 | T-2b | **built 2026-09-30** | **Name the tab row once** (AM-3): `title, site, state, n of N`, and the primary control is `Switch`. Added after T-3; runs before T-4. |
 | T-4  | **built 2026-09-30**, wording awaits a listen | The group row: a toolbar named `Work, group, 3 tabs`, with the chevron as its primary, named `Tabs` plus `aria-expanded`. In search there is no chevron (D-8 over the DoD line that said otherwise), and select-all is the Tab stop. Drift: `81886bf`'s `collapsible` guard is kept. SPEC-04 E-15's "roving state must survive" is stale against D-5/AC-36 and is left for the next amendment. |
 | T-5  | **built 2026-10-01**, wording awaits a listen | The window row: a toolbar named `Window 1, 12 tabs[, current window]`, numbered over the windows actually rendered. Its chevron is the primary, named `Tabs` plus `aria-expanded`, matching the group row rather than the plan's changing Hide/Show name. Switch stays last. `nested-interactive` is now 0 on every fixture. |
-| T-6  | not started | Reordering, pinned — including the hand-off nothing documents. |
-| T-7  | not started | The whole list under axe, mid-drag included, in all three hosts. |
-| T-8  | not started | Names, hostile input, and the 400 px re-measure the reorder invalidates. |
-| T-9  | not started | `LEARNINGS.md`, and the stale numbers in it. |
-| T-10 | not started | The rest of the manual sweep. |
+| T-6  | **built 2026-10-02** (66faf4a, 084f456, 57a757a), wording awaits a listen | Reordering, pinned. The app supplies its own drag announcements and instructions (`DnD/announcements.ts`, a file beyond the plan's list), and no id is spoken. The hand-off is tested in both directions, on a row that stays mounted. A browser check found focus lost when a drop moves a tab into a group; fixed with an owed-focus flag beside `dragActive`. |
+| T-7  | **built 2026-10-02** (da0c186) | The whole list under the full ruleset on all four fixtures: no violations, nothing undecided. Mid-drag, the three hosts, AC-16's absence test and the no-axe-in-shipped-code guard are in. Contrast is not evaluated in jsdom, and two tests say so. |
+| T-8  | **built 2026-10-02** (39b3e40) | Hostile titles are literal text in every name; no name by reference; one definition of each style helper. The primary control on a tab row and the switch control on a window row are now `div`s with `role="button"`, which clears the block content inside a `<button>`. Re-measured at 400 px: 57.7 / 94.3 / 88.3 px, unchanged, so no constant moved (sweep §C). |
+| T-9  | **built 2026-10-02** (643f38d) | Four dated notes in `LEARNINGS.md`; the 2026-09-24 entry is corrected beneath, not edited. |
+| T-10 | **partly done 2026-10-02** | Everything that does not need ears was run in Chromium against the layout harness (sweep, "Chromium pass"). It found and fixed two defects: a focused row hidden under the header or the action bar (AC-7, d78826e), and the lost focus above (AC-13). **Open: every item that is about what NVDA says**, the 80-row listen, and the real side panel and float. |
 
 **Run state, 2026-09-30.** All three review gates ran over T-0…T-2: `/code-review` (medium),
 architecture-reviewer (0 violations, 4 smells) and plan-verifier (0 NOT FOUND, accept-with-gaps).

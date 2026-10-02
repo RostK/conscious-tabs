@@ -153,9 +153,14 @@ Actions  content info landmark  Open full view — … button
       - **Replaced by AM-3.** ", n of N" goes at the end of each tab row's toolbar name, counted over
         the tab rows actually rendered. It was heard in the prototype and approved.
 
-- [ ] **AC-7 / E-10 · does focus scroll into view at eighty rows?**
+- [x] **AC-7 / E-10 · does focus scroll into view at eighty rows?**
       **Do:** Tab to row 60. **Expect:** the browser scrolls it into view without help. This is the
       case `aria-activedescendant` handles worst, and the reason roving real focus was chosen.
+      **Result 2026-10-02 (Chromium, 86 rows, no screen reader): it failed at the bars, and is
+      fixed.** Sixty Tabs landed on row 59 of 82 at 297–343 px of a 640 px viewport, in view. But a
+      row lying under the sticky header or the fixed action bar was not scrolled at all; see the
+      Chromium pass below. With the fix, one Tab onto a row under the action bar and one Shift+Tab
+      onto a row under the header both bring it to 317–367 px.
 
 - [x] **AC-34 / AC-35 · the walk, heard rather than asserted** — *passed 2026-09-30.* It went
       Switch → Select → Close → Reorder and back without wrapping, each control saying its own name.
@@ -164,17 +169,65 @@ Actions  content info landmark  Open full view — … button
       first. **Expect:** each control announces its own name; the ends do not wrap. Then Tab — it
       must leave the row, not move within it.
 
+## Chromium pass without a screen reader — 2026-10-02
+
+Run by the assistant, not by a person, to take everything off the list below that does not need
+ears. **Nothing here says what a screen reader announces.** Every item that is about speech is still
+open, and says so.
+
+- **Where:** the layout harness (`harness/`, the real `App` over a fake `chrome.*`), in a Chromium
+  152 engine at 400 × 640, on `accessible-rows` at `57a757a`. Keys were real key presses, not
+  `focus()` calls. Positions were read with `getBoundingClientRect` and `elementFromPoint`.
+- **What it is not:** the extension loaded in Chrome, a real side panel, or a real
+  Picture-in-Picture float. The three hosts were run as `/`, `?host=anchor` and `?host=float`.
+- **A trap in the tool, for whoever repeats this:** the preview pane was hidden and painted about
+  two frames a second. `requestAnimationFrame` and `ResizeObserver` wait for a frame, so dnd-kit's
+  focus restore and the scroll padding both looked broken until each step was given a second or
+  more. Measure the frame rate before believing a timing result.
+
+**Two defects found and fixed, both real.**
+
+1. **A focused row could sit wholly under the header or the action bar (AC-7).** Chrome scrolls a
+   focused element into view only when it is outside the viewport, and a row under a sticky or
+   fixed bar is inside it. At 86 rows: Shift+Tab left the focused row at 48–97 px under a header
+   ending at 100 px, and Tab left it at 585–634 px under an action bar starting at 583 px. Fixed by
+   `useScrollPadding` (`d78826e`); after it the same presses put the row at 317–367 px.
+2. **Focus was lost when a keyboard drop moved a tab into a group (AC-13).** dnd-kit restored focus
+   to the handle, then the list re-rendered with the row under a different parent, and focus fell
+   to the body. A drop that only reorders was fine. Fixed by the owed-focus flag (`084f456`). The
+   harness's `tabs.move` was a no-op before this, which is why nothing had shown it.
+
+**One observation, not fixed.** A tab with an empty title renders a 29 px row, not 49.5 px, because
+the title line is empty. It predates SPEC-04 and Chrome rarely reports an empty title.
+
 ## C. The other two surfaces, and the narrow one  *(T-10)*
 
 - [ ] **AC-27 · the anchor tab** — repeat §B's first three items. Record any difference.
 - [ ] **AC-27 · the float at ~400 px** — repeat them again. This is the surface no automated check
       can stand in for.
-- [ ] **AC-22 · nothing clipped at ~400 px** — with a **very long tab title** and a **very long group
+- [x] **AC-22 · nothing clipped at ~400 px** — with a **very long tab title** and a **very long group
       name** open, check that no row control is clipped and none overlaps the row's text.
-      **Watch the group row specifically:** it now shows its expand chevron in search results as well
-      (D-8), which it did not before, and it already reserves 88.3 px on the right.
+      _(The note that stood here about a chevron in search results was stale: D-8 was reversed and a
+      search-result group row has no chevron.)_
+      **Result 2026-10-02 (Chromium, 400 px, harness):** no control starts before 0 or ends after
+      400, and the page does not scroll sideways (`scrollWidth` 400).
+
+      | Row | Secondary-action container | Constant it feeds |
+      | --- | --- | --- |
+      | Tab, silent | 57.7 px | 60 |
+      | Tab, audible or muted | 94.3 px | 96 |
+      | Group | 88.3 px | 88.3 + 8 reserved |
+      | Window | 24.6 px | none |
+
+      All four equal the pre-rework readings, so no constant moved. The long group name ends at
+      287.7 px, 8 px short of its first control at 295.7. Taken before and after the primary
+      controls became `div`s: every control kept its position.
 - [ ] **AC-8 · the same keyboard model in all three** — the walk, the ends, and Tab out behave
       identically in the side panel, the anchor tab and the float.
+      **Partly done 2026-10-02 (Chromium, harness):** under `/`, `?host=anchor` and `?host=float`
+      the same presses gave the same sequence: search → Switch → Select → Close → Reorder, Right
+      again stays, back to Switch, Left again stays, four Tabs, the next row's walk, Up to search.
+      **Still open:** the real side panel and the real float, where focus arrives differently.
 - [ ] **AC-6 / AC-24 · a hostile title, heard** — open a page whose title contains `<` and `"` and
       confirm it is read as text, with no element created from it.
 
@@ -183,37 +236,70 @@ Actions  content info landmark  Open full view — … button
 - [ ] **AC-11 / AC-15 · pick-up** — Left/Right to the drag handle (it is the **last** control on the
       row now), press Space. **Expect:** a drag starts, an announcement says so, and the row's own
       action does **not** fire.
-- [ ] **AC-12 / AC-37 · the arrows, while a drag is live** — press ↑/↓. **Expect:** the item moves;
+      **Mechanics pass 2026-10-02 (Chromium):** Space starts the drag and `tabs.update` is not
+      called. The handle's description is "Press Space or Enter to pick up. Arrow keys move it,
+      Space or Enter drops it, Escape cancels." The live region gets "Picked up ‹title›." and then
+      at once the place it is over, for example "Before ‹next tab›."
+      **Still open, by ear:** whether NVDA reads both, or the second cuts off the first. The handle
+      also still carries dnd-kit's `aria-roledescription="draggable"`, so it may be read as
+      "draggable" in place of "button".
+- [x] **AC-12 / AC-37 · the arrows, while a drag is live** — press ↑/↓. **Expect:** the item moves;
       focus does **not** move between controls. This is the half no jsdom test can reach.
-- [ ] **AC-13 · drop and cancel** — drop with Space, then repeat and cancel with Escape. **Expect:**
+      **Passed 2026-10-02 (Chromium):** the dragged row went from 199 px to 249 px on two Downs and
+      to 149 px on four Ups, 25 px a press. Up did not send focus to the search field and Left did
+      not walk the row. The live region followed: "Before group Reading.", then "Before ‹tab›, in
+      its group." A drop then called `tabs.move` with the right index, and the list reordered.
+- [x] **AC-13 · drop and cancel** — drop with Space, then repeat and cancel with Escape. **Expect:**
       focus returns to the drag handle both times, and Left/Right work within the row again
       immediately.
+      **Passed 2026-10-02 (Chromium), after a fix.** Cancel, and a drop that reorders within the
+      window: focus is on the moved row's handle and Left walks to Close. A drop **into a group**
+      lost focus to the body until `084f456`; with it, focus is on the handle of the row in its new
+      place. Not tried: a drop into another window.
 - [ ] **AC-31 / E-14 · a real placeholder, mid-drag** — with a drag live and a `DropPlaceholder`
       visible between two rows, confirm the list still reads as a list and nothing announces a
       stray container. The unit test mounts a placeholder structurally; this is the real drag.
+      **Structure passes 2026-10-02 (Chromium), real drag:** with a drag live there were two more
+      `listitem`s than toolbars (the placeholders), no other role inside the list, and the drag
+      overlay sat outside `<main>`. **Still open, by ear:** how it reads.
 - [ ] **AC-14 · pointer reordering is unchanged** — drag a row by its body with the mouse.
-- [ ] **E-6 · a group row mid-drag** — a tab row unmounts the instant it is picked up; a group row
+- [x] **E-6 · a group row mid-drag** — a tab row unmounts the instant it is picked up; a group row
       does not. Pick up a **group** and press an arrow before hovering anything.
+      **Passed 2026-10-02 (Chromium):** picking up "Reading" said "Group Reading, where it
+      started." Left did nothing, Down moved it, Escape said "Cancelled. Group Reading put back."
+      and put focus back on its handle, and Left then walked to Close. In the browser the group
+      row did unmount at once, because the overlay starts over a drop zone. The still-mounted case
+      is the one the unit tests cover.
 
 ## E. The states most likely to surprise  *(T-10)*
 
 - [ ] **E-15 / E-9 · the group's actions menu** — open it with the keyboard. It portals outside the
       row, so focus leaves the toolbar's subtree. **Expect:** on close, focus is somewhere sane and
       Left/Right still work on that row. Confirm the menu button still announces `Actions for group
-      …` and the row's toolbar announces `Group …` — two names, deliberately different (AC-29).
+      …` and the row's toolbar announces `‹name›, group, n tabs` — two names, deliberately
+      different (AC-29).
+      **Mechanics pass 2026-10-02 (Chromium):** Enter on "Actions for group Reading" opens the menu
+      with focus on "Ungroup all tabs". Down and Up move within the menu and never reach the
+      search field. Escape closes it and returns focus to the menu button, and Left/Right walk the
+      row again. **Still open, by ear:** the two names.
 - [ ] **E-1 · a collapsed group** — the group row is there, its tabs are not. The announced item
       count must describe what is **rendered**.
 - [ ] **E-2 · a single window** — no window row is rendered at all. The list must not claim a
       container that is not there.
 - [ ] **E-3 · search results** — groups render expanded and there are **no** window rows. Confirm the
-      group row's chevron is present and named, and that pressing it collapses the real group.
+      group row has **no** chevron there and that Tab lands on its select-all control.
+      _(Corrected 2026-10-02: this asked for a chevron. D-8 was reversed, and AM-2 says a
+      search-result group row has no primary action.)_
 - [ ] **E-4 · an empty list** — close everything but the anchor tab. **Expect:** "No other tabs are
       open." announced as text, **not** as a list of zero items.
 - [ ] **E-7 · the drag overlay** — while dragging, the overlay renders a row of its own outside the
       list. **Expect:** it is not announced as a second list item and `↓` from the search field never
       lands in it.
-- [ ] **E-11 · a silent tab and an audible one, side by side** — the mute control exists only on one.
+- [x] **E-11 · a silent tab and an audible one, side by side** — the mute control exists only on one.
       Rows are not uniform; confirm the walk simply has one fewer stop rather than an empty one.
+      **Passed 2026-10-02 (Chromium):** a silent row has Switch, Select, Close, Reorder. An audible
+      row has Switch, Select, Mute, Close, Reorder, and a muted one says Unmute. Their names end
+      "playing audio" and "muted".
 
 ---
 
