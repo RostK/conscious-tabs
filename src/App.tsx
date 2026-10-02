@@ -60,6 +60,7 @@ import { TabDisplay } from "./lib/Tabs/Tab/TabDisplay.tsx";
 import { GroupDisplay } from "./lib/Tabs/TabsGroup/GroupDisplay.tsx";
 import { PromptProvider } from "./lib/Tabs/undo";
 import { useInitialFocus } from "./lib/useInitialFocus.ts";
+import { useScrollPadding } from "./lib/useScrollPadding.ts";
 import { SearchView } from "./views/SearchView";
 import { TabsView } from "./views/TabsView";
 
@@ -198,6 +199,9 @@ function App() {
       say.clear();
     };
   }, [search, matches]);
+  // The header is sticky over the top of the list. Without telling the
+  // browser so, Shift+Tab could move focus to a row lying wholly underneath it.
+  const headerRef = useScrollPadding("top");
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 10 pixels before activating
     activationConstraint: {
@@ -257,6 +261,7 @@ function App() {
           }}
         >
           <AppBar
+            ref={headerRef}
             position="sticky"
             elevation={0}
             sx={{
