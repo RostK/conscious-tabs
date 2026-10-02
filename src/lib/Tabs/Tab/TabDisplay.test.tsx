@@ -827,6 +827,21 @@ describe("a selected tab", () => {
     fireEvent.click(row, { ctrlKey: true });
     expect(boxOf(container)).toHaveAttribute("aria-label", "Deselect Example");
   });
+
+  // SPEC-04 AM-4. The name already changes, so a pressed or checked state on
+  // top of it would say the same thing twice: "Deselect Example, pressed".
+  it("says so in the name only, with no pressed or checked state", () => {
+    const { container } = renderTab(tab({ id: 42 }));
+    const row = container.querySelector(".MuiListItemButton-root")!;
+
+    for (const selected of [false, true]) {
+      if (selected) fireEvent.click(row, { ctrlKey: true });
+      expect(boxOf(container)).not.toHaveAttribute("aria-pressed");
+      expect(boxOf(container)).not.toHaveAttribute("aria-checked");
+      expect(boxOf(container)).not.toHaveAttribute("aria-selected");
+    }
+    expect(boxOf(container)).toHaveAttribute("aria-label", "Deselect Example");
+  });
 });
 
 /**
@@ -1018,6 +1033,35 @@ describe("a tab row's buttons", () => {
     expect(rowOf(container).querySelectorAll("button").length).toBeGreaterThan(0);
     expect(rowOf(container).querySelectorAll("button div, button p")).toHaveLength(
       0,
+    );
+  });
+});
+
+/**
+ * Chrome's own pages are titled with their host: "Extensions" lives at
+ * chrome://extensions. Heard with NVDA on 2026-10-02 as "Extensions,
+ * extensions, current tab".
+ */
+describe("a tab whose site is the same word as its title", () => {
+  it("says the word once", () => {
+    renderTab(tab({ title: "Extensions", url: "chrome://extensions/" }));
+
+    expect(screen.getByRole("toolbar")).toHaveAccessibleName("Extensions");
+  });
+
+  it("is compared without regard to case", () => {
+    renderTab(tab({ title: "Example.COM", url: "https://example.com/a" }));
+
+    expect(screen.getByRole("toolbar")).toHaveAccessibleName("Example.COM");
+  });
+
+  it("still says the site when the title only contains it", () => {
+    renderTab(
+      tab({ title: "Extensions - Help", url: "chrome://extensions/" }),
+    );
+
+    expect(screen.getByRole("toolbar")).toHaveAccessibleName(
+      "Extensions - Help, extensions",
     );
   });
 });

@@ -224,6 +224,29 @@ export const rowTailReserveSx = (controls: number) => ({
   maxWidth: `calc(100% - ${controls + 8}px)`,
 });
 
+/**
+ * A row while it is being dragged: gone from view, still in the document.
+ *
+ * It used to be unmounted for the length of the drag. That took the drag
+ * handle with it, and the handle is what holds focus during a keyboard drag —
+ * so focus fell to the page. Heard with NVDA: "Conscious Tabs, document"
+ * straight after picking up, which cut off the announcement of what had been
+ * picked up, and the landmark, the list and the row read out again after
+ * every drop.
+ *
+ * Collapsed, not hidden: `display: none` and `visibility: hidden` both drop
+ * focus, which is the thing this is here to keep. Height only, so the row's
+ * top-left corner stays where it was and dnd-kit has no movement of the
+ * dragged node to compensate for.
+ */
+export const rowWhileDraggedSx = {
+  height: "0px",
+  minHeight: "0px",
+  overflow: "hidden",
+  opacity: 0,
+  pointerEvents: "none",
+} as const;
+
 /** Spread onto a control that must stay visible while it is switched on. */
 export const selectedProps = (selected: boolean) =>
   selected ? { "data-selected": true } : {};
@@ -371,8 +394,7 @@ export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
     // for the keyboard was stuck. The row counts as standing just before its
     // first control — Right enters the walk, Left has nowhere to go.
     const focused = document.activeElement;
-    const at =
-      focused === row ? -1 : stops.indexOf(focused as HTMLElement);
+    const at = focused === row ? -1 : stops.indexOf(focused as HTMLElement);
     if (at < 0 && focused !== row) return;
     const next = at + (event.key === "ArrowRight" ? 1 : -1);
     if (next < 0 || next >= stops.length) return;

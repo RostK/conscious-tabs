@@ -10,7 +10,7 @@ import {
 import { DropPlaceholder } from "../DnD";
 import { useDropzone } from "../DnD/useDropzone.tsx";
 import { DragHandle } from "../elements/DragHandle.tsx";
-import { dragFocusKey } from "../elements/rowControls.ts";
+import { dragFocusKey, rowWhileDraggedSx } from "../elements/rowControls.ts";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { GroupItem } from "../types.ts";
 import { handleDrop } from "./handleDrop.ts";
@@ -19,12 +19,6 @@ import { TabDisplay } from "./TabDisplay.tsx";
 const TabListItemRow: FC<
   ComponentProps<typeof TabDisplay> & { group?: GroupItem }
 > = ({ tab, group, ...props }) => {
-  const { isOver, isSelf, Dropzone } = useDropzone({
-    id: tab.id as number,
-    type: "tab",
-    data: tab,
-    onDrop: handleDrop,
-  });
   const {
     isDragging,
     attributes,
@@ -34,6 +28,15 @@ const TabListItemRow: FC<
   } = useDraggable({
     id: tab.id as number,
     data: tab,
+  });
+  const { isOver, isSelf, Dropzone } = useDropzone({
+    id: tab.id as number,
+    type: "tab",
+    data: tab,
+    onDrop: handleDrop,
+    // A row cannot be dropped on itself. It stays mounted while it is dragged
+    // (see `rowWhileDraggedSx`), so its zone has to be switched off instead.
+    disabled: isDragging,
   });
 
   // dnd-kit types every listener as a bare `Function`, so the two halves are
@@ -54,45 +57,46 @@ const TabListItemRow: FC<
           ]}
         />
       ) : null}
-      {!isDragging && (
-        <TabGrid
-          sx={[
-            group
-              ? {
-                  // Faint tint + a solid group-colour left edge, matching the
-                  // group header — reads as a quiet container, not a colour block.
-                  backgroundColor: `color-mix(in srgb, ${group.color} 8%, transparent)`,
-                  boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
-                }
-              : {},
-          ]}
-        >
-          {/* Only the mouse listener goes here, so the whole row stays
+      {/* Mounted for the whole drag, collapsed while this row is the one being
+          dragged: the handle inside it is what holds keyboard focus. */}
+      <TabGrid
+        sx={[
+          group
+            ? {
+                // Faint tint + a solid group-colour left edge, matching the
+                // group header — reads as a quiet container, not a colour block.
+                backgroundColor: `color-mix(in srgb, ${group.color} 8%, transparent)`,
+                boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
+              }
+            : {},
+          isDragging && rowWhileDraggedSx,
+        ]}
+      >
+        {/* Only the mouse listener goes here, so the whole row stays
               draggable by pointer. The keyboard half — and dnd-kit's
               tabIndex/role/aria — lives on the handle instead; see
               DragHandle for why the two had to be separated. */}
-          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-          <div ref={setNodeRefDraggable} onMouseDown={onMouseDown}>
-            <Dropzone>
-              <TabDisplay
-                tab={tab}
-                dragHandle={
-                  <DragHandle
-                    // Last control in the row, flush with its right edge.
-                    edge="end"
-                    label={`Reorder ${tab.title || "tab"}`}
-                    setActivatorNodeRef={setActivatorNodeRef}
-                    attributes={attributes}
-                    onKeyDown={onKeyDown}
-                    focusKey={dragFocusKey("tab", tab.id)}
-                  />
-                }
-                {...props}
-              />
-            </Dropzone>
-          </div>
-        </TabGrid>
-      )}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        <div ref={setNodeRefDraggable} onMouseDown={onMouseDown}>
+          <Dropzone>
+            <TabDisplay
+              tab={tab}
+              dragHandle={
+                <DragHandle
+                  // Last control in the row, flush with its right edge.
+                  edge="end"
+                  label={`Reorder ${tab.title || "tab"}`}
+                  setActivatorNodeRef={setActivatorNodeRef}
+                  attributes={attributes}
+                  onKeyDown={onKeyDown}
+                  focusKey={dragFocusKey("tab", tab.id)}
+                />
+              }
+              {...props}
+            />
+          </Dropzone>
+        </div>
+      </TabGrid>
     </>
   );
 };

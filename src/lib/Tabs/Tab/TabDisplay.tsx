@@ -143,9 +143,13 @@ export const TabDisplay: FC<{
   // this after commit (it reads `data-row-label`), so the position never
   // travels as a prop and never re-renders a row.
   const sound = muted ? "muted" : tab.audible ? "playing audio" : "";
+  // Chrome's own pages are titled with their host: "Extensions" at
+  // chrome://extensions. Heard with NVDA as "Extensions, extensions".
+  const repeatsTitle =
+    host.toLowerCase() === (tab.title ?? "").trim().toLowerCase();
   const toolbarName = [
     tab.title || "tab",
-    host,
+    repeatsTitle ? "" : host,
     tab.active ? "current tab" : "",
     sound,
     isSelected ? "selected" : "",

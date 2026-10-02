@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { GroupItem, TabItem } from "../types.ts";
 import { dragAnnouncements, dragInstructions } from "./announcements.ts";
@@ -54,12 +54,6 @@ const over = (drag: DefaultDrag | undefined, z?: unknown) =>
   dragAnnouncements.onDragOver(arg(drag, z));
 const drop = (drag: DefaultDrag | undefined, z?: unknown) =>
   dragAnnouncements.onDragEnd(arg(drag, z));
-
-// The pick-up sentence is remembered for a moment so the first place can carry
-// it (see `pickedUp`). Ending a drag forgets it, so each test starts clean.
-beforeEach(() => {
-  dragAnnouncements.onDragCancel(arg(tab()));
-});
 
 const ID = /2877238473|5550123|8675309|zone--|tab--|group--|window-end|in-window|\b91\b/;
 
@@ -172,13 +166,14 @@ describe("while a drag is over a zone", () => {
     );
   });
 
-  it("says where it started over its own place", () => {
-    expect(over(tab(), zone("tab", tab()))).toBe(
-      "Quarterly report, where it started.",
-    );
-    expect(over(group(), zone("group", group()))).toBe(
-      "Group Work, where it started.",
-    );
+  // A drag begins over its own place, so anything said for it is said right
+  // after "Picked up X." on every drag. Heard as the title twice in a row.
+  it("says nothing over its own place, and 'put back' when dropped there", () => {
+    expect(over(tab(), zone("tab", tab()))).toBeUndefined();
+    expect(over(group(), zone("group", group()))).toBeUndefined();
+
+    expect(drop(tab(), zone("tab", tab()))).toBe("Quarterly report put back.");
+    expect(drop(group(), zone("group", group()))).toBe("Group Work put back.");
   });
 
   // Found in review: `handleDrop` moves a selection wherever it is dropped,
@@ -315,91 +310,29 @@ describe("everything it says", () => {
 });
 
 describe("the instructions", () => {
-  it("name the keys the sensor binds", () => {
+  // Read on every landing on a handle, after a title that can be long, so it
+  // is kept to one short sentence (listening session, 2026-10-02).
+  it("name the keys the sensor binds, in one short sentence", () => {
     expect(dragInstructions.draggable).toBe(
-      "Press Space or Enter to pick up. Arrow keys move it, Space or Enter drops it, Escape cancels.",
+      "Space picks up, arrows move, Space drops, Escape cancels.",
     );
+    expect(dragInstructions.draggable.length).toBeLessThan(60);
   });
 });
 
 /**
- * A tab row is removed as it is picked up, the next row slides under the drag,
- * and dnd-kit reports it at once. Measured in a browser: "Picked up X." stood
- * for 55 ms before "Before Y." replaced it.
+ * Each event is one sentence and carries nothing over from the last. A
+ * pick-up used to be repeated in front of the first place spoken after it;
+ * heard with NVDA, that said the title twice.
  */
 describe("the pick-up, and the first place after it", () => {
-  const inbox = zone("tab", tab({ id: 3, title: "Inbox" }));
-  const later = zone("tab", tab({ id: 4, title: "Calendar" }));
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("carries the pick-up into the first place, once", () => {
-    vi.useFakeTimers();
+  it("are two sentences, and the title is in only the first", () => {
     expect(dragAnnouncements.onDragStart(arg(tab()))).toBe(
       "Picked up Quarterly report.",
     );
-    // Not the same instant: a window of zero would pass a test that never
-    // lets the clock move.
-    vi.advanceTimersByTime(499);
 
-    expect(over(tab(), inbox)).toBe("Picked up Quarterly report. Before Inbox.");
-    expect(over(tab(), later)).toBe("Before Calendar.");
-  });
-
-  it("still carries it at the very end of the window", () => {
-    vi.useFakeTimers();
-    dragAnnouncements.onDragStart(arg(tab()));
-    vi.advanceTimersByTime(500);
-
-    expect(over(tab(), inbox)).toBe("Picked up Quarterly report. Before Inbox.");
-  });
-
-  it("repeats the pick-up over its own place, so nothing cuts it off", () => {
-    dragAnnouncements.onDragStart(arg(group()));
-
-    // The same text again is no change to the live region, so it is not re-read.
-    expect(over(group(), zone("group", group()))).toBe("Picked up group Work.");
-    // And the first real place still carries it.
-    expect(over(group(), inbox)).toBe("Picked up group Work. Before Inbox.");
-  });
-
-  it("is not held back by a gap between rows", () => {
-    dragAnnouncements.onDragStart(arg(tab()));
-
-    expect(over(tab(), undefined)).toBeUndefined();
-    expect(over(tab(), inbox)).toBe("Picked up Quarterly report. Before Inbox.");
-  });
-
-  // Two tests, not one: the first place spoken clears the memory of the
-  // pick-up, so a second assertion in the same drag would pass whatever the
-  // clock said.
-  it("stands alone once it has had time to be heard, before a place", () => {
-    vi.useFakeTimers();
-    dragAnnouncements.onDragStart(arg(tab()));
-    vi.advanceTimersByTime(501);
-
-    expect(over(tab(), inbox)).toBe("Before Inbox.");
-  });
-
-  it("stands alone once it has had time to be heard, before its own place", () => {
-    vi.useFakeTimers();
-    dragAnnouncements.onDragStart(arg(tab()));
-    vi.advanceTimersByTime(501);
-
-    expect(over(tab(), zone("tab", tab()))).toBe(
-      "Quarterly report, where it started.",
+    expect(over(tab(), zone("tab", tab({ id: 3, title: "Inbox" })))).toBe(
+      "Before Inbox.",
     );
-  });
-
-  it.each([
-    ["a drop", () => drop(tab(), undefined)],
-    ["a cancel", () => dragAnnouncements.onDragCancel(arg(tab()))],
-  ])("is forgotten after %s", (_name, end) => {
-    dragAnnouncements.onDragStart(arg(tab()));
-    end();
-
-    expect(over(tab(), inbox)).toBe("Before Inbox.");
   });
 });

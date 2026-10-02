@@ -57,7 +57,7 @@ const groupName = (group: GroupItem): string =>
  * - `at` — a place. `over` is the phrase to speak while hovering, `drop` the
  *   one for the result, because "End of window" and "to the end of the window"
  *   are the same place and not the same sentence.
- * - `own` — the item's own spot, which is a no-op.
+ * - `own` — the item's own spot, which is a no-op. Silent while hovering.
  * - `nowhere` — a zone that would do nothing with this item (a group over a
  *   group's inner half, where `handleInnerDrop` returns without acting).
  * - `unknown` — a zone this file has no wording for. Silent while hovering,
@@ -156,26 +156,16 @@ const zoneOf = (over: { data: { current?: unknown } } | null) =>
   over ? (over.data.current as DZCurrentData | undefined) : undefined;
 
 /**
- * The pick-up sentence, for as long as it could still be cut off.
+ * One sentence per event, and nothing carried between them.
  *
- * A tab row is removed the moment it is picked up, the row below slides into
- * its place, and dnd-kit reports that row as the first thing the drag is over.
- * Measured in a browser: "Picked up X." was replaced by "Before Y." 55 ms
- * later, which leaves a screen reader no time to say what is being moved. So
- * the first place spoken soon after a pick-up carries the pick-up with it.
- *
- * Module state, and reset at every end and cancel: dnd-kit calls these one
- * drag at a time.
+ * For a while the first place spoken after a pick-up repeated the pick-up, to
+ * protect it from being replaced a frame later. Heard with NVDA on 2026-10-02
+ * that said a long title twice, and the thing actually cutting the pick-up off
+ * was focus falling to the page as the dragged row unmounted. The row stays
+ * mounted now (`rowWhileDraggedSx`), so each sentence is said once.
  */
-const PICKUP_FOLD_MS = 500;
-let pickedUp: { sentence: string; at: number } | undefined;
-
 export const dragAnnouncements: Announcements = {
-  onDragStart: ({ active }) => {
-    const sentence = `Picked up ${subjectOf(dragOf(active))}.`;
-    pickedUp = { sentence, at: Date.now() };
-    return sentence;
-  },
+  onDragStart: ({ active }) => `Picked up ${subjectOf(dragOf(active))}.`,
 
   // Silence over nothing: a pointer or arrow passing through gaps would
   // otherwise read out a sentence per gap, and the last real one is still true.
@@ -183,26 +173,14 @@ export const dragAnnouncements: Announcements = {
     if (!over) return undefined;
     const drag = dragOf(active);
     const place = placeOf(drag, zoneOf(over));
-    const lead =
-      pickedUp && Date.now() - pickedUp.at <= PICKUP_FOLD_MS
-        ? pickedUp.sentence
-        : undefined;
-    if (place.kind === "at") {
-      pickedUp = undefined;
-      return lead ? `${lead} ${place.over}.` : `${place.over}.`;
-    }
-    if (place.kind === "own") {
-      // Straight after the pick-up this adds nothing, and saying it would cut
-      // the pick-up off. The same sentence again changes nothing in the live
-      // region, so nothing is re-read.
-      if (lead) return lead;
-      return `${subjectOf(drag, true)}, where it started.`;
-    }
+    if (place.kind === "at") return `${place.over}.`;
+    // Over its own place, nothing. A drag begins there, so a sentence for it
+    // was said straight after every pick-up, with the title in it a second
+    // time ("Picked up X. X, where it started."). A drop there says "put back".
     return undefined;
   },
 
   onDragEnd: ({ active, over }) => {
-    pickedUp = undefined;
     const drag = dragOf(active);
     if (!over) return `${subjectOf(drag, true)} put back.`;
     const place = placeOf(drag, zoneOf(over));
@@ -213,18 +191,17 @@ export const dragAnnouncements: Announcements = {
     return `${subjectOf(drag, true)} put back.`;
   },
 
-  onDragCancel: ({ active }) => {
-    pickedUp = undefined;
-    return `Cancelled. ${subjectOf(dragOf(active), true)} put back.`;
-  },
+  onDragCancel: ({ active }) =>
+    `Cancelled. ${subjectOf(dragOf(active), true)} put back.`,
 };
 
 /**
- * Read once by the handle (`aria-describedby`), before the drag starts. It
- * names the same keys DnD's KeyboardSensor binds — Space or Enter to pick up
- * and to drop, the arrows to move, Escape to cancel (SPEC-04 DEC-4, §1.6).
+ * Read by the handle (`aria-describedby`) each time focus lands on it, so it is
+ * short: it follows a title that can already be long. It names the keys
+ * dnd-kit's KeyboardSensor binds — Space to pick up and to drop, the arrows to
+ * move, Escape to cancel (SPEC-04 DEC-4, §1.6). Enter also picks up and drops;
+ * it is left out to keep this to one breath.
  */
 export const dragInstructions: ScreenReaderInstructions = {
-  draggable:
-    "Press Space or Enter to pick up. Arrow keys move it, Space or Enter drops it, Escape cancels.",
+  draggable: "Space picks up, arrows move, Space drops, Escape cancels.",
 };

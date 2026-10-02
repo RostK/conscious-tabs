@@ -25,11 +25,14 @@ export const useDropzone: <DZData = unknown, DropData = DefaultDrag>({
   id,
   data,
   onDrop,
+  disabled,
 }: {
   type: string;
   id: string | number;
   data: DZData;
   onDrop?: DZonDrop<DZData, DropData>;
+  /** Takes the zone out of the drag: nothing can be over it or dropped on it. */
+  disabled?: boolean;
 }) => {
   Dropzone: FC<
     PropsWithChildren<{ sx?: ComponentProps<typeof DropzoneEl>["sx"] }>
@@ -42,11 +45,13 @@ export const useDropzone: <DZData = unknown, DropData = DefaultDrag>({
   id,
   data,
   onDrop,
+  disabled,
 }: {
   type: string;
   id: string | number;
   data: DZData;
   onDrop?: DZonDrop<DZData, DropData>;
+  disabled?: boolean;
 }) => {
   const dzPayload: DZCurrentData<DZData, DropData> = {
     type,
@@ -61,6 +66,7 @@ export const useDropzone: <DZData = unknown, DropData = DefaultDrag>({
   } = useDroppable({
     id: `${type}--${id}`,
     data: dzPayload,
+    disabled,
   });
 
   const Dropzone = useMemo(() => {

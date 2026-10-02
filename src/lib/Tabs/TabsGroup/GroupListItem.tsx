@@ -27,6 +27,7 @@ import {
   ROW_CHEVRON_NAME,
   rowControlProps,
   rowPrimaryProps,
+  rowWhileDraggedSx,
   selectedProps,
 } from "../elements/rowControls.ts";
 import { TabGrid } from "../elements/TabGrid.tsx";
@@ -66,23 +67,7 @@ export const GroupListItem: FC<
     [group],
   );
 
-  const outerDZ = useDropzone({
-    id: group.id as number,
-    type: "group",
-    data: group,
-    onDrop: handleDrop,
-  });
-  const OuterDropzone = outerDZ.Dropzone;
-  const innerDZ = useDropzone({
-    id: group.id as number,
-    type: "group-inner",
-    data: group,
-    onDrop: handleInnerDrop,
-  });
-  const InnerDropzone = innerDZ.Dropzone;
-
   const {
-    over,
     isDragging,
     attributes,
     listeners,
@@ -92,6 +77,25 @@ export const GroupListItem: FC<
     id: group.id as number,
     data: group,
   });
+
+  // A group cannot be dropped on itself. Its row stays mounted while it is
+  // dragged (see `rowWhileDraggedSx`), so its zones are switched off instead.
+  const outerDZ = useDropzone({
+    id: group.id as number,
+    type: "group",
+    data: group,
+    onDrop: handleDrop,
+    disabled: isDragging,
+  });
+  const OuterDropzone = outerDZ.Dropzone;
+  const innerDZ = useDropzone({
+    id: group.id as number,
+    type: "group-inner",
+    data: group,
+    onDrop: handleInnerDrop,
+    disabled: isDragging,
+  });
+  const InnerDropzone = innerDZ.Dropzone;
 
   // See DragHandle: the mouse half stays on the row, the keyboard half moves
   // to a named control, so a group row is one tab stop rather than two.
@@ -269,78 +273,79 @@ export const GroupListItem: FC<
   return (
     <>
       {outerDZ.isOver && !outerDZ.isSelf ? <DropPlaceholder /> : null}
-      {(!isDragging || !over) && (
-        <>
-          <TabGrid
-            sx={[
-              {
-                backgroundColor: `color-mix(in srgb, ${group.color} 8%, transparent)`,
-                position: "relative",
-              },
-            ]}
-          >
-            {innerDZ.active?.data.current?.type !== "group" && (
-              <InnerDropzone
-                sx={{
-                  position: "absolute",
-                  width: "100%",
-                  height: "50%",
-                  top: "50%",
-                }}
-              />
-            )}
-            {/* Pointer only, on purpose: the accessible control for this is
+      {/* Mounted for the whole drag, collapsed while this group is the one
+          being dragged: the handle inside it is what holds keyboard focus.
+          It used to unmount once the drag was over anything, which in a
+          browser is at once, since a drag starts over its own row. */}
+      <TabGrid
+        sx={[
+          {
+            backgroundColor: `color-mix(in srgb, ${group.color} 8%, transparent)`,
+            position: "relative",
+          },
+          isDragging && rowWhileDraggedSx,
+        ]}
+      >
+        {innerDZ.active?.data.current?.type !== "group" && (
+          <InnerDropzone
+            sx={{
+              position: "absolute",
+              width: "100%",
+              height: "50%",
+              top: "50%",
+            }}
+          />
+        )}
+        {/* Pointer only, on purpose: the accessible control for this is
                 DragHandle, which carries the role, the tab stop and the
                 keyboard half. Giving this div its own role would announce a
                 second control for the same action. */}
-            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-            <div ref={setNodeRefDraggable} onMouseDown={onMouseDown}>
-              <OuterDropzone>
-                <GroupDisplay
-                  onCtrlClick={handleSelectButton}
-                  group={group}
-                  // The same condition the chevron is gated on: a surface that
-                  // forces groups open has no collapse to offer, and offering
-                  // it anyway changed the browser silently.
-                  collapsible={expanded === undefined}
-                  sx={[
-                    // Hold the controls open while this row's own menu is,
-                    // so the menu is not left anchored to something that has
-                    // faded out. It has to set the property the shared model
-                    // actually hides with: this said `visibility: visible`,
-                    // which stopped meaning anything when rows moved to
-                    // opacity, and had been quietly doing nothing since.
-                    //
-                    // The Menu is a portal, so focus is outside this toolbar
-                    // while it is open (SPEC-04 E-15). Nothing here keeps or
-                    // restores a position across that, on purpose: the row's
-                    // Tab stop is fixed (D-5), so there is no roving state to
-                    // lose, and AC-36 forbids remembering one.
-                    open && {
-                      [`& .itemAction`]: {
-                        opacity: 1,
-                        pointerEvents: "auto",
-                      },
-                    },
-                    Boolean(innerDZ.active?.data.current) && {
-                      pointerEvents: "none",
-                    },
-                  ]}
-                  itemAction={itemAction}
-                  pre={pre}
-                />
-              </OuterDropzone>
-            </div>
-          </TabGrid>
-          {innerDZ.isOver && !innerDZ.isSelf ? (
-            <DropPlaceholder
-              sx={{
-                backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
-              }}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        <div ref={setNodeRefDraggable} onMouseDown={onMouseDown}>
+          <OuterDropzone>
+            <GroupDisplay
+              onCtrlClick={handleSelectButton}
+              group={group}
+              // The same condition the chevron is gated on: a surface that
+              // forces groups open has no collapse to offer, and offering
+              // it anyway changed the browser silently.
+              collapsible={expanded === undefined}
+              sx={[
+                // Hold the controls open while this row's own menu is,
+                // so the menu is not left anchored to something that has
+                // faded out. It has to set the property the shared model
+                // actually hides with: this said `visibility: visible`,
+                // which stopped meaning anything when rows moved to
+                // opacity, and had been quietly doing nothing since.
+                //
+                // The Menu is a portal, so focus is outside this toolbar
+                // while it is open (SPEC-04 E-15). Nothing here keeps or
+                // restores a position across that, on purpose: the row's
+                // Tab stop is fixed (D-5), so there is no roving state to
+                // lose, and AC-36 forbids remembering one.
+                open && {
+                  [`& .itemAction`]: {
+                    opacity: 1,
+                    pointerEvents: "auto",
+                  },
+                },
+                Boolean(innerDZ.active?.data.current) && {
+                  pointerEvents: "none",
+                },
+              ]}
+              itemAction={itemAction}
+              pre={pre}
             />
-          ) : null}
-        </>
-      )}
+          </OuterDropzone>
+        </div>
+      </TabGrid>
+      {innerDZ.isOver && !innerDZ.isSelf ? (
+        <DropPlaceholder
+          sx={{
+            backgroundColor: `color-mix(in srgb, ${group.color} 15%, transparent)`,
+          }}
+        />
+      ) : null}
       {!isDragging &&
         (!group.collapsed || expanded) &&
         group.tabs.map((tab) => (

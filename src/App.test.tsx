@@ -416,9 +416,10 @@ describe("reordering from the keyboard", () => {
     );
   });
 
-  // AC-13. A tab row unmounts while it is dragged and a new one is mounted on
-  // the way out, so focus has to land on the *new* handle: dnd-kit restores it
-  // in an animation frame, which is why this waits.
+  // AC-13. Focus is on the handle once the drag is over. Since the row stays
+  // mounted while it is dragged (see the describe below) this is the same
+  // handle that started it; the wait is kept because a drop that moves the row
+  // elsewhere still rebuilds it.
   // AC-37, the other end: once the drag is over the arrows walk the row again,
   // so the same two paths — cancel and drop — prove onDragCancel and onDragEnd
   // both clear the flag.
@@ -448,10 +449,11 @@ describe("reordering from the keyboard", () => {
     },
   );
 
-  // E-6, the case the flag exists for. A group row does not unmount when it is
-  // picked up, so its own key handler is still there for the first arrow of the
-  // drag — and would move focus off the handle and stop the event before
-  // dnd-kit saw it. Asserted through App's real handlers: only `onDragStart`
+  // E-6, the case the flag exists for. A row stays mounted while it is dragged
+  // — a group row always did until something was hovered, and every row does
+  // now — so its own key handler is still there for the arrows of the drag,
+  // and would move focus off the handle and stop the event before dnd-kit saw
+  // it. Asserted through App's real handlers: only `onDragStart`
   // setting the flag can make this pass.
   it("keeps the arrows for dnd-kit while a group row it picked up is still mounted", async () => {
     grouped();
@@ -494,6 +496,66 @@ describe("reordering from the keyboard", () => {
 
     await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
     fireEvent.mouseUp(document);
+  });
+
+  /**
+   * A row used to be unmounted for the length of its own drag, and the handle
+   * holding keyboard focus went with it. Heard with NVDA on 2026-10-02: focus
+   * fell to the page, "Conscious Tabs, document" cut off the announcement of
+   * what had been picked up, and after each drop the landmark, the list and
+   * the row were read out again. So the row is collapsed, not removed.
+   *
+   * What jsdom cannot show is that a collapsed row takes no room and that the
+   * drag overlay does not jump; both were checked in a browser.
+   */
+  describe("the row being dragged", () => {
+    const rowOf = (handle: HTMLElement) =>
+      handle.closest('[role="listitem"]') as HTMLElement;
+
+    it.each([
+      ["a tab row", () => undefined, "First tab", "Picked up First tab."],
+      ["a group row", grouped, "group Reading", "Picked up group Reading."],
+    ])(
+      "keeps %s's handle in place, and focused, for the whole drag",
+      async (_name, arrange, title, pickedUp) => {
+        arrange();
+        await mountApp();
+        const handle = handleOf(title);
+        handle.focus();
+        expect(rowOf(handle)).not.toHaveStyle({ height: "0px" });
+
+        await userEvent.keyboard(" ");
+        await waitFor(() => expect(spoken()).toBe(pickedUp));
+
+        // The same element, still focused: nothing for a screen reader to
+        // announce a move to.
+        expect(handle).toBeInTheDocument();
+        expect(document.activeElement).toBe(handle);
+        // Gone from view, not from the document.
+        expect(rowOf(handle)).toHaveStyle({ height: "0px", opacity: "0" });
+        expect(rowOf(handle)).not.toHaveStyle({ display: "none" });
+        expect(rowOf(handle)).not.toHaveStyle({ visibility: "hidden" });
+
+        await userEvent.keyboard("{Escape}");
+        await waitFor(() => expect(spoken()).toMatch(/^Cancelled/));
+
+        expect(document.activeElement).toBe(handle);
+        expect(rowOf(handle)).not.toHaveStyle({ height: "0px" });
+      },
+    );
+
+    it("stays focused through a drop, too", async () => {
+      await mountApp();
+      const handle = handleOf("First tab");
+      handle.focus();
+      await userEvent.keyboard(" ");
+      await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+
+      await userEvent.keyboard(" ");
+      await waitFor(() => expect(spoken()).toBe("First tab put back."));
+
+      expect(document.activeElement).toBe(handle);
+    });
   });
 
   // AC-13, the half dnd-kit cannot do. A drop that moves a tab into a group
