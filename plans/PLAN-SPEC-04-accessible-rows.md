@@ -53,6 +53,19 @@ the header is no longer true of this run. The three review gates then ran over e
   AC-2's missing half (no row control is hidden) now has a test. AC-16 is the first open decision
   below.
 
+- **Pre-push self-review: 0 critical, 0 high.** Two reviewers, one on product code and security,
+  one on tests. Fix round 4 (`d4592f6`) closed the medium findings:
+  - The drop handlers started the move with `void`, so App's "that could not be moved" never
+    fired for the drops most likely to be refused. They are awaited now.
+  - A drag ends as soon as dnd-kit reports the drop, before the drop is carried out.
+  - The drop tests run on fake timers, and every new branch has a test that fails without it.
+  - Left as discuss-only: the drag lifecycle is about ninety lines in `App`'s body and would sit
+    better in a `useRowDrag` hook under `DnD/`, with the two module flags beside it (S-06).
+- **A defect on `main`, found and not fixed here.** A dropped selection is never cleared: `App`
+  reads `SelectionContext` above the `SelectionProvider` it renders, so its `dispatch` is the
+  default no-op. It is outside SPEC-04. `App.drop.test.tsx` records it as an expected failure,
+  and it is raised as its own task.
+
 **Open decisions for the user.** Neither is built either way; both change what is heard.
 
 1. **AC-16 asks the select control to report "its own pressed/checked state".** What is built says

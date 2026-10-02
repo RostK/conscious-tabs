@@ -317,6 +317,19 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   every row's Left, Right and Up went dead until another drag happened to clear it. The line had
   been there since 2024; it became serious the day the arrows became the only route to a row's
   controls. Evidence: `src/App.tsx` (`handleDragStop`).
+- 2026-10-02 — **A handler that starts its work with `void` tells its caller nothing.** The tab
+  and group drop handlers ran `void moveTabsOnTab(…)` and returned, and one swallowed a refused
+  group move with `console.error`. `App` awaited them all the same: it cleared a dropped
+  selection before the move had run, and its new "that could not be moved" announcement could
+  never fire for those drops. A `catch` in a caller is only as good as what the callee lets
+  reach it; check the callee before trusting it. Evidence: `src/lib/Tabs/Tab/handleDrop.ts`,
+  `src/lib/Tabs/Tab/handleDrop.test.ts`.
+- 2026-10-02 — **A hook that reads a context above the provider its own component renders gets
+  the default, silently.** `App` calls `useContext(SelectionContext)` and renders
+  `SelectionProvider` in its own JSX, so its `dispatch` is the no-op default and a dropped
+  selection is never cleared. It type-checks, it does not throw, and it had no test, because
+  nothing could reach a drop that lands. A context whose default does nothing hides this; one
+  that throws would not. Evidence: `src/App.tsx`, `src/App.drop.test.tsx` (the expected failure).
 
 ## Codebase Patterns
 
@@ -630,6 +643,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   stays green while the defect stands and goes red the moment someone fixes it, which is the
   prompt to turn it into a plain `it`. Used once, for the window row's `div` inside a `button`,
   and converted in the same session. Evidence: commit `39b3e40`.
+- 2026-10-02 — **React in development calls a function component with no arguments, to build a
+  warning's component stack.** `describeNativeComponentFrame` invokes each component in the stack
+  once, with console output switched off, and reads where it throws. A `vi.mock` wrapper that
+  recorded `DndContext`'s props therefore recorded `undefined` the first time anything on the page
+  warned (here, a MUI `Grid` prop-type warning when the selection toolbar mounted), and the next
+  line of the test found the app "not mounted". The call is cached per component, so only the
+  first test to trigger a warning fails, which makes it look like an ordering bug. Any mock that
+  wraps a component and has a side effect must ignore a call with no props. Found with a `Proxy`
+  that logged each write to an array, since `console.log` is silenced during that call.
+  Evidence: `src/App.drop.test.tsx` (the `DndContext` wrapper).
 
 ## Recurring Errors & Fixes
 
