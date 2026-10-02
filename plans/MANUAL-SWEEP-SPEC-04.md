@@ -216,9 +216,9 @@ the title line is empty. It predates SPEC-04 and Chrome rarely reports an empty 
 
 ## Listening session — 2026-10-02, NVDA and Chrome, side panel
 
-Run by the user with the Speech Viewer open, on `accessible-rows` at `6eb49f7`, 25 to 28 tabs, one
-group, a second window opened part-way. NVDA 2026.2 (from the installer's name) and the Chrome that
-was current that day; neither version was read off the About box this time. Titles that name a
+Run by the user with the Speech Viewer open, on a build of `accessible-rows` no older than `d4592f6`
+(the exact commit was not noted), with 25 to 28 tabs, one group, and a second window opened part-way.
+NVDA 2026.2 (from the installer's name); the Chrome version was not recorded this time. Titles that name a
 person or an inbox are replaced with `‹Gmail tab›`.
 
 **Part 1, rows. Passed.**
