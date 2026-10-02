@@ -61,10 +61,13 @@ the header is no longer true of this run. The three review gates then ran over e
   - The drop tests run on fake timers, and every new branch has a test that fails without it.
   - Left as discuss-only: the drag lifecycle is about ninety lines in `App`'s body and would sit
     better in a `useRowDrag` hook under `DnD/`, with the two module flags beside it (S-06).
-- **A defect on `main`, found and not fixed here.** A dropped selection is never cleared: `App`
+- ~~**A defect on `main`, found and not fixed here.** A dropped selection is never cleared: `App`
   reads `SelectionContext` above the `SelectionProvider` it renders, so its `dispatch` is the
   default no-op. It is outside SPEC-04. `App.drop.test.tsx` records it as an expected failure,
-  and it is raised as its own task.
+  and it is raised as its own task.~~ Fixed on `main` in #24 and merged here on 2026-10-02
+  (`124d79a`): `App` is only the providers around an `AppBody`. The expected failure is a plain
+  test now, with two beside it — a refused move keeps the selection, and a single dragged tab
+  leaves one alone.
 
 **Open decisions for the user.** Neither is built either way; both change what is heard.
 
