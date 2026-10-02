@@ -69,6 +69,11 @@ the header is no longer true of this run. The three review gates then ran over e
   test now, with two beside it — a refused move keeps the selection, and a single dragged tab
   leaves one alone.
 
+**Both decisions below were made on 2026-10-02, by ear, during the listening session.** (1) The
+name carries the state, and AC-16 is amended to say so: SPEC-04 AM-4. (2) "Switch" stands, with
+the Label in Name cost recorded beside AM-4. They are kept as written because the reasoning is
+what makes the amendment reviewable.
+
 **Open decisions for the user.** Neither is built either way; both change what is heard.
 
 1. **AC-16 asks the select control to report "its own pressed/checked state".** What is built says

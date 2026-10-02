@@ -441,6 +441,13 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   no `aria-selected` or `aria-multiselectable` appears in the rendered list. _(Forced by AC-28:
   `aria-selected` is not supported on `toolbar` or on `listitem`, so setting it would be invalid
   ARIA. The per-row checkbox is already correct and already named.)_
+  **Amended 2026-10-02 (AM-4).** The select control SHALL convey the state through its accessible
+  name, "Select ‹title›" when the row is not selected and "Deselect ‹title›" when it is, and the
+  row's toolbar name SHALL carry "selected" (AC-29). It SHALL NOT also carry `aria-pressed` or
+  `aria-checked`: with a name that already changes, that would say the state twice.
+  **Verify:** unit — the control's name before and after selecting, the toolbar's name, and no
+  `aria-selected`, `aria-multiselectable`, `aria-pressed` or `aria-checked` on the control; manual
+  per AC-27.
 - **AC-17** _(Must)_ WHEN a row's selection state changes, the change SHALL be perceivable without
   the user moving focus to discover it.
   **Verify:** unit — the control's accessible state or the row's state updates in place; manual.
@@ -853,6 +860,16 @@ The user set the bar as **better than Chrome's own tab strip**. That strip says 
 **Rejected.**
 - **A site-only toolbar name** ("mail.google.com, tool bar, Switch to …"). It says the title once, but only after the site and "tool bar" on every row, which is the very pattern the gate exists to catch.
 - **Keeping the doubled title.** It is accessible, but a Gmail-length title makes every row twice as long to hear, on every row, and NVDA does not shorten it after the first few.
+
+### 13.5 Amendment — 2026-10-02, from the listening session
+
+| #        | Amendment |
+| -------- | --------- |
+| **AM-4** | **A row's select control says its state in its name.** "Select ‹title›" becomes "Deselect ‹title›", and the toolbar's name gains "selected". No `aria-pressed`. This amends AC-16. |
+
+**Why.** AC-16 asked the control to report "its own pressed/checked state". What was built says the state in the name, and the plan check marked that a literal miss. The alternative is a toggle with a fixed name, which NVDA reads as "Select ‹title›, toggle button, pressed". Heard with NVDA on 2026-10-02: pressing Space on the control announced "Deselect ‹title›" at once, without moving focus. The user's verdict was "clear enough".
+
+**AM-3 confirmed, with its cost known.** Every tab row's primary control is named "Switch" while the visible text is the title. That fails WCAG 2.5.3, Label in Name: someone using voice control cannot say the title to press the control, and a screen reader's list of buttons holds one "Switch" per tab. Each alternative brings the title back a second time on every row, which is what AM-3 removed. Put to the user with that cost stated, and heard again across 25 rows: "probably fine". It stands, and is the first thing to revisit if a voice-control user reports it.
 
 ### 13.4 Corrections — 2026-10-02
 
