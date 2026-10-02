@@ -73,6 +73,22 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   the cache rather than pruning it — pruning what a build did not see makes `SelectionToolbar`'s
   filtered view evict the main list's rows every render. Evidence:
   `src/lib/Tabs/useTabsStructure.ts` (`stableTab`), `src/lib/Tabs/Tab/TabListItem.tsx`.
+- 2026-10-02 — **A pointer drag can be driven in the layout harness with synthetic
+  `MouseEvent`s, when the browser pane's own drag does not land.** `left_click_drag` from the
+  selection toolbar's handle to a tab row left the selection untouched and no handler ran.
+  What worked: `mousedown` on the element carrying `aria-roledescription="draggable"` (the
+  wrapper, not the button inside it), then `mousemove` dispatched on `document` in about ten
+  steps a few tens of milliseconds apart, then `mouseup` on `document` — dnd-kit's `MouseSensor`
+  listens on the document once the press is taken, and the first step has to clear its 10px
+  activation distance. The drop reached the row's real handler. Evidence: `src/App.tsx`
+  (`mouseSensor`), `harness/main.tsx`.
+- 2026-10-02 (adds to the record above) — **The same drag ends as "2 tabs put back." when the
+  browser pane is not displayed.** A hidden pane reports `innerWidth` and `innerHeight` of 0, so
+  every row measures zero wide, nothing collides and the drop has no zone — with no error
+  anywhere. Check `innerWidth` before driving a drag, and give the tab a size
+  (`resize_window`, 1000×700 was enough) if it is 0; `visibilityState` stays `hidden` and the
+  drag works regardless. The live region is the quickest witness: it says "Before …" mid-drag
+  and "Moved …" after a drop that landed.
 
 - 2026-09-30 — **Test an in-flight load with a hand-released promise, not timers; and gate a
   list wrapper on having rows, not on the empty state.** The tabs and windows stores both sit behind one `Promise.all`
@@ -284,6 +300,20 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   (a site changing its icon) rather than the one that happens on every navigation. The fix is a
   change token in the query string — a hash of the tab's own `favIconUrl`, which is never
   fetched, only compared. Evidence: `src/lib/Tabs/elements/favicon.ts`.
+- 2026-10-02 — **On `main`, a drop onto a tab row tells `App` nothing about whether the move
+  happened, so "the selection cleared" in the harness is not proof of a move.** The tab row's
+  handler calls `void moveTabsOnTab(...)` and returns, so it resolves before Chrome answers; and
+  the harness's `chrome.tabs` has no `ungroup`, so the move it fired throws
+  `chrome.tabs.ungroup is not a function` as an unhandled rejection while the UI looks as if the
+  drop succeeded. Read the console after a harness drop, not only the DOM. Consequence for the
+  app: a move Chrome refuses on a tab row still clears a dropped selection. Both are already
+  fixed on `accessible-rows` (the handler awaits; the fake has `ungroup`) and this record is
+  stale once that branch lands. Evidence: `src/lib/Tabs/Tab/handleDrop.ts:6`,
+  `harness/fakeChrome.ts:206`.
+- 2026-10-02 (closes the record above, on this branch) — `main` has been merged into
+  `accessible-rows`, where the tab row's handler awaits the move and the harness's fake has
+  `ungroup`. A refused move on a tab row now reaches `App`, which keeps the selection and says
+  the move failed. The record above describes `main` only until this branch lands there.
 
 - 2026-09-30 — **A test that hands a component its own child can pass for the wrong reason,
   and a moved `data-*` hook breaks selectors that use it as an ancestor.** `TabDisplay`'s test
@@ -583,6 +613,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   calling, that spends the activation. Keep `open()` ahead of any `await`, `.then`,
   `sendMessage` or other `chrome.*` call; a synchronous comparison is fine. The failure has no
   symptom beyond "the key did nothing". Evidence: `src/worker/openSurface.ts`.
+- 2026-10-02 — **Prettier re-indents JSX when its nesting changes, but not the continuation
+  lines of a multi-line `{/* … */}` comment — and `prettier --check` passes either way.**
+  Taking two wrappers off `App`'s JSX moved everything four columns left except the second and
+  later lines of three block comments, which stayed where they were and nothing flagged them.
+  After any change of JSX depth in this repo, which comments heavily inside JSX, search the
+  touched range for `{/*` and realign by hand. `git diff -w --stat` is the quick check that the
+  rest of such a change really is whitespace. Evidence: `src/App.tsx` (the comments above
+  `<Typography variant="h1">` and `<Box component="main">`).
 
 - 2026-09-30 — **A `ButtonBase` nested inside `ListItemButton` shares its events with the row.**
   Focus bubbles, so the row picks up `Mui-focusVisible` when the inner button takes keyboard
@@ -759,6 +797,21 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   the NVDA gate. `src/lib/Tabs/Tab/TabDisplay.test.tsx` contains NUL, BEL and RLO on purpose,
   so git calls it binary: use `git diff --text`, edit it with narrow replacements, and count the
   bytes with node afterwards.
+
+- 2026-10-02 — Fixed the dropped selection that stayed selected: `App` read `SelectionContext`
+  above the `SelectionProvider` it rendered, so it is now only the providers around an
+  `AppBody`. Done on `main`'s line while `accessible-rows` is unmerged, which leaves two things
+  to do when they meet. The test lives in `src/App.selectionDrop.test.tsx`, named apart from
+  that branch's `src/App.drop.test.tsx` to avoid an add/add conflict: once both are present,
+  make that file's `it.fails` a plain `it`, move the "stays selected when refused" and "single
+  tab leaves a selection alone" cases into it, and delete this one. And `src/App.tsx` will
+  conflict, because that branch edits the body this change re-indented — merge with
+  `-Xignore-space-change` and what is left is the wrapper.
+- 2026-10-02 (closes the note above) — The branches have met, on `accessible-rows`. With
+  `-Xignore-space-change` the only conflict in `src/App.tsx` was the function's name, as
+  predicted; the JSX kept this branch's deeper indentation and needed Prettier and the three
+  block comments realigned by hand. The `it.fails` in `src/App.drop.test.tsx` is a plain `it`,
+  the two other cases moved in beside it, and `src/App.selectionDrop.test.tsx` is deleted.
 
 ## Open Questions
 

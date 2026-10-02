@@ -120,7 +120,7 @@ const DROP_FAILED = "That could not be moved there.";
 /** When to check that a keyboard drop left focus somewhere — see `settleFocus`. */
 const FOCUS_SETTLE_MS = [400, 1500];
 
-function App() {
+function AppBody() {
   const { dispatch: dispatchSelected } = useContext(SelectionContext);
 
   const [dragging, setDragging] = useState<DefaultDrag | null>(null);
@@ -237,18 +237,21 @@ function App() {
 
   const handleDragStart = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragStart"]
-  >(({ active }) => {
-    dragTurn.current += 1;
-    // Whatever the last drop was owed is void: a row picked up again within
-    // moments of a keyboard drop would otherwise take focus when a *pointer*
-    // let it go. Found in review.
-    oweFocusTo(undefined);
-    stopSettling();
-    // So a second refusal is a change to the live region, and is read again.
-    setAnnouncement((said) => (said === DROP_FAILED ? "" : said));
-    setRowDragActive(true);
-    setDragging(active.data.current as unknown as DefaultDrag);
-  }, [stopSettling]);
+  >(
+    ({ active }) => {
+      dragTurn.current += 1;
+      // Whatever the last drop was owed is void: a row picked up again within
+      // moments of a keyboard drop would otherwise take focus when a *pointer*
+      // let it go. Found in review.
+      oweFocusTo(undefined);
+      stopSettling();
+      // So a second refusal is a change to the live region, and is read again.
+      setAnnouncement((said) => (said === DROP_FAILED ? "" : said));
+      setRowDragActive(true);
+      setDragging(active.data.current as unknown as DefaultDrag);
+    },
+    [stopSettling],
+  );
 
   const handleDragCancel = useCallback(() => {
     oweFocusTo(undefined);
@@ -340,136 +343,151 @@ function App() {
   );
 
   return (
+    <DndContext
+      sensors={sensors}
+      onDragEnd={handleDragStop}
+      onDragStart={handleDragStart}
+      // E-11: a drag released outside the float's window never reaches a
+      // dropzone, and without this the overlay stayed on screen following
+      // a pointer that had left the building. The float makes this easy to
+      // hit — it is a 400px window with a lot of desktop around it.
+      onDragCancel={handleDragCancel}
+      // AC-15: said, not left to dnd-kit's defaults, which read out a tab's
+      // numeric id. The instructions are what the drag handle's
+      // `aria-describedby` points at.
+      accessibility={{
+        announcements: dragAnnouncements,
+        screenReaderInstructions: dragInstructions,
+      }}
+    >
+      <AppBar
+        ref={headerRef}
+        position="sticky"
+        elevation={0}
+        sx={{
+          bgcolor: "background.paper",
+          color: "text.primary",
+          borderBottom: 1,
+          borderColor: "divider",
+        }}
+      >
+        {/* Inside the banner, not before it: a heading floating outside
+            every landmark is content no landmark contains, which is its
+            own failure. Off screen because the visible identity is the
+            logo mark below, and a second title would just be clutter. */}
+        <Typography variant="h1" sx={{ ...srOnly, fontSize: "1rem" }}>
+          Conscious Tabs
+        </Typography>
+        <Toolbar sx={{ gap: 1 }}>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Search>
+              <SearchIconWrapper>
+                <SearchOutlined />
+              </SearchIconWrapper>
+              <StyledInputBase
+                placeholder="Search…"
+                inputProps={{
+                  "aria-label": "search",
+                  // How a row finds its way back here. The rows must not
+                  // know this component's markup, and an aria-label is a
+                  // name for a user, not a selector for us.
+                  "data-search-field": "",
+                }}
+                inputRef={searchInput}
+                value={search}
+                onKeyDown={(event) => {
+                  // Down leaves the field for the list, landing on the tab
+                  // the user is already looking at. Bound here and not in
+                  // the list: plain arrows stay unclaimed between rows, so
+                  // the row walk keeps Left and Right to itself.
+                  if (event.key !== "ArrowDown") return;
+                  if (!isPlainArrow(event)) return;
+                  // Scoped to <main>: the DragOverlay renders a row of its
+                  // own outside it, and "the first row" would find that one
+                  // mid-drag.
+                  const list = document.querySelector("main");
+                  const row =
+                    list?.querySelector<HTMLElement>("[data-active-tab]") ??
+                    list?.querySelector<HTMLElement>("[data-tab-row]");
+                  if (!row) return;
+                  event.preventDefault();
+                  row.focus();
+                }}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                }}
+                endAdornment={
+                  search && (
+                    <IconButton
+                      onClick={() => {
+                        setSearch("");
+                      }}
+                    >
+                      <SearchOffOutlined />
+                    </IconButton>
+                  )
+                }
+              />
+            </Search>
+          </Box>
+          <AudioTabs />
+        </Toolbar>
+        <CurrentTab />
+        <FloatClosedNotice />
+        <ShortcutNotice />
+      </AppBar>
+      {/* The list is the page's content. Without this the document had
+          no main landmark at all, so "skip to content" had nothing to
+          skip to and the only way in was from the very top. */}
+      <Box component="main">
+        {/* Inside the landmark, and mounted whether or not a search is
+            running — a live region added at the same moment as its text
+            is not reliably read. */}
+        <Box role="status" aria-live="polite" sx={srOnly}>
+          {announcement}
+        </Box>
+        {!search && <TabsView />}
+        {search && <SearchView search={search} onMatches={setMatches} />}
+      </Box>
+      <ControlBar />
+      <DragOverlay
+        style={{ pointerEvents: "none", opacity: 0.85 }}
+        dropAnimation={null}
+      >
+        {dragging ? (
+          <Paper>
+            {Array.isArray(dragging) && (
+              <ListItemButton dense sx={{ height: 49.5 }}>
+                <TabAvatarsDisplay tabsStructure={dragging} />
+              </ListItemButton>
+            )}
+            {!Array.isArray(dragging) && dragging.type === "tab" && (
+              <TabDisplay key={`drag-${dragging.id}`} tab={dragging} />
+            )}
+            {!Array.isArray(dragging) && dragging.type === "group" && (
+              <GroupDisplay key={`drag-${dragging.id}`} group={dragging} />
+            )}
+          </Paper>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+/**
+ * The providers, and nothing else — so that everything `AppBody` reads from a
+ * context is read below the provider that supplies it.
+ *
+ * They used to be rendered by the same component that called `useContext`,
+ * which therefore read `SelectionContext` from above its own provider and got
+ * the default: a `dispatch` that does nothing. Clearing a dropped selection
+ * went there, silently, and the tabs stayed selected.
+ */
+function App() {
+  return (
     <PromptProvider>
       <SelectionProvider>
-        <DndContext
-          sensors={sensors}
-          onDragEnd={handleDragStop}
-          onDragStart={handleDragStart}
-          // E-11: a drag released outside the float's window never reaches a
-          // dropzone, and without this the overlay stayed on screen following
-          // a pointer that had left the building. The float makes this easy to
-          // hit — it is a 400px window with a lot of desktop around it.
-          onDragCancel={handleDragCancel}
-          // AC-15: said, not left to dnd-kit's defaults, which read out a tab's
-          // numeric id. The instructions are what the drag handle's
-          // `aria-describedby` points at.
-          accessibility={{
-            announcements: dragAnnouncements,
-            screenReaderInstructions: dragInstructions,
-          }}
-        >
-          <AppBar
-            ref={headerRef}
-            position="sticky"
-            elevation={0}
-            sx={{
-              bgcolor: "background.paper",
-              color: "text.primary",
-              borderBottom: 1,
-              borderColor: "divider",
-            }}
-          >
-            {/* Inside the banner, not before it: a heading floating outside
-                every landmark is content no landmark contains, which is its
-                own failure. Off screen because the visible identity is the
-                logo mark below, and a second title would just be clutter. */}
-            <Typography variant="h1" sx={{ ...srOnly, fontSize: "1rem" }}>
-              Conscious Tabs
-            </Typography>
-            <Toolbar sx={{ gap: 1 }}>
-              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                <Search>
-                  <SearchIconWrapper>
-                    <SearchOutlined />
-                  </SearchIconWrapper>
-                  <StyledInputBase
-                    placeholder="Search…"
-                    inputProps={{
-                      "aria-label": "search",
-                      // How a row finds its way back here. The rows must not
-                      // know this component's markup, and an aria-label is a
-                      // name for a user, not a selector for us.
-                      "data-search-field": "",
-                    }}
-                    inputRef={searchInput}
-                    value={search}
-                    onKeyDown={(event) => {
-                      // Down leaves the field for the list, landing on the tab
-                      // the user is already looking at. Bound here and not in
-                      // the list: plain arrows stay unclaimed between rows, so
-                      // the row walk keeps Left and Right to itself.
-                      if (event.key !== "ArrowDown") return;
-                      if (!isPlainArrow(event)) return;
-                      // Scoped to <main>: the DragOverlay renders a row of its
-                      // own outside it, and "the first row" would find that one
-                      // mid-drag.
-                      const list = document.querySelector("main");
-                      const row =
-                        list?.querySelector<HTMLElement>("[data-active-tab]") ??
-                        list?.querySelector<HTMLElement>("[data-tab-row]");
-                      if (!row) return;
-                      event.preventDefault();
-                      row.focus();
-                    }}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                    }}
-                    endAdornment={
-                      search && (
-                        <IconButton
-                          onClick={() => {
-                            setSearch("");
-                          }}
-                        >
-                          <SearchOffOutlined />
-                        </IconButton>
-                      )
-                    }
-                  />
-                </Search>
-              </Box>
-              <AudioTabs />
-            </Toolbar>
-            <CurrentTab />
-            <FloatClosedNotice />
-            <ShortcutNotice />
-          </AppBar>
-          {/* The list is the page's content. Without this the document had
-              no main landmark at all, so "skip to content" had nothing to
-              skip to and the only way in was from the very top. */}
-          <Box component="main">
-            {/* Inside the landmark, and mounted whether or not a search is
-                running — a live region added at the same moment as its text
-                is not reliably read. */}
-            <Box role="status" aria-live="polite" sx={srOnly}>
-              {announcement}
-            </Box>
-            {!search && <TabsView />}
-            {search && <SearchView search={search} onMatches={setMatches} />}
-          </Box>
-          <ControlBar />
-          <DragOverlay
-            style={{ pointerEvents: "none", opacity: 0.85 }}
-            dropAnimation={null}
-          >
-            {dragging ? (
-              <Paper>
-                {Array.isArray(dragging) && (
-                  <ListItemButton dense sx={{ height: 49.5 }}>
-                    <TabAvatarsDisplay tabsStructure={dragging} />
-                  </ListItemButton>
-                )}
-                {!Array.isArray(dragging) && dragging.type === "tab" && (
-                  <TabDisplay key={`drag-${dragging.id}`} tab={dragging} />
-                )}
-                {!Array.isArray(dragging) && dragging.type === "group" && (
-                  <GroupDisplay key={`drag-${dragging.id}`} group={dragging} />
-                )}
-              </Paper>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+        <AppBody />
       </SelectionProvider>
     </PromptProvider>
   );

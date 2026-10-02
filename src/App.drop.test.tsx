@@ -451,32 +451,59 @@ describe("what a refused drop leaves behind", () => {
 });
 
 /**
- * KNOWN DEFECT, on `main` before this branch and not part of SPEC-04.
- *
- * `App` clears the selection after a selection is dropped, but it reads
- * `SelectionContext` above the `SelectionProvider` it renders itself. So the
- * `dispatch` it holds is the context's default, which does nothing, and a
- * dropped selection stays selected. Found the first time a test could reach a
- * drop that lands (2026-10-02).
- *
- * `it.fails` keeps the suite green while the defect stands and goes red the
- * moment it is fixed, which is the prompt to make this a plain `it`.
+ * `App` used to read `SelectionContext` above the `SelectionProvider` it
+ * rendered itself. The `dispatch` it held was the context's default, which
+ * does nothing, so a dropped selection stayed selected. Found the first time a
+ * test could reach a drop that lands (2026-10-02), carried here as `it.fails`
+ * until `App` became only the providers around an `AppBody`.
  */
 describe("a selection that was dropped", () => {
   const THIRD = { ...FIRST, id: 3, index: 2, title: "Third tab" };
-
-  it.fails("is cleared once the move has been made", async () => {
-    await mountApp();
+  const selectThird = async () => {
     fireEvent.click(screen.getByRole("button", { name: "Select Third tab" }));
     await screen.findByRole("button", { name: "Deselect Third tab" });
+  };
+  const thirdIsSelected = () =>
+    screen.queryByRole("button", { name: "Deselect Third tab" }) !== null;
+
+  it("is cleared once the move has been made", async () => {
+    await mountApp();
+    await selectThird();
     const moved = vi.fn().mockResolvedValue(undefined);
 
     await start([THIRD]);
     await end(zoneWith(moved), "mousedown");
 
     expect(moved).toHaveBeenCalledTimes(1);
-    expect(
-      screen.queryByRole("button", { name: "Deselect Third tab" }),
-    ).not.toBeInTheDocument();
+    expect(thirdIsSelected()).toBe(false);
+  });
+
+  // The tabs are still where they were, so they are still what the user has
+  // in hand: clearing would make them pick the same tabs again to retry.
+  it("stays selected when the move is refused", async () => {
+    await mountApp();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await selectThird();
+    const refused = vi.fn().mockRejectedValue(new Error("Chrome said no"));
+
+    await start([THIRD]);
+    await end(zoneWith(refused), "mousedown");
+
+    expect(refused).toHaveBeenCalledTimes(1);
+    expect(thirdIsSelected()).toBe(true);
+  });
+
+  // The clear belongs to a dropped selection. A single row dragged past a
+  // selection the user is still building must leave it alone.
+  it("is left alone when what was dropped is a single tab", async () => {
+    await mountApp();
+    await selectThird();
+    const moved = vi.fn().mockResolvedValue(undefined);
+
+    await start(FIRST);
+    await end(zoneWith(moved), "mousedown");
+
+    expect(moved).toHaveBeenCalledTimes(1);
+    expect(thirdIsSelected()).toBe(true);
   });
 });
