@@ -243,3 +243,73 @@ describe("the chevron", () => {
     expect(open).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * SPEC-04 §11: a name is a string, never a reference. See the same block in
+ * TabDisplay.test.tsx for why. The window row's label is built from a window id
+ * and a tab count rather than anything a page chose, but it is held to the same
+ * rule: nothing it says is also an `id`, and nothing is named by reference.
+ */
+describe("a window row's names are strings, not references", () => {
+  it("builds no aria-labelledby or aria-describedby, and no id from its label or its tabs", () => {
+    const { container } = renderRow({ isOpen: true });
+    const everything = [...container.querySelectorAll("*")];
+
+    expect(everything.length).toBeGreaterThan(10);
+    everything.forEach((element) => {
+      expect(element).not.toHaveAttribute("aria-labelledby");
+      expect(element).not.toHaveAttribute("aria-describedby");
+      ["Window", "example.com", "Tab 1", "Tab 2"].forEach((piece) =>
+        expect(element.id).not.toContain(piece),
+      );
+    });
+  });
+});
+
+/**
+ * Flow content in a button: HTML allows only phrasing content inside one.
+ *
+ * The "Switch to this window" control wraps `TabAvatarsDisplay`, whose
+ * `AvatarGroup` and `Avatar`s are `div`s. So it is a `div` with
+ * `role="button"`, the same repair the tab row's primary got: MUI gives a
+ * non-button component the role and handles Enter and Space itself.
+ */
+describe("a window row's buttons", () => {
+  it("contain no div or p", () => {
+    const { row } = renderRow();
+
+    expect(row.querySelectorAll("button").length).toBeGreaterThanOrEqual(3);
+    expect(row.querySelectorAll("button div, button p")).toHaveLength(0);
+  });
+
+  it("keeps the switch control a button to assistive technology", () => {
+    const { row } = renderRow();
+    const control = within(row).getByRole("button", {
+      name: /^Switch to this window/,
+    });
+
+    // Not a native button, or the avatars inside it would be invalid again.
+    expect(control.tagName).toBe("DIV");
+    expect(control.querySelectorAll("div").length).toBeGreaterThan(0);
+  });
+
+  // user-event does not synthesise a click for a div, so these two pass only
+  // because MUI's own key handling does: Enter on keydown, Space on keyup.
+  it.each(["{Enter}", " "])("switches on %j, once", async (key) => {
+    const user = userEvent.setup();
+    const activate = vi.fn();
+    render(
+      <WindowDisplay
+        label={LABEL}
+        tabs={[tab(1), tab(2)]}
+        handleOpenClick={vi.fn()}
+        handleActivateClick={activate}
+      />,
+    );
+
+    screen.getByRole("button", { name: /^Switch to this window/ }).focus();
+    await user.keyboard(key);
+
+    expect(activate).toHaveBeenCalledTimes(1);
+  });
+});

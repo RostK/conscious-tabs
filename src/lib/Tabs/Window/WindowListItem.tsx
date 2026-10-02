@@ -74,7 +74,7 @@ export const WindowListItem: FC<{
 
   const { selected, dispatch } = useContext(SelectionContext);
 
-  const handleActivate = useCallback<MouseEventHandler<HTMLButtonElement>>(
+  const handleActivate = useCallback<MouseEventHandler>(
     async (e) => {
       e.preventDefault();
       e.stopPropagation();

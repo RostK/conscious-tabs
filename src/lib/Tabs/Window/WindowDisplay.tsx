@@ -36,7 +36,7 @@ export const WindowDisplay: FC<{
   itemAction?: ReactNode;
   isOpen?: boolean;
   handleOpenClick: () => void;
-  handleActivateClick: MouseEventHandler<HTMLButtonElement>;
+  handleActivateClick: MouseEventHandler;
   sx?: ComponentProps<typeof ListItemButton>["sx"];
 }> = ({
   handleActivateClick,
@@ -97,7 +97,11 @@ export const WindowDisplay: FC<{
       <ListItemSecondaryAction>
         <div className="itemAction">{itemAction}</div>
       </ListItemSecondaryAction>
+      {/* A `div` with `role="button"`, for the reason the tab row's primary
+          is one: the avatars inside are `div`s, which HTML does not allow in a
+          `<button>`. MUI sets the role and handles Enter and Space itself. */}
       <Button
+        component="div"
         onClick={handleActivateClick}
         {...rowControlProps}
         aria-label={`Switch to this window, ${tabs.length} tab${

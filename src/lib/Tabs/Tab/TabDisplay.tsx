@@ -195,8 +195,18 @@ export const TabDisplay: FC<{
           No focus style of its own, on purpose: the visible indicator is the
           row's. Focus events bubble, so the ListItemButton above picks up
           `Mui-focusVisible` when this takes keyboard focus — pinned in
-          TabDisplay.test.tsx, since restyling this button would double it. */}
+          TabDisplay.test.tsx, since restyling this button would double it.
+
+          A `div` with `role="button"`, not a `<button>`. Its children are the
+          avatar, the text box and the secondary line's `<p>` — flow content,
+          which HTML does not allow inside a `<button>` (phrasing only). MUI
+          sets the role on any non-button component and emulates the keys a
+          native button gives for free: Enter on keydown, Space on keyup, both
+          only when the event's target is this element. `tabIndex` below and
+          `disableRipple` apply the same either way, and nothing about the
+          box changes — ButtonBase's own styles, not the element, lay it out. */}
       <ButtonBase
+        component="div"
         {...rowPrimaryProps}
         // The row plays a ripple on mousedown and this one bubbles into it, so
         // a click on the title would otherwise play both.

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { EXTENSION_ORIGIN } from "../../../test/chromeStub.ts";
 import { rowControlProps } from "../elements/rowControls.ts";
 import { SelectionProvider } from "../selection";
 import { GroupItem, TabItem } from "../types.ts";
@@ -640,5 +641,116 @@ describe("clicking a group row", () => {
     fireEvent.click(rowOf(container), { ctrlKey: true });
 
     expect(chrome.tabGroups.update).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * SPEC-04 AC-24 / §11, for a group row: its title is the user's, and Chrome
+ * hands it over unchecked. It reaches `aria-label` five times and the chip once,
+ * every one a sink that takes a string as a string — this is what says so, with
+ * a title as hostile as a page-supplied one.
+ */
+describe("a group title that is hostile", () => {
+  const title = '"><img src=x onerror=alert(1)>';
+
+  it("is literal text in the toolbar, in every control's name, and in the chip", () => {
+    // What an ordinary group renders: the structure a hostile one must not grow.
+    const plain = renderGroup({ title: "Plain" });
+    const plainElements = [...plain.row.querySelectorAll("*")].map(
+      (element) => element.tagName,
+    );
+    plain.unmount();
+
+    const { row, container } = renderGroup({ title });
+
+    expect(row).toHaveAttribute("aria-label", `${title}, group, 3 tabs`);
+    expect(row).toHaveAccessibleName(`${title}, group, 3 tabs`);
+    expect(namesOf(row)).toEqual([
+      "Tabs",
+      `Select every tab in group ${title}`,
+      `Actions for group ${title}`,
+      `Close every tab in group ${title}`,
+      `Reorder group ${title}`,
+    ]);
+
+    // No element was made of it, and no attribute is a handler or its `src=x`.
+    expect([...row.querySelectorAll("*")].map((e) => e.tagName)).toEqual(
+      plainElements,
+    );
+    container.querySelectorAll("*").forEach((element) => {
+      [...element.attributes].forEach(({ name }) => {
+        expect(name.toLowerCase().startsWith("on")).toBe(false);
+      });
+    });
+    expect(document.querySelector('[src="x"]')).toBeNull();
+    // Whatever images the row has are the favicons, from our own origin. The
+    // group row itself has none, so this holds over its tab rows as well.
+    container.querySelectorAll("img").forEach((image) => {
+      expect(image.getAttribute("src")).toMatch(EXTENSION_ORIGIN);
+    });
+    expect(chipOf(container)).toHaveTextContent(title);
+  });
+});
+
+/**
+ * SPEC-04 §11: a name is a string, never a reference. See the same block in
+ * TabDisplay.test.tsx for why — `aria-labelledby` and `aria-describedby` name an
+ * element by `id`, and nothing built from a title belongs in that namespace.
+ *
+ * The one allowance is dnd-kit's `aria-describedby="DndDescribedBy-<n>"` on the
+ * drag handle: `<n>` is an instance counter, not row data.
+ */
+describe("a group row's names are strings, not references", () => {
+  it("builds no aria-labelledby or aria-describedby from the group, and no id from its title", () => {
+    const { container } = renderGroup({ title: '"><img src=x> Hostile' });
+    const everything = [...container.querySelectorAll("*")];
+
+    // Rendered outside a DndContext, dnd-kit gives the handle an *empty*
+    // describedby rather than its `DndDescribedBy-<n>` — still no row data, so
+    // both are allowed and nothing else is.
+    expect(everything.length).toBeGreaterThan(10);
+    everything.forEach((element) => {
+      expect(element).not.toHaveAttribute("aria-labelledby");
+      const described = element.getAttribute("aria-describedby");
+      if (described !== null) expect(described).toMatch(/^(DndDescribedBy-\d+)?$/);
+    });
+    everything.forEach((element) => {
+      expect(element.id).not.toContain("Hostile");
+      expect(element.id).not.toContain("img");
+    });
+  });
+});
+
+/** E-5: a group with no title is still a row with a name. */
+describe("a group with no title", () => {
+  it("is 'Untitled' in its toolbar, with a non-empty name on every control", () => {
+    const { row } = renderGroup({ title: "" });
+
+    expect(row).toHaveAttribute("aria-label", "Untitled, group, 3 tabs");
+    expect(namesOf(row)).toEqual([
+      "Tabs",
+      "Select every tab in group",
+      "Actions for group",
+      "Close every tab in group",
+      "Reorder group",
+    ]);
+    namesOf(row).forEach((name) => expect(name).toBeTruthy());
+  });
+});
+
+/**
+ * Flow content in a button: HTML allows only phrasing content inside one. The
+ * group row's buttons hold icons, which are `svg`, so it conforms as it stands —
+ * this keeps it so, in the tab list and in search results (no chevron).
+ */
+describe("a group row's buttons", () => {
+  it.each([
+    ["in the tab list", undefined],
+    ["in search results", true],
+  ])("contain no div or p %s", (_where, expanded) => {
+    const { row } = renderGroup({}, expanded);
+
+    expect(row.querySelectorAll("button").length).toBeGreaterThanOrEqual(4);
+    expect(row.querySelectorAll("button div, button p")).toHaveLength(0);
   });
 });
