@@ -58,15 +58,15 @@ const drop = (drag: DefaultDrag | undefined, z?: unknown) =>
 const ID = /2877238473|5550123|8675309|zone--|tab--|group--|window-end|in-window|\b91\b/;
 
 describe("subject", () => {
-  it("is a tab's title, or 'tab' when it has none", () => {
+  it("is a tab's title, or 'untitled tab' when it has none", () => {
     expect(dragAnnouncements.onDragStart(arg(tab()))).toBe(
       "Picked up Quarterly report.",
     );
     expect(dragAnnouncements.onDragStart(arg(tab({ title: undefined })))).toBe(
-      "Picked up tab.",
+      "Picked up untitled tab.",
     );
     expect(dragAnnouncements.onDragStart(arg(tab({ title: "   " })))).toBe(
-      "Picked up tab.",
+      "Picked up untitled tab.",
     );
   });
 
@@ -122,7 +122,7 @@ describe("while a drag is over a zone", () => {
       over(tab(), zone("tab", tab({ id: 3, title: "Inbox" }))),
     ).toBe("Before Inbox.");
     expect(over(tab(), zone("tab", tab({ id: 3, title: undefined })))).toBe(
-      "Before tab.",
+      "Before untitled tab.",
     );
   });
 
@@ -223,7 +223,7 @@ describe("on drop", () => {
   it("says it was put back when dropped on nothing, or on its own place", () => {
     expect(drop(tab(), undefined)).toBe("Quarterly report put back.");
     expect(drop(group(), undefined)).toBe("Group Work put back.");
-    expect(drop(tab({ title: undefined }), undefined)).toBe("Tab put back.");
+    expect(drop(tab({ title: undefined }), undefined)).toBe("Untitled tab put back.");
     expect(drop([tab()], undefined)).toBe("1 tab put back.");
     expect(drop(tab(), zone("tab", tab()))).toBe("Quarterly report put back.");
     expect(drop(group(), zone("group-inner", group({ id: 8 })))).toBe(

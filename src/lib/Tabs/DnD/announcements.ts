@@ -39,12 +39,15 @@ const subjectOf = (drag: Dragged, start = false): string => {
     return `${start ? "Group" : "group"} ${textOf(drag.title) ?? "Untitled"}`;
   }
   if (drag?.type === "tab") {
-    return textOf(drag.title) ?? (start ? "Tab" : "tab");
+    return textOf(drag.title) ?? (start ? "Untitled tab" : "untitled tab");
   }
   return start ? "Item" : "item";
 };
 
-const tabName = (tab: TabItem): string => textOf(tab.title) ?? "tab";
+// "Before tab." is what a bare "tab" comes out as, and it sounds like a
+// sentence that lost a word. Heard in a browser, 2026-10-02.
+const tabName = (tab: TabItem): string =>
+  textOf(tab.title) ?? "untitled tab";
 const groupName = (group: GroupItem): string =>
   `group ${textOf(group.title) ?? "Untitled"}`;
 
