@@ -44,7 +44,12 @@ import { ShortcutNotice } from "./lib/ShortcutNotice.tsx";
 import { srOnly } from "./lib/srOnly.ts";
 import { AudioTabs } from "./lib/Tabs/AudioTabs";
 import { CurrentTab } from "./lib/Tabs/CurrentTab";
-import { DefaultDrag, DZCurrentData } from "./lib/Tabs/DnD";
+import {
+  DefaultDrag,
+  dragAnnouncements,
+  dragInstructions,
+  DZCurrentData,
+} from "./lib/Tabs/DnD";
 import {
   isPlainArrow,
   setRowDragActive,
@@ -243,6 +248,13 @@ function App() {
           // a pointer that had left the building. The float makes this easy to
           // hit — it is a 400px window with a lot of desktop around it.
           onDragCancel={handleDragCancel}
+          // AC-15: said, not left to dnd-kit's defaults, which read out a tab's
+          // numeric id. The instructions are what the drag handle's
+          // `aria-describedby` points at.
+          accessibility={{
+            announcements: dragAnnouncements,
+            screenReaderInstructions: dragInstructions,
+          }}
         >
           <AppBar
             position="sticky"
