@@ -6,7 +6,7 @@
 | **Date**           | 2026-09-29                                                                                                                                             |
 | **Module**         | `tab-list`, with edges into `ui-shell` (`src/App.tsx`)                                                                                                 |
 | **Status**         | approved (2026-09-29) — §8's two blocking criteria were decided by the user and the spec is amended to match; the other two need nothing                |
-| **Execution mode** | Single-agent, sequential (user decision, 2026-09-29 — precedent PLAN-SPEC-01, PLAN-SPEC-05)                                                             |
+| **Execution mode** | Single-agent, sequential (user decision, 2026-09-29 — precedent PLAN-SPEC-01, PLAN-SPEC-05). T-6, T-7 and T-8 ran in parallel on 2026-10-02; see §0. |
 | **Test strategy**  | Vitest for everything reachable without a browser, plus [MANUAL-SWEEP-SPEC-04.md](MANUAL-SWEEP-SPEC-04.md) for what is not (user decision, 2026-09-29)  |
 | **Branch**         | `accessible-rows`, cut from **`keyboard-entry-and-focus`** — not from `main`. See §1.1.                                                                  |
 | **Scope**          | All 37 criteria, AC-1…AC-37. All three row kinds at once (DEC-6).                                                                                       |
@@ -23,13 +23,54 @@
 | T-2  | built (75b2a6e), reviewed, fix round 1 (see below) | The tab row becomes a `toolbar`. The shape the gate is about. nested-interactive now 0/0/3/1; baseline test updated with the old numbers in comments. One authorised edit outside the plan: `App.test.tsx` "comes back from a control inside a row" selector → `main [role="toolbar"] [data-row-control]:not([data-tab-row])`, because D-3 moved `data-tab-row` onto the primary button. |
 | T-3  | **passed 2026-09-30** | **Gate — NVDA + Chrome.** The §13.1 retreat is not triggered: the title is heard first. But every row said its title twice, and NVDA gave no count or position. That led to SPEC-04 AM-3 and new unit T-2b. The 80-row check moves to T-10. See sweep §B. |
 | T-2b | **built 2026-09-30** | **Name the tab row once** (AM-3): `title, site, state, n of N`, and the primary control is `Switch`. Added after T-3; runs before T-4. |
-| T-4  | **built 2026-09-30**, wording awaits a listen | The group row: a toolbar named `Work, group, 3 tabs`, with the chevron as its primary, named `Tabs` plus `aria-expanded`. In search there is no chevron (D-8 over the DoD line that said otherwise), and select-all is the Tab stop. Drift: `81886bf`'s `collapsible` guard is kept. SPEC-04 E-15's "roving state must survive" is stale against D-5/AC-36 and is left for the next amendment. |
+| T-4  | **built 2026-09-30**, wording awaits a listen | The group row: a toolbar named `Work, group, 3 tabs`, with the chevron as its primary, named `Tabs` plus `aria-expanded`. In search there is no chevron (D-8 over the DoD line that said otherwise), and select-all is the Tab stop. Drift: `81886bf`'s `collapsible` guard is kept. SPEC-04 E-15's "roving state must survive" was stale against D-5/AC-36; corrected in spec §13.4 on 2026-10-02. |
 | T-5  | **built 2026-10-01**, wording awaits a listen | The window row: a toolbar named `Window 1, 12 tabs[, current window]`, numbered over the windows actually rendered. Its chevron is the primary, named `Tabs` plus `aria-expanded`, matching the group row rather than the plan's changing Hide/Show name. Switch stays last. `nested-interactive` is now 0 on every fixture. |
 | T-6  | **built 2026-10-02** (66faf4a, 084f456, 57a757a), wording awaits a listen | Reordering, pinned. The app supplies its own drag announcements and instructions (`DnD/announcements.ts`, a file beyond the plan's list), and no id is spoken. The hand-off is tested in both directions, on a row that stays mounted. A browser check found focus lost when a drop moves a tab into a group; fixed with an owed-focus flag beside `dragActive`. |
 | T-7  | **built 2026-10-02** (da0c186) | The whole list under the full ruleset on all four fixtures: no violations, nothing undecided. Mid-drag, the three hosts, AC-16's absence test and the no-axe-in-shipped-code guard are in. Contrast is not evaluated in jsdom, and two tests say so. |
 | T-8  | **built 2026-10-02** (39b3e40) | Hostile titles are literal text in every name; no name by reference; one definition of each style helper. The primary control on a tab row and the switch control on a window row are now `div`s with `role="button"`, which clears the block content inside a `<button>`. Re-measured at 400 px: 57.7 / 94.3 / 88.3 px, unchanged, so no constant moved (sweep §C). |
 | T-9  | **built 2026-10-02** (643f38d) | Four dated notes in `LEARNINGS.md`; the 2026-09-24 entry is corrected beneath, not edited. |
 | T-10 | **partly done 2026-10-02** | Everything that does not need ears was run in Chromium against the layout harness (sweep, "Chromium pass"). It found and fixed two defects: a focused row hidden under the header or the action bar (AC-7, d78826e), and the lost focus above (AC-13). **Open: every item that is about what NVDA says**, the 80-row listen, and the real side panel and float. |
+
+**Run state, 2026-10-02.** T-6, T-7 and T-8 were built by three implementer agents at once, on
+disjoint file lists, and T-9 and the T-10 browser pass by the orchestrator. So the execution mode in
+the header is no longer true of this run. The three review gates then ran over everything since T-2.
+
+- **Line-level review: 10 confirmed findings.** Fix round 3 (`611dd83`) closed all that did not need
+  a decision:
+  - A rejected drop handler left the drag flag on and every row's arrows dead. The reset is in a
+    `finally` now, and a refused move is announced.
+  - Focus after a keyboard drop: lost when the tab changed parent (`084f456`), and when there was no
+    row to rebuild. The dropped row's handle takes it back as it mounts, and focus nobody holds goes
+    to the search field.
+  - "Picked up X." was replaced 55 ms later by the first place. The first place now carries it.
+  - A selection dropped on one of its own tabs was announced as put back.
+  - A click on a row's padding left focus on the row, where the arrows did nothing.
+- **Architecture review: 0 violations, 4 smells (S-05…S-08).** S-07 (one definition of the row-label
+  attribute and of the chevron's name) and S-08 (every axe run through `runAxe`) are fixed. S-05
+  (drop-zone types are bare strings that `announcements.ts` mirrors) and S-06 (a second module flag
+  in `rowControls.ts`) are discuss-only, with S-02…S-04.
+- **Plan check: 34 of 37 criteria implemented with evidence, AC-27 manual, AC-2 and AC-16 partial.**
+  AC-2's missing half (no row control is hidden) now has a test. AC-16 is the first open decision
+  below.
+
+**Open decisions for the user.** Neither is built either way; both change what is heard.
+
+1. **AC-16 asks the select control to report "its own pressed/checked state".** What is built says
+   the state in the name: "Select ‹title›" becomes "Deselect ‹title›", and the toolbar's name gains
+   "selected". There is no `aria-pressed`. Either amend AC-16 to say the name carries the state, or
+   make it a toggle: a fixed name "Select ‹title›" with `aria-pressed`, which NVDA reads as "toggle
+   button, pressed". Adding `aria-pressed` to the name that already flips would say it twice.
+2. **Every tab row's primary control is named "Switch", and what is visible is the title** (AM-3).
+   That fails WCAG 2.5.3, Label in Name: someone using voice control cannot say the title to press
+   it, and a screen reader's list of buttons holds one "Switch" per tab. AM-3 chose it by ear so
+   the title is heard once. The alternatives each bring the title back a second time, so this is a
+   trade to make knowingly, by ear.
+
+**Known and left.** "Start of window." and "End of window." do not say which window, though the rows
+are named "Window N". The window row's walk order (chevron, select, close, switch) differs from its
+order on screen, where close is at the far right; it predates this plan. A drop that Chrome refuses
+is announced as moved by dnd-kit's region and then corrected by the app's own; whether Chrome
+refuses a group dropped inside another group has not been checked in a real Chrome.
 
 **Run state, 2026-09-30.** All three review gates ran over T-0…T-2: `/code-review` (medium),
 architecture-reviewer (0 violations, 4 smells) and plan-verifier (0 NOT FOUND, accept-with-gaps).
@@ -46,12 +87,14 @@ Fix round 1 closed:
 
 Still open, carried forward rather than fixed now:
 
-- **AC-16:** a test that `aria-selected` and `aria-multiselectable` stay absent. T-7 or T-8.
+- ~~**AC-16:** a test that `aria-selected` and `aria-multiselectable` stay absent. T-7 or T-8.~~
+  Done in T-7 (`rows.a11y.test.tsx`).
 - **Architecture S-02…S-04:** `RowList` is a deep import rather than a barrel export; the
   list/listitem contract is split between the views and `lib/Tabs`; `rowFixtures.tsx` lives in
   `src/test/`. All three are discuss-only.
-- **Cross-spec, R-8:** `SPEC-05` still quotes the old "Select tab" label in its table
-  (`specs/ui-shell/SPEC-05-2026-09-29-keyboard-access.md:86`).
+- ~~**Cross-spec, R-8:** `SPEC-05` still quotes the old "Select tab" label in its table
+  (`specs/ui-shell/SPEC-05-2026-09-29-keyboard-access.md:86`).~~ Corrected 2026-10-02 with a note
+  under that table.
 
 **Real-browser pass (layout harness, Chromium, 2026-09-30):**
 
@@ -73,9 +116,9 @@ Still open, carried forward rather than fixed now:
 - The row's `Mui-focusVisible` dependency is pinned by a test.
 - Test hygiene.
 
-Carried to T-8: `ListItemAvatar`/`ListItemText` render `<div>`s inside the primary `<button>`. That is non-conforming but harmless, and changing it moves layout the T-8 re-measure has to check.
+~~Carried to T-8: `ListItemAvatar`/`ListItemText` render `<div>`s inside the primary `<button>`.~~ Fixed in T-8 (D-11), with no layout change measured.
 
-T-3 ran 2026-09-30 and passed; see its row above and sweep §B. Next: **T-2b** (AM-3), then T-4.
+T-3 ran 2026-09-30 and passed; see its row above and sweep §B. T-2b to T-9 followed; see the 2026-10-02 run state above.
 
 ---
 
@@ -281,6 +324,10 @@ discovery.
   left `stops`. The row is now a stop exactly when it is itself focusable
   (`row.tabIndex >= 0`), read off the element with no new prop. T-4 and T-5 need do nothing here:
   setting their row to `tabIndex={-1}` drops it from the walk by construction.
+  **Updated 2026-10-02, fix round 3.** With all three rows converted, no row is ever a stop, and
+  the `row.tabIndex >= 0` branch is gone. One case remains where the row itself has focus: a
+  pointer click on its padding, because `tabIndex -1` is still focusable by a click. From there
+  Right steps into the first control and Left does nothing.
 - **D-10 — axe arrives as `axe-core` in `devDependencies`, not as `vitest-axe`.** AC-25 says
   "`vitest-axe` **or equivalent**", and the defect it names is depending on
   `eslint-plugin-jsx-a11y`'s transitive copy. `axe-core@4.13.0` is already resolved in
@@ -288,6 +335,14 @@ discovery.
   into an owned one, and it avoids betting the gate on a wrapper's peer range against this repo's
   `vitest ^5.0.1`. The wrapper is ~30 lines (`src/test/axe.ts`) and we own it. NFR-6 is met and
   guarded: T-7 asserts no non-test file under `src/` imports axe.
+- **D-11 — A control whose children are block content is a `div` with `role="button"`, not a
+  `<button>`.** *(Added 2026-10-02, T-8.)* The tab row's primary control wraps the avatar, the
+  text box and the secondary line's `<p>`; the window row's switch control wraps the avatars. HTML
+  allows only phrasing content inside a `<button>`. MUI's `component="div"` sets the role and
+  handles Enter and Space itself, and the box does not change: measured at 400 px, every control
+  kept its position. A test over all three row kinds keeps a `div` or `p` from returning inside a
+  native button. **Rejected:** converting the children to `span`s, which touches four MUI
+  components and their display rules to change nothing a user can perceive.
 
 ## 3. Task units
 

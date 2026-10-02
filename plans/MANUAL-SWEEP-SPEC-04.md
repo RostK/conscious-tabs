@@ -197,6 +197,20 @@ open, and says so.
    to the body. A drop that only reorders was fine. Fixed by the owed-focus flag (`084f456`). The
    harness's `tabs.move` was a no-op before this, which is why nothing had shown it.
 
+**A second run, after the review's fixes (`611dd83`).** Same harness, whose fake `chrome.*` now
+really moves tabs and groups.
+
+- **Pick-up:** the live region showed "Picked up ‹title›." and then "Picked up ‹title›. End of
+  window." The pick-up is no longer replaced by the first place; it is carried into it.
+- **A drop onto a collapsed window's header:** the tab moved (window 1 went from 12 tabs to 11,
+  window 2 from 6 to 7). There is no row to return focus to, and focus went to the search field.
+- **A group dragged to the start of its window:** it moved with its four tabs, focus was on
+  "Reorder group Reading", and Left walked to Close. Before the fix this threw, the list did not
+  move, and the arrows were dead on every row afterwards.
+- **A row that holds focus itself**, as after a click on its padding: Right stepped to "Tabs".
+- **The group chevron:** Enter collapsed the group, its tabs left the list and `aria-expanded` read
+  "false"; Enter again restored them.
+
 **One observation, not fixed.** A tab with an empty title renders a 29 px row, not 49.5 px, because
 the title line is empty. It predates SPEC-04 and Chrome rarely reports an empty title.
 
@@ -238,9 +252,10 @@ the title line is empty. It predates SPEC-04 and Chrome rarely reports an empty 
       action does **not** fire.
       **Mechanics pass 2026-10-02 (Chromium):** Space starts the drag and `tabs.update` is not
       called. The handle's description is "Press Space or Enter to pick up. Arrow keys move it,
-      Space or Enter drops it, Escape cancels." The live region gets "Picked up ‹title›." and then
-      at once the place it is over, for example "Before ‹next tab›."
-      **Still open, by ear:** whether NVDA reads both, or the second cuts off the first. The handle
+      Space or Enter drops it, Escape cancels." The live region gets "Picked up ‹title›." and then,
+      within a frame, "Picked up ‹title›. Before ‹next tab›." (the first run showed the pick-up
+      replaced outright; `611dd83` folds it in).
+      **Still open, by ear:** whether NVDA says the title once or twice across those two. The handle
       also still carries dnd-kit's `aria-roledescription="draggable"`, so it may be read as
       "draggable" in place of "button".
 - [x] **AC-12 / AC-37 · the arrows, while a drag is live** — press ↑/↓. **Expect:** the item moves;
@@ -255,7 +270,8 @@ the title line is empty. It predates SPEC-04 and Chrome rarely reports an empty 
       **Passed 2026-10-02 (Chromium), after a fix.** Cancel, and a drop that reorders within the
       window: focus is on the moved row's handle and Left walks to Close. A drop **into a group**
       lost focus to the body until `084f456`; with it, focus is on the handle of the row in its new
-      place. Not tried: a drop into another window.
+      place. A drop onto a **collapsed window** leaves no row to focus, and focus goes to the
+      search field (second run, above).
 - [ ] **AC-31 / E-14 · a real placeholder, mid-drag** — with a drag live and a `DropPlaceholder`
       visible between two rows, confirm the list still reads as a list and nothing announces a
       stray container. The unit test mounts a placeholder structurally; this is the real drag.

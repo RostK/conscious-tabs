@@ -115,6 +115,19 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   cleanly on top of each other. A defect one agent found in a file it did not own (the window
   row's `div` in a `button`) came back as an `it.fails` test and a note, not as an edit.
   Evidence: commits `39b3e40`, `66faf4a`, `da0c186`.
+- 2026-10-02 — **A reviewer given the running harness found ten real defects after the tests
+  and a browser pass had both come back clean.** It drove the page with real keys and wrote its
+  own probes: a group dragged onto a window header threw and left every row's arrows dead, a
+  drop onto a collapsed window lost focus, "Picked up X." lasted 55 ms. None was in the paths
+  the author had walked. Give an independent reviewer the diff, the constraints and the live
+  harness, not the author's conclusions. Evidence: commit `611dd83`,
+  `plans/PLAN-SPEC-04-accessible-rows.md` §0 (run state 2026-10-02).
+- 2026-10-02 — **To test what a component does when a drop lands, keep the real `DndContext` and
+  capture the props it was handed.** In jsdom a drag is never over anything, so `onDragEnd` only
+  ever saw `over: null`. A `vi.mock` that wraps `DndContext` and records its props lets the test
+  call `onDragStart` and `onDragEnd` with a zone of its own, inside `act` so the state the end
+  handler closes over has rendered. In its own file, because the mock wraps every test beside
+  it. Evidence: `src/App.drop.test.tsx`.
 
 ## What Doesn't Work
 
@@ -293,6 +306,17 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   control that has a neighbour in that direction, or it passes with the guard deleted. Both were
   caught by falsifying. Evidence: `src/App.test.tsx` (`activatedAfterAControl`),
   `src/lib/Tabs/elements/rowControls.test.tsx`.
+- 2026-10-02 — **A flag that is only ever reset by the test's `afterEach` cannot be seen to leak.**
+  `focusOwed` was set on every keyboard drop and ended only by its three-second clock, so a row
+  dropped by keyboard and picked up again by mouse took focus when the mouse let go. The test for
+  "nobody is owed focus after a mouse drop" passed, because the suite cleared the flag between
+  tests. For module state, write at least one test where two events share a lifetime. Evidence:
+  `src/App.drop.test.tsx` ("is nobody once another drag has started").
+- 2026-10-02 — **An `await` between "start" and "reset the flag" needs a `finally`.** `App` awaited
+  the drop handler and then switched the drag flag off. A handler that rejected skipped that, and
+  every row's Left, Right and Up went dead until another drag happened to clear it. The line had
+  been there since 2024; it became serious the day the arrows became the only route to a row's
+  controls. Evidence: `src/App.tsx` (`handleDragStop`).
 
 ## Codebase Patterns
 
@@ -389,6 +413,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `"in-window"` are the end and the start of a window. The zone types are bare strings, so a
   renamed zone compiles and falls back to "Dropped ‹subject›"; `announcements.test.ts` is the
   only guard. Evidence: `src/lib/Tabs/DnD/announcements.ts`.
+- 2026-10-02 — **`tabIndex -1` keeps an element out of Tab, not out of a click.** Every row is a
+  toolbar at -1 and never a Tab stop, but a pointer click on its padding still leaves focus on the
+  row. `useRowKeys` treats that as standing just before the first control: Right steps in, Left
+  does nothing. Without it a pointer user who then reaches for the keyboard is stuck on an element
+  where no arrow works. Evidence: `src/lib/Tabs/elements/rowControls.ts` (`useRowKeys`).
+- 2026-10-02 — **After a keyboard drop focus goes, in order: to the dropped row's handle, else to
+  the search field.** The handle takes it as it mounts (`oweFocusTo`); if nothing holds focus
+  400 ms and again 1500 ms after the drop, the search field does. That covers a drop onto a
+  collapsed window or group, and a dropped selection, where there is no handle left. Evidence:
+  `src/App.tsx` (`settleFocus`).
 
 ## Decisions
 
@@ -633,6 +667,11 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `git apply` was writing it and cached an empty module, so the default export was undefined.
   Tests and the build were green throughout. Fix: `touch` the file, or restart the server, and
   check what is served with `curl …/@fs/…/App.tsx` before suspecting the code.
+- 2026-10-02 — **A doubled backslash in a shell heredoc reached the file as a single one.** A
+  script meant to write the six characters `\u0000` wrote a NUL byte, twice, before the cause
+  was found; an earlier regex lost its escape the same way. When a script has to emit a
+  backslash, write it with the file tool, or build the character with `String.fromCharCode(92)`.
+  Check the bytes that landed, not the command that was typed.
 
 ## Session Notes
 
