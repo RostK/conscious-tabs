@@ -489,7 +489,8 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   never in the shipped bundle.)_
 - **AC-26** _(Must)_ This spec SHALL record what the automated check **cannot** prove, and SHALL
   require a manual screen-reader pass covering exactly those things.
-  **Verify:** §11 names them; the manual result is recorded against AC-27.
+  **Verify:** A-3 and §13.1 name them; the manual result is recorded against AC-27.
+  _(Corrected 2026-10-02: this pointed at §11, which is *Untrusted inputs*. §13.4.)_
 - **AC-27** _(Must)_ A manual **NVDA + Chrome** pass SHALL be recorded on **all three surfaces** —
   side panel, anchor tab, and the ~400px float — before this spec may reach `implemented`, naming
   the NVDA version, the Chrome version, the surface, the date, the tester, and the result per
@@ -627,7 +628,7 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
 | **E-12** | The `aria-hidden` expand indicators on group and window rows         | Three in the mixed fixture. Decorative today because the row's own click expands. The row stops being clickable, so where a chevron is rendered it becomes that row's primary-action button (AC-33, §1.0). Search-result group rows render none — E-17.                                       |
 | **E-13** | A row control that is `opacity: 0` and receives focus programmatically | Must reveal (AC-10). `visibility: hidden` must never be used: it takes the element out of `focus()` entirely and fails intermittently.                                          |
 | **E-14** | A `DropPlaceholder` mounted between two rows mid-drag                | `list` may own only `listitem`. The placeholder must be a `listitem` or be out of the accessibility tree, or `aria-required-children` fires — a new violation traded for the old one (AC-31).      |
-| **E-15** | A group row whose actions `Menu` is open                             | The menu is a portal, so focus leaves the toolbar's DOM subtree. The roving state must survive that and restore on close; and the menu button's name (`Actions for group …`) must stay distinct from the toolbar's own (AC-29). |
+| **E-15** | A group row whose actions `Menu` is open                             | The menu is a portal, so focus leaves the toolbar's DOM subtree. Focus must return to the menu button on close. _(Corrected 2026-10-02: this said "the roving state must survive". There is no roving state. AC-36 fixes the Tab stop on the row's first control, so there is nothing to restore but focus itself. §13.4.)_ The menu button's name (`Actions for group …`) must stay distinct from the toolbar's own (AC-29). |
 | **E-16** | Eighty rows, each an announced toolbar                               | The one unmeasured risk. Nothing documents what NVDA, JAWS or VoiceOver say on entering 20–80 toolbars in one scrollable list. Gated by AC-27, with a named retreat in §13.1.                    |
 | **E-17** | A group row in search results                                        | Renders **no chevron** (`GroupListItem.tsx:183` gates it on `expanded === undefined`; `SearchView` passes `expandedGroups`), and its tabs show regardless of collapsed state (`:271`). Its body click nevertheless still calls `chrome.tabGroups.update({collapsed: !collapsed})` — a real change to the browser with **no visible effect in the search list and no chevron to show it**. Dropping the primary action here (AC-32) removes that invisible side effect rather than merely declining to add a control. |
 | **E-18** | Two tabs open on the same page                                       | Same title, same URL, same subject — so the same toolbar name. Permitted by AC-29, and the reason its original distinctness half was unsatisfiable. |
@@ -852,6 +853,13 @@ The user set the bar as **better than Chrome's own tab strip**. That strip says 
 **Rejected.**
 - **A site-only toolbar name** ("mail.google.com, tool bar, Switch to …"). It says the title once, but only after the site and "tool bar" on every row, which is the very pattern the gate exists to catch.
 - **Keeping the doubled title.** It is accessible, but a Gmail-length title makes every row twice as long to hear, on every row, and NVDA does not shorten it after the first few.
+
+### 13.4 Corrections — 2026-10-02
+
+Neither changes what is built. Both fix text that contradicted a decision already made here.
+
+- **E-15** asked for "the roving state" to survive a group row's actions menu opening. AC-36 and plan D-5 fix the Tab stop on the row's first control and keep no per-row memory, so there is no such state. What E-15 needs is that focus returns to the menu button when the menu closes, and it now says that.
+- **AC-26's Verify** pointed at §11 for what the automated check cannot prove. §11 is *Untrusted inputs*. The limits are in A-3 and §13.1, and the line now points there (plan §8 item 4).
 
 ## 14. Traceability
 

@@ -47,10 +47,17 @@ renders the group row + the 1 tab outside it (the other is hidden by the collaps
 
 | Fixture | `nested-interactive` before | after | Tab stops before | after |
 | ------- | --------------------------- | ----- | ---------------- | ----- |
-| 5 plain tabs | 5 | | 5 | |
-| 20 plain tabs | 20 | | 20 | |
-| 2 windows, 1 group, 6 tabs | 8 | | 8 | |
-| 1 window, 1 collapsed group, 2 tabs | 2 | | 2 | |
+| 5 plain tabs | 5 | 0 | 5 | 5 |
+| 20 plain tabs | 20 | 0 | 20 | 20 |
+| 2 windows, 1 group, 6 tabs | 8 | 0 | 8 | 8 |
+| 1 window, 1 collapsed group, 2 tabs | 2 | 0 | 2 | 2 |
+
+**After, recorded 2026-10-02 on `accessible-rows` at `08ae0bb`, axe-core 4.13.0.** The Tab stops
+were measured with the same `userEvent.tab()` loop as before. Each stop is now the row's primary
+control (`Switch` on a tab row, `Tabs` on a group or window row), not the row. The
+`[data-row-control]` counts went from 15 / 60 / 27 / 7 to 20 / 80 / 35 / 9, which is one new
+primary control per row. Only the 20-tab figure is asserted by a test; the other three were
+measured once.
 
 ## B. The gate  *(T-3 — stop here if the first one fails)*
 

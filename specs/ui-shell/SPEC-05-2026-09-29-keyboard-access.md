@@ -89,6 +89,10 @@ Verified, and **narrower than the brief states** — which makes the remaining g
 | An arbitrary **range** of rows                                       | —                                                                          | **does not exist**               |
 | Select **all** tabs, or all **matching** tabs, in one action         | —                                                                          | **does not exist**               |
 
+> **Corrected 2026-10-02.** The per-tab checkbox is no longer named "Select tab" / "Deselect tab".
+> SPEC-04 made it name its tab: "Select ‹title›" / "Deselect ‹title›" (`TabDisplay.tsx`). The line
+> numbers in the table are from 2026-09-29 and have moved; the key counts have not.
+
 So "select every tab in one window" is already cheap from the keyboard. What is missing is the
 shape the product's own README advertises — _"Multi-select with `Ctrl`/`Cmd`-click (or the
 checkbox), then close, group, or move the selection"_ — where the selection is an **arbitrary

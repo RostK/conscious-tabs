@@ -178,6 +178,13 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `grid`/`row`/`gridcell` composite, which changes what the arrow keys mean and touches 11
   files — so know before starting that "we made them `-1`" is not an answer to this.
   Evidence: `src/lib/Tabs/elements/rowControls.ts`, axe-core 4.10.2.
+  - 2026-10-02 — **Correction: the count, the engine and the fix above are all out of date.**
+    "15" was the number of rows in the list that was audited that day. The rule reports one
+    node per rendered row, so the figure is whatever the list holds: 5, 20, 8 and 2 on the
+    four fixtures. The engine installed here is axe-core 4.13.0, not 4.10.2. And the fix that
+    shipped is not a `grid`: each row is a `toolbar` inside a `listitem`, which kept the
+    arrow keys' meaning and brought all four fixtures to 0 (SPEC-04). Evidence:
+    `src/lib/Tabs/rows.a11y.test.tsx`, `plans/MANUAL-SWEEP-SPEC-04.md` §A.
 
 - 2026-09-24 — **`manualChunks` buys nothing in a packaged extension.** The 500 kB Vite
   warning invites splitting, and splitting is cosmetic here: every chunk loads from local
@@ -324,6 +331,15 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   2026-09-28 Codebase Patterns note on `&:focus-visible`: the tab row is never focused now, so
   its reveal comes only from `&:has(:focus-visible)`; the group and window rows still need
   both. Evidence: `src/lib/Tabs/elements/rowControls.ts` (`useRowKeys`).
+- 2026-10-02 — **The Tab-stop budget is one stop per row, before and after the toolbar
+  rework; do not re-derive it.** Measured on the 20-plain-tab fixture with a
+  `userEvent.tab()` loop: 20 stops before SPEC-04 and 20 after. What changed is what the stop
+  is. Before, it was the row itself, with 60 controls behind it at `tabIndex -1`. After, the
+  row is never focused and the stop is its primary button, so there are 80 `[data-row-control]`
+  elements and exactly 20 of them are at `tabIndex 0`. The other fixtures cost 5, 8 and 2
+  stops. The stop does not rove: nothing reassigns `tabIndex`, so coming back to a row always
+  lands on its first control. Evidence: `src/lib/Tabs/rows.a11y.test.tsx` (the AC-9 block),
+  `src/lib/Tabs/elements/rowControls.ts` (`rowPrimaryProps`).
 
 ## Decisions
 
@@ -488,6 +504,25 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   class-based and identical across rows, so the failure message carries each node's HTML. Under
   the jsdom environment `import.meta.url` is an `http:` URL and `fileURLToPath` throws — use
   `process.cwd()` to reach `src/`. Evidence: `src/test/axe.ts`, `src/lib/Tabs/rows.a11y.test.tsx`.
+- 2026-10-02 — **axe looks straight through a wrapper that has no role, no `aria-*` and no
+  focusability, and one `aria-*` attribute ends that.** `aria-required-children` collects a
+  list's owned elements by descending through every such element, and
+  `aria-required-parent` climbs past the same ones. That is why one `role="list"` can own
+  `listitem`s that sit three layers down, under a MUI `Grid` container, a `Grid` item and the
+  `Dropzone` div. Put any global `aria-*` attribute or a `tabIndex` on one of those wrappers
+  and it becomes an owned child that is not a `listitem`, and the rule fires. Nothing shows
+  this until axe runs. Evidence: `node_modules/axe-core/axe.js:27783-27786` (4.13.0,
+  `getOwnedRoles`), `src/lib/Tabs/elements/RowList.tsx`.
+- 2026-10-02 — **An explicit `role` on a MUI `ButtonBase` wins, because of the order props are
+  spread in.** For any component that is not a `<button>`, `ButtonBase` sets
+  `buttonProps.role = 'button'`, then renders with `buttonProps` first and the caller's
+  remaining props after it. So `<ListItemButton component="div" role="toolbar"
+  tabIndex={-1}>` really is a toolbar, and keeps `dense`, `selected`, the ripple and the hover
+  fill. This is what made SPEC-04 a role change and not a rewrite of three row components.
+  It is an implementation detail of MUI 5.15.14, so each row's test asserts the rendered
+  `role` and `tabindex`; that test is the alarm if an upgrade reverses the order. Evidence:
+  `node_modules/@mui/material/ButtonBase/ButtonBase.js:263` and `:309`,
+  `src/lib/Tabs/Tab/TabDisplay.test.tsx`.
 
 ## Recurring Errors & Fixes
 

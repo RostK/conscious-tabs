@@ -229,8 +229,12 @@ discovery.
   | Row kind | Toolbar name (AC-29)                              | Primary button name (AC-6, AC-32, AC-33)              |
   | -------- | ------------------------------------------------- | ------------------------------------------------------ |
   | Tab      | **AM-3 (2026-09-30):** `title, site[, current tab][, muted \| playing audio][, selected], n of N` — was `` `${title \|\| "tab"}, ${host}` `` | **AM-3:** `Switch` — was `` `Switch to ${title \|\| "tab"}` `` |
-  | Group    | `` `Group ${title \|\| "untitled"}` ``            | `Collapse group …` / `Expand group …`, `aria-expanded`  |
-  | Window   | `` `Window ${n}, ${count} tab(s)` ``              | `Hide this window's tabs` / `Show …`, `aria-expanded`   |
+  | Group    | **As built in T-4 (2026-09-30), wording awaits a listen:** `Work, group, 3 tabs`, or `Untitled, group, …` with no title — was `` `Group ${title \|\| "untitled"}` `` | **As built:** `Tabs`, with `aria-expanded` carrying the state — was `Collapse group …` / `Expand group …` |
+  | Window   | **As built in T-5 (2026-10-01), wording awaits a listen:** `Window 1, 12 tabs[, current window]` — was `` `Window ${n}, ${count} tab(s)` `` | **As built:** `Tabs`, with `aria-expanded` — was `Hide this window's tabs` / `Show …` |
+
+  The group and window chevrons share one name and let `aria-expanded` say which way they are.
+  A name that changes between "Collapse" and "Expand" says the state twice, once in the name and
+  once in the state, and the toolbar around the chevron has already said which row it is.
 
   `Group …` is deliberately **not** `Actions for …`: `GroupListItem.tsx:139` already names the
   `MoreVert` button `Actions for group {title}` and AC-29 forbids the collision. Every one of these
