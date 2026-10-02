@@ -113,5 +113,12 @@ export const resolveUserWindow = async (): Promise<number | undefined> => {
 const hasUserActiveTab = async (windowId?: number): Promise<boolean> => {
   if (windowId === undefined) return false;
   const [active] = await chrome.tabs.query({ active: true, windowId });
-  return Boolean(active?.url) && !isOwnPage(active.url);
+  // Where the tab is, or — until its first navigation commits — where it is
+  // going. A tab just opened from a link has an empty `url` and its target in
+  // `pendingUrl`; reading only `url` skipped the very window the user had
+  // just acted in, and the current-tab card vanished (or described another
+  // window) at the moment they opened something. Our own anchor tab loading
+  // is the same shape, and its `pendingUrl` is ours, so it is still skipped.
+  const url = active?.url || active?.pendingUrl;
+  return Boolean(url) && !isOwnPage(url);
 };
