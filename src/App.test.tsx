@@ -518,17 +518,9 @@ describe("reordering from the keyboard", () => {
       expect(isOwedFocus(dragFocusKey("tab", 3))).toBe(false);
     });
 
-    it("is nobody, after a cancel", async () => {
-      await mountApp();
-      handleOf("First tab").focus();
-      await userEvent.keyboard(" ");
-      await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
-
-      await userEvent.keyboard("{Escape}");
-
-      await waitFor(() => expect(spoken()).toMatch(/^Cancelled/));
-      expect(isOwedFocus(FIRST)).toBe(false);
-    });
+    // A cancel is covered in App.drop.test.tsx, where a debt can be put in
+    // place first. Here nothing would be owed either way, so a test of it
+    // could not fail.
 
     it("is nobody, after a drop made with the mouse", async () => {
       await mountApp();

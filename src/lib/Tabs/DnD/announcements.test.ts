@@ -336,12 +336,24 @@ describe("the pick-up, and the first place after it", () => {
   });
 
   it("carries the pick-up into the first place, once", () => {
+    vi.useFakeTimers();
     expect(dragAnnouncements.onDragStart(arg(tab()))).toBe(
       "Picked up Quarterly report.",
     );
+    // Not the same instant: a window of zero would pass a test that never
+    // lets the clock move.
+    vi.advanceTimersByTime(499);
 
     expect(over(tab(), inbox)).toBe("Picked up Quarterly report. Before Inbox.");
     expect(over(tab(), later)).toBe("Before Calendar.");
+  });
+
+  it("still carries it at the very end of the window", () => {
+    vi.useFakeTimers();
+    dragAnnouncements.onDragStart(arg(tab()));
+    vi.advanceTimersByTime(500);
+
+    expect(over(tab(), inbox)).toBe("Picked up Quarterly report. Before Inbox.");
   });
 
   it("repeats the pick-up over its own place, so nothing cuts it off", () => {
@@ -360,12 +372,22 @@ describe("the pick-up, and the first place after it", () => {
     expect(over(tab(), inbox)).toBe("Picked up Quarterly report. Before Inbox.");
   });
 
-  it("stands alone once it has had time to be heard", () => {
+  // Two tests, not one: the first place spoken clears the memory of the
+  // pick-up, so a second assertion in the same drag would pass whatever the
+  // clock said.
+  it("stands alone once it has had time to be heard, before a place", () => {
     vi.useFakeTimers();
     dragAnnouncements.onDragStart(arg(tab()));
     vi.advanceTimersByTime(501);
 
     expect(over(tab(), inbox)).toBe("Before Inbox.");
+  });
+
+  it("stands alone once it has had time to be heard, before its own place", () => {
+    vi.useFakeTimers();
+    dragAnnouncements.onDragStart(arg(tab()));
+    vi.advanceTimersByTime(501);
+
     expect(over(tab(), zone("tab", tab()))).toBe(
       "Quarterly report, where it started.",
     );

@@ -221,8 +221,19 @@ function App() {
 
   // Which drag the handlers below are answering for. A drop is carried out
   // asynchronously, and a second drag can begin while the first is still
-  // awaited; the first one's tail must not switch off the second one's flag.
+  // awaited; the first one's tail must not move focus under the second.
   const dragTurn = useRef(0);
+
+  // The timers `settleFocus` sets, kept so that a new drag, a cancel, a press
+  // of the pointer or an unmount can call them off.
+  const settling = useRef<number[]>([]);
+  const stopSettling = useCallback(() => {
+    settling.current.forEach((id) => {
+      window.clearTimeout(id);
+    });
+    settling.current = [];
+  }, []);
+  useEffect(() => stopSettling, [stopSettling]);
 
   const handleDragStart = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragStart"]
@@ -232,17 +243,19 @@ function App() {
     // moments of a keyboard drop would otherwise take focus when a *pointer*
     // let it go. Found in review.
     oweFocusTo(undefined);
+    stopSettling();
     // So a second refusal is a change to the live region, and is read again.
     setAnnouncement((said) => (said === DROP_FAILED ? "" : said));
     setRowDragActive(true);
     setDragging(active.data.current as unknown as DefaultDrag);
-  }, []);
+  }, [stopSettling]);
 
   const handleDragCancel = useCallback(() => {
     oweFocusTo(undefined);
+    stopSettling();
     setRowDragActive(false);
     setDragging(null);
-  }, []);
+  }, [stopSettling]);
 
   /**
    * After a keyboard drop, focus must be *somewhere*.
@@ -257,56 +270,69 @@ function App() {
    * Checked twice, because how long Chrome takes to report a move is not ours
    * to know: a handle can take focus and lose it again when the report lands.
    */
-  const settleFocus = useCallback((turn: number) => {
-    for (const delay of FOCUS_SETTLE_MS) {
-      window.setTimeout(() => {
-        // A newer drag owns focus now; a tab row is off screen while dragged
-        // and its focus sits on the body by design.
-        if (dragTurn.current !== turn) return;
-        const field = searchInput.current;
-        if (!field) return;
-        const { activeElement, body } = field.ownerDocument;
-        if (activeElement && activeElement !== body) return;
-        field.focus();
-      }, delay);
-    }
-  }, []);
+  const settleFocus = useCallback(
+    (turn: number) => {
+      stopSettling();
+      const doc = searchInput.current?.ownerDocument;
+      // A press of the pointer is the user putting focus where they want it,
+      // including nowhere. Without this a click on empty page within the
+      // window below was answered by the caret jumping to the search field.
+      doc?.addEventListener("pointerdown", stopSettling, {
+        capture: true,
+        once: true,
+      });
+      settling.current = FOCUS_SETTLE_MS.map((delay) =>
+        window.setTimeout(() => {
+          // A newer drag owns focus now; a tab row is off screen while dragged
+          // and its focus sits on the body by design.
+          if (dragTurn.current !== turn) return;
+          const field = searchInput.current;
+          if (!field) return;
+          const { activeElement, body } = field.ownerDocument;
+          if (activeElement && activeElement !== body) return;
+          field.focus();
+        }, delay),
+      );
+    },
+    [stopSettling],
+  );
 
   const handleDragStop = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragEnd"]
   >(
     async ({ over, activatorEvent }) => {
       const turn = dragTurn.current;
+      const dropped = dragging;
       const byKeyboard = activatorEvent.type === "keydown";
       // A keyboard drop can move the row somewhere that rebuilds it, and the
       // handle that had focus goes with the old one. The new handle takes it
       // back as it mounts. Recorded before the drop is carried out, because
       // the rebuild can arrive while that is still awaited.
-      if (byKeyboard && dragging && !Array.isArray(dragging)) {
-        oweFocusTo(dragFocusKey(dragging.type, dragging.id));
+      if (byKeyboard && dropped && !Array.isArray(dropped)) {
+        oweFocusTo(dragFocusKey(dropped.type, dropped.id));
       }
+      // Before the drop is carried out, and they used to come after it. By the
+      // time dnd-kit calls this the drag is over, whatever the drop goes on to
+      // do: a handler that rejected skipped these, which left the drag flag on
+      // and every row's arrow keys dead until the next drag (found in review).
+      // And a second drag begun while the first drop was still awaited had its
+      // own flag switched off by the first one's tail.
+      setRowDragActive(false);
+      setDragging(null);
       const overData = over?.data.current as DZCurrentData | undefined;
       try {
-        if (overData?.dropHandler && dragging) {
-          await overData.dropHandler(dragging, overData);
-          if (Array.isArray(dragging)) {
+        if (overData?.dropHandler && dropped) {
+          await overData.dropHandler(dropped, overData);
+          if (Array.isArray(dropped)) {
             dispatchSelected({ type: "clear" });
           }
         }
       } catch (error) {
         // Chrome refuses some moves — a group into the middle of another, a
-        // tab among pinned ones — and a handler that does not catch that
-        // rejects. The drop was already announced as made, so say it was not.
+        // tab among pinned ones. The drop was already announced as made, so
+        // say it was not.
         console.error(error);
         setAnnouncement(DROP_FAILED);
-      } finally {
-        // In a `finally`, and it was not: a rejected drop used to skip these,
-        // which left the drag flag on and every row's arrow keys dead until
-        // the next drag. Found in review.
-        if (dragTurn.current === turn) {
-          setRowDragActive(false);
-          setDragging(null);
-        }
       }
       if (byKeyboard) settleFocus(turn);
     },

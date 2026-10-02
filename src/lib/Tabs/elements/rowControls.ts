@@ -283,14 +283,22 @@ export const oweFocusTo = (key: string | undefined): void => {
 };
 
 /** Asked by a drag handle as it mounts: is this the row that was dropped? */
-export const isOwedFocus = (key: string): boolean =>
+export const isOwedFocus = (key: string | undefined): boolean =>
+  key !== undefined &&
   focusOwed !== undefined &&
   focusOwed.key === key &&
   Date.now() <= focusOwed.until;
 
-/** The name a row's handle and App agree on for one dragged row. */
-export const dragFocusKey = (type: "tab" | "group", id: number | undefined) =>
-  `${type}-${id}`;
+/**
+ * The name a row's handle and App agree on for one dragged row.
+ *
+ * Nothing for a row with no id: a key built from `undefined` would be shared
+ * by every such row, and each would think itself owed.
+ */
+export const dragFocusKey = (
+  type: "tab" | "group",
+  id: number | undefined,
+): string | undefined => (id === undefined ? undefined : `${type}-${id}`);
 
 /**
  * An arrow press with nothing held down.

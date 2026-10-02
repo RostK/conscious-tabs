@@ -211,7 +211,14 @@ export const GroupListItem: FC<
     async (e) => {
       if (e.ctrlKey || e.metaKey) return;
       e.stopPropagation();
-      await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
+      try {
+        await chrome.tabGroups.update(group.id, {
+          collapsed: !group.collapsed,
+        });
+      } catch (e) {
+        // The group can be gone by the time this lands; nothing to undo.
+        console.error(e);
+      }
     },
     [group.collapsed, group.id],
   );

@@ -1078,15 +1078,16 @@ describe("AC-2 · no row control is taken out of the accessibility tree", () => 
       ...container.querySelectorAll<HTMLElement>("[data-row-control]"),
     ];
 
-    // A scan of nothing passes trivially.
-    expect(controls.length).toBeGreaterThanOrEqual(
-      container.querySelectorAll('[role="toolbar"]').length,
-    );
+    // A scan of nothing passes trivially: there are rows, and each has more
+    // than its one primary control.
+    const toolbars = container.querySelectorAll('[role="toolbar"]').length;
+    expect(toolbars).toBeGreaterThan(0);
+    expect(controls.length).toBeGreaterThan(toolbars);
     controls.forEach((control) => {
       expect(control.closest("[aria-hidden]")).toBeNull();
       expect(control.closest("[inert]")).toBeNull();
-      expect(control).not.toHaveAttribute("role", "presentation");
-      expect(control).not.toHaveAttribute("role", "none");
+      // Still a button to assistive technology, not merely something named.
+      expect(control).toHaveRole("button");
       expect(control).toHaveAccessibleName();
     });
   });

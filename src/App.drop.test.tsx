@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,14 +31,18 @@ import { installChrome } from "./test/chromeStub.ts";
  * otherwise wrap every test in `App.test.tsx`.
  */
 type DndProps = ComponentProps<typeof import("@dnd-kit/core").DndContext>;
-const handed = vi.hoisted(() => ({ props: undefined as unknown }));
+const handed = vi.hoisted<{ props?: unknown }>(() => ({}));
 
 vi.mock("@dnd-kit/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@dnd-kit/core")>();
   return {
     ...actual,
     DndContext: (props: DndProps) => {
-      handed.props = props;
+      // Only a real render. To print a warning, React in development calls
+      // each function component in the stack once with no arguments, to read
+      // where it throws — which arrived here as `props === undefined` and
+      // wiped the record the first time anything warned.
+      if (props) handed.props = props;
       return <actual.DndContext {...props} />;
     },
   };
@@ -82,7 +86,12 @@ const mountApp = async () => {
   );
 };
 
-const props = () => handed.props as DndProps;
+// Throws rather than hand back the last test's props: a test that drove a drag
+// before mounting would otherwise be talking to an App that is gone.
+const props = () => {
+  if (!handed.props) throw new Error("App is not mounted");
+  return handed.props as DndProps;
+};
 
 /**
  * dnd-kit's events, reduced to the fields `App` reads.
@@ -116,7 +125,7 @@ const zoneWith = (dropHandler: DZCurrentData["dropHandler"]): DZCurrentData => (
   dropHandler,
 });
 
-/** Left from a tab row's Select control lands on its primary, if the arrows are alive. */
+/** Right from a tab row's Select control moves on to Close, if the arrows are the row's. */
 const arrowsWork = async () => {
   const select = screen.getByRole("button", { name: "Select Third tab" });
   select.focus();
@@ -133,14 +142,15 @@ beforeEach(() => {
       chromeTab({ id: 3, index: 2, title: "Third tab" }),
     ],
   });
+  handed.props = undefined;
   setRowDragActive(false);
   oweFocusTo(undefined);
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   setRowDragActive(false);
   oweFocusTo(undefined);
-  vi.restoreAllMocks();
 });
 
 describe("a drop that reaches a zone", () => {
@@ -270,48 +280,203 @@ describe("who is owed focus, once a drop has landed", () => {
  * A drop onto a collapsed window, or a dropped selection, leaves no handle to
  * take focus back: measured in a browser, focus stayed on the body. The search
  * field takes it instead, once the list has had time to settle.
+ *
+ * On fake timers from the drop onward, so the tests wait for nothing and do
+ * not depend on how long "settled" is: they run whatever timers the drop set.
+ * The mount stays on real timers, because `waitFor` does not advance fake ones.
  */
 describe("focus that nobody holds after a keyboard drop", () => {
-  it("goes to the search field", async () => {
+  const search = () => screen.getByRole("textbox", { name: "search" });
+  const dropOn = async (activator: "keydown" | "mousedown") => {
     await mountApp();
     const moved = vi.fn().mockResolvedValue(undefined);
     await start(FIRST);
-    await end(zoneWith(moved), "keydown");
+    vi.useFakeTimers();
+    await end(zoneWith(moved), activator);
     expect(moved).toHaveBeenCalledTimes(1);
-
+  };
+  const dropFocus = () => {
     (document.activeElement as HTMLElement | null)?.blur();
     expect(document.body).toHaveFocus();
+  };
 
-    await waitFor(
-      () => expect(screen.getByRole("textbox", { name: "search" })).toHaveFocus(),
-      { timeout: 2500 },
-    );
+  it("goes to the search field at the first check, not before", async () => {
+    await dropOn("keydown");
+    dropFocus();
+
+    vi.advanceTimersByTime(399);
+    expect(document.body).toHaveFocus();
+    vi.advanceTimersByTime(1);
+
+    expect(search()).toHaveFocus();
   });
 
-  it("is left alone when something already holds it", async () => {
-    await mountApp();
-    const moved = vi.fn().mockResolvedValue(undefined);
-    await start(FIRST);
-    await end(zoneWith(moved), "keydown");
-    expect(moved).toHaveBeenCalledTimes(1);
+  // The handle can take focus and lose it again when Chrome's report of the
+  // move lands, which is why there is a second check.
+  it("goes there at the second check, if focus is lost after the first", async () => {
+    await dropOn("keydown");
     const close = screen.getByRole("button", { name: "Close Third tab" });
     close.focus();
 
-    await new Promise((resolve) => setTimeout(resolve, 1700));
+    vi.advanceTimersByTime(400);
+    expect(close).toHaveFocus();
+    dropFocus();
+    vi.runOnlyPendingTimers();
+
+    expect(search()).toHaveFocus();
+  });
+
+  it("is left alone when something already holds it", async () => {
+    await dropOn("keydown");
+    const close = screen.getByRole("button", { name: "Close Third tab" });
+    close.focus();
+
+    vi.runOnlyPendingTimers();
 
     expect(close).toHaveFocus();
   });
 
   it("is not touched after a pointer drop", async () => {
-    await mountApp();
-    const moved = vi.fn().mockResolvedValue(undefined);
-    await start(FIRST);
-    await end(zoneWith(moved), "mousedown");
-    expect(moved).toHaveBeenCalledTimes(1);
-    (document.activeElement as HTMLElement | null)?.blur();
+    await dropOn("mousedown");
+    dropFocus();
 
-    await new Promise((resolve) => setTimeout(resolve, 1700));
+    vi.runOnlyPendingTimers();
 
     expect(document.body).toHaveFocus();
+  });
+
+  // A press of the pointer is the user saying where focus should be,
+  // including nowhere.
+  it("is not touched once the user has pressed the pointer", async () => {
+    await dropOn("keydown");
+    dropFocus();
+
+    fireEvent.pointerDown(document.body);
+    vi.runOnlyPendingTimers();
+
+    expect(document.body).toHaveFocus();
+  });
+
+  it("is not touched once a drag has been cancelled", async () => {
+    await dropOn("keydown");
+    dropFocus();
+
+    act(() => {
+      props().onDragCancel?.(
+        {} as Parameters<NonNullable<DndProps["onDragCancel"]>>[0],
+      );
+    });
+    vi.runOnlyPendingTimers();
+
+    expect(document.body).toHaveFocus();
+  });
+
+  // While a tab row is being dragged it is off screen and focus sits on the
+  // body by design. The last drop's check must not answer that.
+  it("is not touched while a newer drag is live", async () => {
+    await dropOn("keydown");
+    dropFocus();
+
+    await start(FIRST);
+    vi.runOnlyPendingTimers();
+
+    expect(document.body).toHaveFocus();
+  });
+});
+
+/**
+ * A drop is carried out asynchronously, so a second drag can begin while the
+ * first one's handler is still running. The first one's tail must leave the
+ * second alone.
+ */
+describe("a second drag begun while the first drop is still being carried out", () => {
+  it("keeps its arrows when the first drop finishes", async () => {
+    await mountApp();
+    let finish: () => void = () => {};
+    const slow = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await start(FIRST);
+    let done: unknown;
+    act(() => {
+      done = props().onDragEnd?.(endEvent(zoneWith(slow), "keydown"));
+    });
+    expect(slow).toHaveBeenCalledTimes(1);
+
+    await start(FIRST);
+    await act(async () => {
+      finish();
+      await done;
+    });
+
+    // Still dnd-kit's: the second drag is live.
+    expect(await arrowsWork()).toBe(false);
+  });
+
+  it("has the arrows back as soon as the drop is made, without waiting for it to finish", async () => {
+    await mountApp();
+    const never = vi.fn(() => new Promise<void>(() => {}));
+    await start(FIRST);
+
+    act(() => {
+      void props().onDragEnd?.(endEvent(zoneWith(never), "keydown"));
+    });
+
+    expect(never).toHaveBeenCalledTimes(1);
+    expect(await arrowsWork()).toBe(true);
+  });
+});
+
+describe("what a refused drop leaves behind", () => {
+  const says = (sentence: string) =>
+    screen
+      .getAllByRole("status")
+      .some((region) => region.textContent?.includes(sentence));
+
+  // So a second refusal is a change to the live region, and is read again.
+  it("is cleared when the next drag starts", async () => {
+    await mountApp();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await start(FIRST);
+    await end(zoneWith(vi.fn().mockRejectedValue(new Error("no"))), "keydown");
+    expect(says("That could not be moved there.")).toBe(true);
+
+    await start(FIRST);
+
+    expect(says("That could not be moved there.")).toBe(false);
+  });
+});
+
+/**
+ * KNOWN DEFECT, on `main` before this branch and not part of SPEC-04.
+ *
+ * `App` clears the selection after a selection is dropped, but it reads
+ * `SelectionContext` above the `SelectionProvider` it renders itself. So the
+ * `dispatch` it holds is the context's default, which does nothing, and a
+ * dropped selection stays selected. Found the first time a test could reach a
+ * drop that lands (2026-10-02).
+ *
+ * `it.fails` keeps the suite green while the defect stands and goes red the
+ * moment it is fixed, which is the prompt to make this a plain `it`.
+ */
+describe("a selection that was dropped", () => {
+  const THIRD = { ...FIRST, id: 3, index: 2, title: "Third tab" };
+
+  it.fails("is cleared once the move has been made", async () => {
+    await mountApp();
+    fireEvent.click(screen.getByRole("button", { name: "Select Third tab" }));
+    await screen.findByRole("button", { name: "Deselect Third tab" });
+    const moved = vi.fn().mockResolvedValue(undefined);
+
+    await start([THIRD]);
+    await end(zoneWith(moved), "mousedown");
+
+    expect(moved).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("button", { name: "Deselect Third tab" }),
+    ).not.toBeInTheDocument();
   });
 });
