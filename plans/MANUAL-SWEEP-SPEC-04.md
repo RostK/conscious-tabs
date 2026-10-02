@@ -214,6 +214,67 @@ really moves tabs and groups.
 **One observation, not fixed.** A tab with an empty title renders a 29 px row, not 49.5 px, because
 the title line is empty. It predates SPEC-04 and Chrome rarely reports an empty title.
 
+## Listening session — 2026-10-02, NVDA and Chrome, side panel
+
+Run by the user with the Speech Viewer open, on `accessible-rows` at `6eb49f7`, 25 to 28 tabs, one
+group, a second window opened part-way. NVDA 2026.2 (from the installer's name) and the Chrome that
+was current that day; neither version was read off the About box this time. Titles that name a
+person or an inbox are replaced with `‹Gmail tab›`.
+
+**Part 1, rows. Passed.**
+
+    search  edit  Search…  blank
+    main landmark
+    Open tabs  list
+    ‹Gmail tab›, mail.google.com, 1 of 25  tool bar
+    Switch  button
+    Anthropic Courses, anthropic.skilljar.com, 3 of 25  tool bar
+    Switch  button
+    Select Claude Certified Architect – Foundations | Anthropic Academy  button
+    Close Claude Certified Architect – Foundations | Anthropic Academy  button
+    Reorder Claude Certified Architect – Foundations | Anthropic Academy  draggable  Press Space or Enter to pick up. …
+    Deselect Claude Certified Architect – Foundations | Anthropic Academy
+    World of Books, group, 3 tabs  tool bar
+    Tabs  button  expanded
+    Window 1, 25 tabs  tool bar
+    Tabs  button  collapsed
+    expanded
+    Switch to this window, 25 tabs  button
+
+- Every tab row said its title once and first, then site and "n of N", then "Switch".
+- The walk was Switch, Select, Close, Reorder, with no wrap.
+- Space on Select announced "Deselect ‹title›" at once, without moving focus.
+- The group and window rows read as built, and pressing the window's chevron announced "expanded".
+- **Found:** the current tab read "Extensions, extensions, current tab, 25 of 25". Fixed in `96aef2b`.
+- **Verdicts:** "Switch" on every row is "probably fine"; "Deselect ‹title›" is "clear enough". Both
+  are recorded in SPEC-04 §13.5.
+
+**Part 2, dragging. Works, and was noisy.**
+
+    Reorder ‹title›  draggable  Press Space or Enter to pick up. …
+    Picked up ‹title›.
+    Conscious Tabs  document
+    Picked up ‹title›. Before Solve Algorithms | HackerRank.
+    Before group World of Books.
+    Moved ‹title› before group World of Books.
+    main landmark
+    Open tabs  list
+    ‹title›, questions-statements.parliament.uk, 5 of 28  tool bar
+    Reorder ‹title›  draggable  Press Space or Enter to pick up. …
+    Close ‹title›  button
+
+- In real Chrome every drop moved the tab or the group, and the row renumbered.
+- Each place was announced: "Before ‹tab›", "Into group World of Books", "Before group World of Books".
+- After every drop and cancel, focus was on the Reorder control and Left went to Close. This is
+  AC-13 in the real extension, which the harness could only stand in for.
+- **Found:** "Conscious Tabs, document" after each pick-up, and the landmark, list and row re-read
+  after each drop. The dragged row was being unmounted. Fixed in `96aef2b` (SPEC-04 AM-5).
+- **Found:** the title twice at pick-up. The fold that repeated it is removed in the same commit.
+- **Decided:** the handle stays "draggable"; the instructions are shortened.
+
+**Still to run:** Part 2 again on the new build, then the group's menu, search results, the full
+view, the float, and eighty rows.
+
 ## C. The other two surfaces, and the narrow one  *(T-10)*
 
 - [ ] **AC-27 · the anchor tab** — repeat §B's first three items. Record any difference.

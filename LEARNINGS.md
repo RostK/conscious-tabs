@@ -152,6 +152,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   call `onDragStart` and `onDragEnd` with a zone of its own, inside `act` so the state the end
   handler closes over has rendered. In its own file, because the mock wraps every test beside
   it. Evidence: `src/App.drop.test.tsx`.
+- 2026-10-02 — **What interrupts a screen reader's announcement is a focus change, and unmounting
+  the focused element is one.** A dragged row was unmounted for the length of its drag, taking the
+  handle that held focus. NVDA answered with "Conscious Tabs, document", cutting off "Picked up
+  ‹title›", and re-read the landmark, list and row after each drop. A fix aimed at the live region
+  (repeating the pick-up in the next sentence) only said the title twice. Keeping the row mounted
+  and collapsed (`height: 0`, `overflow: hidden`, `opacity: 0`; never `display: none` or
+  `visibility: hidden`, which drop focus) removed all three. Height only, so the node's top-left
+  corner does not move and dnd-kit has nothing to compensate for. Evidence:
+  `src/lib/Tabs/elements/rowControls.ts` (`rowWhileDraggedSx`),
+  `plans/MANUAL-SWEEP-SPEC-04.md` ("Listening session").
 
 ## What Doesn't Work
 
@@ -377,6 +387,17 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   drag" and "the user has taken focus themselves". Listen for that press from the drop, not
   from when the drop has been carried out: everything a drop is owed starts at the drop.
   Evidence: `src/App.tsx` (`yieldToPointer`, `handleDragStop`).
+- 2026-10-02 — **Three review passes and a browser pass did not find what ten minutes of
+  listening did.** The reviews measured that "Picked up X." stood for 55 ms and prescribed a
+  fold; the Speech Viewer showed the fold made it worse and that the cause was elsewhere. For
+  anything a screen reader says, the transcript is the measurement and everything before it is a
+  guess. Budget the listening before the wording work, not after. Evidence: commits `611dd83`
+  (the fold) and `96aef2b` (its removal).
+- 2026-10-02 — **dnd-kit reports a drag as "over" its own drop zone the instant it starts.** Any
+  sentence for "its own place" is therefore said after every pick-up. Switching the zone off with
+  `useDroppable({ disabled })` while the row is dragged comes one render too late for that first
+  report, so the wording has to be silent for it too. Evidence:
+  `src/lib/Tabs/DnD/announcements.ts`, `src/lib/Tabs/DnD/useDropzone.tsx`.
 
 ## Codebase Patterns
 
@@ -829,6 +850,12 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   predicted; the JSX kept this branch's deeper indentation and needed Prettier and the three
   block comments realigned by hand. The `it.fails` in `src/App.drop.test.tsx` is a plain `it`,
   the two other cases moved in beside it, and `src/App.selectionDrop.test.tsx` is deleted.
+- 2026-10-02 — **Another session committed to the branch this one had checked out.** The session
+  spawned to fix the dropped selection merged `main` into `accessible-rows`, answered a review of
+  PR #25 and pushed, while this session held uncommitted edits in the same working tree. Nothing
+  collided, because the files differed, and the suite passed on the combined tree. It was noticed
+  only when a test count changed. Before committing in a long session, run `git log` against the
+  last commit this session made.
 
 ## Open Questions
 

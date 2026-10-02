@@ -866,8 +866,23 @@ The user set the bar as **better than Chrome's own tab strip**. That strip says 
 | #        | Amendment |
 | -------- | --------- |
 | **AM-4** | **A row's select control says its state in its name.** "Select ‹title›" becomes "Deselect ‹title›", and the toolbar's name gains "selected". No `aria-pressed`. This amends AC-16. |
+| **AM-5** | **A row stays in the document while it is dragged, and its handle keeps focus.** It is collapsed to no height, not unmounted. This amends E-6 and the "unchanged" in DEC-4, and adds to AC-12 and AC-13. |
 
 **Why.** AC-16 asked the control to report "its own pressed/checked state". What was built says the state in the name, and the plan check marked that a literal miss. The alternative is a toggle with a fixed name, which NVDA reads as "Select ‹title›, toggle button, pressed". Heard with NVDA on 2026-10-02: pressing Space on the control announced "Deselect ‹title›" at once, without moving focus. The user's verdict was "clear enough".
+
+**AM-5, why.** DEC-4 said reordering is unchanged, and E-6 recorded that a tab row unmounts the moment it is picked up. Heard with NVDA on 2026-10-02, that unmount is the loudest thing in a drag. The handle holding focus is removed, focus falls to the page, and NVDA says "Conscious Tabs, document" straight after the pick-up, which cuts off the announcement of what was picked up. After every drop it reads the landmark, the list and the row again. So:
+- WHILE a row is being dragged, the row SHALL stay in the document, collapsed so that it takes no height, and its drag handle SHALL keep focus from pick-up until the drag ends. It SHALL NOT be hidden with `display: none` or `visibility: hidden`, which drop focus.
+- WHILE a row is being dragged, its own drop zones SHALL be switched off, so it cannot be dropped on itself.
+- The keys, the activator and the `dragActive` hand-off of DEC-4 are unchanged. E-6's asymmetry is gone: every row is now the case the flag exists for.
+
+**Verify:** unit — after a keyboard pick-up of a tab row and of a group row, `document.activeElement` is the same handle element, and it still is after a cancel and after a drop; the row's list item has no height and is not `display: none`. Manual per AC-27.
+
+**Three wording changes from the same session**, none of them a criterion:
+- The pick-up instructions, read on every landing on a handle, are one short sentence: "Space picks up, arrows move, Space drops, Escape cancels."
+- A drag over its own starting place says nothing. A drag begins there, so it was said after every pick-up.
+- A tab row leaves out the site when it is the same word as the title, as on Chrome's own pages ("Extensions, extensions").
+
+The handle keeps dnd-kit's `aria-roledescription`, so NVDA says "draggable" where it would say "button". That was put to the user and kept.
 
 **AM-3 confirmed, with its cost known.** Every tab row's primary control is named "Switch" while the visible text is the title. That fails WCAG 2.5.3, Label in Name: someone using voice control cannot say the title to press the control, and a screen reader's list of buttons holds one "Switch" per tab. Each alternative brings the title back a second time on every row, which is what AM-3 removed. Put to the user with that cost stated, and heard again across 25 rows: "probably fine". It stands, and is the first thing to revisit if a voice-control user reports it.
 
