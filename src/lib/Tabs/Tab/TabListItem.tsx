@@ -10,6 +10,7 @@ import {
 import { DropPlaceholder } from "../DnD";
 import { useDropzone } from "../DnD/useDropzone.tsx";
 import { DragHandle } from "../elements/DragHandle.tsx";
+import { dragFocusKey } from "../elements/rowControls.ts";
 import { TabGrid } from "../elements/TabGrid.tsx";
 import { GroupItem } from "../types.ts";
 import { handleDrop } from "./handleDrop.ts";
@@ -83,6 +84,7 @@ const TabListItemRow: FC<
                     setActivatorNodeRef={setActivatorNodeRef}
                     attributes={attributes}
                     onKeyDown={onKeyDown}
+                    focusKey={dragFocusKey("tab", tab.id)}
                   />
                 }
                 {...props}

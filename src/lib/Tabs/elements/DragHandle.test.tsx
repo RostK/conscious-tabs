@@ -2,10 +2,11 @@ import { DndContext, useDraggable } from "@dnd-kit/core";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ComponentProps, KeyboardEventHandler } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { dragAnnouncements, dragInstructions } from "../DnD";
 import { DragHandle } from "./DragHandle.tsx";
+import { dragFocusKey, oweFocusTo } from "./rowControls.ts";
 
 /**
  * The keyboard's way into a drag — SPEC-04 AC-11, AC-13 (its precondition) and
@@ -114,5 +115,105 @@ describe("DragHandle", () => {
       dragInstructions.draggable,
     );
     expect(handle).toHaveAccessibleDescription(dragInstructions.draggable);
+  });
+});
+
+/**
+ * Focus after a keyboard drop that rebuilds the row — SPEC-04 AC-13.
+ *
+ * dnd-kit restores focus to the handle once. A drop that moves a tab into a
+ * group, or out of one, then makes the list re-render with that row under a
+ * different parent, so the handle is a new element and the one that had focus
+ * is gone. Measured in Chromium on 2026-10-02: focus fell to the body and the
+ * next arrow press did nothing.
+ *
+ * The rebuild is stood in for here by mounting a fresh handle, which is what
+ * the row changing parent amounts to. What the browser adds — that the move
+ * really is followed by a remount — is recorded in MANUAL-SWEEP-SPEC-04 §D.
+ */
+describe("a handle that is owed focus", () => {
+  const Row = ({ focusKey }: { focusKey?: string }) => (
+    <DragHandle
+      label="Reorder A tab"
+      focusKey={focusKey}
+      setActivatorNodeRef={() => {}}
+      attributes={{} as ComponentProps<typeof DragHandle>["attributes"]}
+    />
+  );
+
+  afterEach(() => {
+    oweFocusTo(undefined);
+    vi.useRealTimers();
+  });
+
+  it("takes focus as it mounts, when nobody holds it", () => {
+    oweFocusTo(dragFocusKey("tab", 7));
+
+    render(<Row focusKey={dragFocusKey("tab", 7)} />);
+
+    expect(screen.getByRole("button", { name: "Reorder A tab" })).toHaveFocus();
+  });
+
+  it("takes it again if the row is rebuilt a second time", () => {
+    // The drop itself remounts the row once (it was hidden while dragged), and
+    // Chrome's report of the move remounts it again. One claim is not enough.
+    oweFocusTo(dragFocusKey("tab", 7));
+    const first = render(<Row focusKey={dragFocusKey("tab", 7)} />);
+    first.unmount();
+    expect(document.body).toHaveFocus();
+
+    render(<Row focusKey={dragFocusKey("tab", 7)} />);
+
+    expect(screen.getByRole("button", { name: "Reorder A tab" })).toHaveFocus();
+  });
+
+  it("leaves focus alone when nothing is owed", () => {
+    render(<Row focusKey={dragFocusKey("tab", 7)} />);
+
+    expect(document.body).toHaveFocus();
+  });
+
+  it("leaves it alone when another row is owed", () => {
+    oweFocusTo(dragFocusKey("tab", 8));
+
+    render(<Row focusKey={dragFocusKey("tab", 7)} />);
+
+    expect(document.body).toHaveFocus();
+  });
+
+  it("does not confuse a tab and a group that share a number", () => {
+    oweFocusTo(dragFocusKey("group", 7));
+
+    render(<Row focusKey={dragFocusKey("tab", 7)} />);
+
+    expect(document.body).toHaveFocus();
+  });
+
+  it("does not take focus the user has already put somewhere else", () => {
+    oweFocusTo(dragFocusKey("tab", 7));
+    render(<input aria-label="search" />);
+    screen.getByRole("textbox", { name: "search" }).focus();
+
+    render(<Row focusKey={dragFocusKey("tab", 7)} />);
+
+    expect(screen.getByRole("textbox", { name: "search" })).toHaveFocus();
+  });
+
+  it("lapses, so a later rebuild of the row does not pull focus to it", () => {
+    vi.useFakeTimers();
+    oweFocusTo(dragFocusKey("tab", 7));
+    vi.advanceTimersByTime(3001);
+
+    render(<Row focusKey={dragFocusKey("tab", 7)} />);
+
+    expect(document.body).toHaveFocus();
+  });
+
+  it("never takes focus without a key, as on the current-tab card", () => {
+    oweFocusTo(dragFocusKey("tab", 7));
+
+    render(<Row />);
+
+    expect(document.body).toHaveFocus();
   });
 });

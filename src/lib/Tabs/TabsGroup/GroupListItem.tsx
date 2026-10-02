@@ -23,6 +23,7 @@ import { DropPlaceholder, useDropzone } from "../DnD";
 import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import {
+  dragFocusKey,
   rowControlProps,
   rowPrimaryProps,
   selectedProps,
@@ -171,10 +172,18 @@ export const GroupListItem: FC<
           setActivatorNodeRef={setActivatorNodeRef}
           attributes={attributes}
           onKeyDown={onKeyDown}
+          focusKey={dragFocusKey("group", group.id)}
         />
       </>
     );
-  }, [handleDelete, group.title, setActivatorNodeRef, attributes, onKeyDown]);
+  }, [
+    handleDelete,
+    group.title,
+    group.id,
+    setActivatorNodeRef,
+    attributes,
+    onKeyDown,
+  ]);
 
   // Through a Set, for the same reason as the window row: `includes` is a scan
   // and this runs it once per tab in the group, per render.

@@ -164,6 +164,7 @@ export const installFakeChrome = () => {
   const onRemoved = event();
   const onUpdated = event();
   const onActivated = event();
+  const onMoved = event();
 
   const remove = (ids: number | number[]) => {
     const list = Array.isArray(ids) ? ids : [ids];
@@ -179,6 +180,49 @@ export const installFakeChrome = () => {
       });
     });
     return Promise.resolve();
+  };
+
+  // Real moves, for the same reason `remove` is real: a keyboard drop that
+  // changes nothing cannot show whether focus survives the list re-rendering
+  // around the moved row — and when the row changes parent (into a group, out
+  // of one) it does not survive unaided. Measured 2026-10-02.
+  const idsOf = (ids: number | number[]) => (Array.isArray(ids) ? ids : [ids]);
+  const move = (
+    ids: number | number[],
+    to: { index: number; windowId?: number },
+  ) => {
+    const moving = idsOf(ids)
+      .map((id) => tabs.find((tab) => tab.id === id))
+      .filter((tab): tab is chrome.tabs.Tab => tab !== undefined);
+    if (!moving.length) return Promise.resolve();
+    const windowId = to.windowId ?? moving[0].windowId;
+    for (const tab of moving) tabs.splice(tabs.indexOf(tab), 1);
+    const inWindow = tabs.filter((tab) => tab.windowId === windowId);
+    const others = tabs.filter((tab) => tab.windowId !== windowId);
+    const at = to.index < 0 ? inWindow.length : to.index;
+    inWindow.splice(Math.min(at, inWindow.length), 0, ...moving);
+    moving.forEach((tab) => {
+      tab.windowId = windowId;
+    });
+    inWindow.forEach((tab, index) => {
+      tab.index = index;
+    });
+    tabs.length = 0;
+    tabs.push(...inWindow, ...others);
+    tabs.sort((a, b) => a.windowId - b.windowId || a.index - b.index);
+    (onMoved.fire as (...a: unknown[]) => void)(moving[0].id, {
+      windowId,
+      fromIndex: 0,
+      toIndex: to.index,
+    });
+    return Promise.resolve();
+  };
+  const setGroup = (ids: number | number[], groupId: number) => {
+    idsOf(ids).forEach((id) => {
+      const tab = tabs.find((candidate) => candidate.id === id);
+      if (tab) tab.groupId = groupId;
+    });
+    (onUpdated.fire as (...a: unknown[]) => void)(idsOf(ids)[0], { groupId }, {});
   };
 
   (globalThis as unknown as { chrome: unknown }).chrome = {
@@ -203,15 +247,23 @@ export const installFakeChrome = () => {
       update: () => Promise.resolve(undefined),
       create: () => Promise.resolve(undefined),
       remove,
-      move: () => Promise.resolve(undefined),
-      group: () => Promise.resolve(1),
+      move,
+      group: (options: { tabIds: number | number[]; groupId?: number }) => {
+        const groupId = options.groupId ?? 1;
+        setGroup(options.tabIds, groupId);
+        return Promise.resolve(groupId);
+      },
+      ungroup: (ids: number | number[]) => {
+        setGroup(ids, -1);
+        return Promise.resolve();
+      },
       duplicate: () => Promise.resolve(undefined),
       reload: () => Promise.resolve(undefined),
       onUpdated,
       onActivated,
       onCreated: event(),
       onRemoved,
-      onMoved: event(),
+      onMoved,
       onDetached: event(),
       onAttached: event(),
     },

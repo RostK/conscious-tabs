@@ -1,11 +1,16 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.tsx";
 import { reportFloatSearch } from "./lib/float";
 import { dragInstructions } from "./lib/Tabs/DnD";
-import { setRowDragActive } from "./lib/Tabs/elements/rowControls.ts";
+import {
+  dragFocusKey,
+  isOwedFocus,
+  oweFocusTo,
+  setRowDragActive,
+} from "./lib/Tabs/elements/rowControls.ts";
 import { Theme } from "./lib/Theme";
 import { installChrome } from "./test/chromeStub.ts";
 
@@ -276,6 +281,12 @@ describe("in every surface", () => {
  * (sweep §D).
  */
 describe("reordering from the keyboard", () => {
+  // Module state, like the drag flag: a keyboard drop in one test would
+  // otherwise leave its row owed focus in the next.
+  afterEach(() => {
+    oweFocusTo(undefined);
+  });
+
   /** dnd-kit's own live region, not the app's polite one in <main>. */
   const spoken = () =>
     document.querySelector('[id^="DndLiveRegion"]')?.textContent ?? "";
@@ -494,5 +505,55 @@ describe("reordering from the keyboard", () => {
 
     await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
     fireEvent.mouseUp(document);
+  });
+
+  // AC-13, the half dnd-kit cannot do. A drop that moves a tab into a group
+  // rebuilds its row, and the handle dnd-kit just focused is gone. App says
+  // which row was dropped so the rebuilt handle can take focus back
+  // (DragHandle.test.tsx has that half). Only a keyboard drop does: a pointer
+  // never had focus on the handle, and a cancel moves nothing.
+  describe("which row is owed focus afterwards", () => {
+    const FIRST = dragFocusKey("tab", 1);
+
+    it("is the dropped row, after a keyboard drop", async () => {
+      await mountApp();
+      handleOf("First tab").focus();
+      await userEvent.keyboard(" ");
+      await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+      expect(isOwedFocus(FIRST)).toBe(false);
+
+      await userEvent.keyboard(" ");
+
+      await waitFor(() => expect(spoken()).toBe("First tab put back."));
+      expect(isOwedFocus(FIRST)).toBe(true);
+      expect(isOwedFocus(dragFocusKey("tab", 3))).toBe(false);
+    });
+
+    it("is nobody, after a cancel", async () => {
+      await mountApp();
+      handleOf("First tab").focus();
+      await userEvent.keyboard(" ");
+      await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => expect(spoken()).toMatch(/^Cancelled/));
+      expect(isOwedFocus(FIRST)).toBe(false);
+    });
+
+    it("is nobody, after a drop made with the mouse", async () => {
+      await mountApp();
+      const row = screen
+        .getAllByRole("toolbar")
+        .find((el) => el.textContent?.includes("First tab")) as HTMLElement;
+      fireEvent.mouseDown(row, { button: 0, clientX: 5, clientY: 5 });
+      fireEvent.mouseMove(document, { clientX: 20, clientY: 5 });
+      await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+
+      fireEvent.mouseUp(document);
+
+      await waitFor(() => expect(spoken()).toBe("First tab put back."));
+      expect(isOwedFocus(FIRST)).toBe(false);
+    });
   });
 });

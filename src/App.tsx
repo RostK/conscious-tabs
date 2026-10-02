@@ -51,7 +51,9 @@ import {
   DZCurrentData,
 } from "./lib/Tabs/DnD";
 import {
+  dragFocusKey,
   isPlainArrow,
+  oweFocusTo,
   setRowDragActive,
 } from "./lib/Tabs/elements/rowControls.ts";
 import { TabAvatarsDisplay } from "./lib/Tabs/elements/TabAvatarsDisplay.tsx";
@@ -226,7 +228,18 @@ function App() {
   const handleDragStop = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragEnd"]
   >(
-    async ({ over }) => {
+    async ({ over, activatorEvent }) => {
+      // A keyboard drop can move the row somewhere that rebuilds it, and the
+      // handle that had focus goes with the old one. The new handle takes it
+      // back as it mounts. Recorded before the drop is carried out, because
+      // the rebuild can arrive while that is still awaited.
+      if (
+        activatorEvent.type === "keydown" &&
+        dragging &&
+        !Array.isArray(dragging)
+      ) {
+        oweFocusTo(dragFocusKey(dragging.type, dragging.id));
+      }
       const overData = over?.data.current as DZCurrentData | undefined;
       if (overData?.dropHandler && dragging) {
         await overData.dropHandler(dragging, overData);
