@@ -89,6 +89,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   (`resize_window`, 1000×700 was enough) if it is 0; `visibilityState` stays `hidden` and the
   drag works regardless. The live region is the quickest witness: it says "Before …" mid-drag
   and "Moved …" after a drop that landed.
+- 2026-10-02 (adds to the two records above) — **A keyboard drag can be driven the same way,
+  with synthetic `KeyboardEvent`s.** Focus a row's handle, dispatch `keydown` for Space (`key:
+  " "`, `code: "Space"`) on the handle to pick up, then `keydown` for `ArrowDown` and for Space
+  on `document` to move and drop, about 150 ms apart — dnd-kit's `KeyboardSensor` takes the first
+  key from the handle and listens on the document after that. Read `document.activeElement`
+  right after the drop and again past 1.5 s to see where focus settled. This is how the
+  pointer-press fix was checked: after a keyboard drop into a group, focus stayed on the body
+  when a `pointerdown` followed the drop, and went to the rebuilt row's handle when none did.
 
 - 2026-09-30 — **Test an in-flight load with a hand-released promise, not timers; and gate a
   list wrapper on having rows, not on the empty state.** The tabs and windows stores both sit behind one `Promise.all`
@@ -360,6 +368,15 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   selection is never cleared. It type-checks, it does not throw, and it had no test, because
   nothing could reach a drop that lands. A context whose default does nothing hides this; one
   that throws would not. Evidence: `src/App.tsx`, `src/App.drop.test.tsx` (the expected failure).
+- 2026-10-02 — **A staleness check on the timer that fires is not enough when setting the timer
+  clears the ones already pending.** `settleFocus` begins with `stopSettling()`, and its timers
+  each check `dragTurn` before acting. So a drop that finished late did no harm when its timers
+  fired — and all of it when it set them, by clearing the newer drop's. The check has to guard
+  the call that sets, as well as the callback: `if (byKeyboard && dragTurn.current === turn)`.
+  The same turn counter is what a press of the pointer bumps, so one comparison covers "a newer
+  drag" and "the user has taken focus themselves". Listen for that press from the drop, not
+  from when the drop has been carried out: everything a drop is owed starts at the drop.
+  Evidence: `src/App.tsx` (`yieldToPointer`, `handleDragStop`).
 
 ## Codebase Patterns
 

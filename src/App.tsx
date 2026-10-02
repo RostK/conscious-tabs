@@ -219,9 +219,10 @@ function AppBody() {
   const keyboardSensor = useSensor(KeyboardSensor);
   const sensors = useSensors(mouseSensor, keyboardSensor);
 
-  // Which drag the handlers below are answering for. A drop is carried out
+  // Whose turn it is to say where focus goes. A drop is carried out
   // asynchronously, and a second drag can begin while the first is still
-  // awaited; the first one's tail must not move focus under the second.
+  // awaited; the first one's tail must not move focus under the second. A
+  // press of the pointer takes the turn too — see `yieldToPointer`.
   const dragTurn = useRef(0);
 
   // The timers `settleFocus` sets, kept so that a new drag, a cancel, a press
@@ -233,7 +234,31 @@ function AppBody() {
     });
     settling.current = [];
   }, []);
-  useEffect(() => stopSettling, [stopSettling]);
+
+  /**
+   * A press of the pointer is the user putting focus where they want it,
+   * including nowhere. It ends everything the last keyboard drop still has
+   * pending, and there are three such things, not one.
+   *
+   * It used to call off only the checks below, and only once they were set.
+   * So a row rebuilt within the handle's three seconds took focus back from
+   * wherever the pointer had just put it, and a press made while the drop was
+   * still being carried out was answered, once it finished, by the caret
+   * jumping to the search field. Found in review.
+   */
+  const yieldToPointer = useCallback(() => {
+    dragTurn.current += 1;
+    oweFocusTo(undefined);
+    stopSettling();
+  }, [stopSettling]);
+
+  useEffect(() => {
+    const doc = searchInput.current?.ownerDocument;
+    return () => {
+      doc?.removeEventListener("pointerdown", yieldToPointer, true);
+      stopSettling();
+    };
+  }, [stopSettling, yieldToPointer]);
 
   const handleDragStart = useCallback<
     Required<ComponentProps<typeof DndContext>>["onDragStart"]
@@ -276,14 +301,6 @@ function AppBody() {
   const settleFocus = useCallback(
     (turn: number) => {
       stopSettling();
-      const doc = searchInput.current?.ownerDocument;
-      // A press of the pointer is the user putting focus where they want it,
-      // including nowhere. Without this a click on empty page within the
-      // window below was answered by the caret jumping to the search field.
-      doc?.addEventListener("pointerdown", stopSettling, {
-        capture: true,
-        once: true,
-      });
       settling.current = FOCUS_SETTLE_MS.map((delay) =>
         window.setTimeout(() => {
           // A newer drag owns focus now; a tab row is off screen while dragged
@@ -314,6 +331,16 @@ function AppBody() {
       if (byKeyboard && dropped && !Array.isArray(dropped)) {
         oweFocusTo(dragFocusKey(dropped.type, dropped.id));
       }
+      // Listened for from the drop itself, not from when it has been carried
+      // out: the handle is owed focus from this moment, and the press that
+      // calls that off can come while the move is still awaited.
+      if (byKeyboard) {
+        searchInput.current?.ownerDocument.addEventListener(
+          "pointerdown",
+          yieldToPointer,
+          { capture: true, once: true },
+        );
+      }
       // Before the drop is carried out, and they used to come after it. By the
       // time dnd-kit calls this the drag is over, whatever the drop goes on to
       // do: a handler that rejected skipped these, which left the drag flag on
@@ -337,9 +364,14 @@ function AppBody() {
         console.error(error);
         setAnnouncement(DROP_FAILED);
       }
-      if (byKeyboard) settleFocus(turn);
+      // Only while this drop still has the turn. Setting a check clears the
+      // ones pending, so the tail of a drop that finished late — after a
+      // second drag had been dropped, or after a press of the pointer — took
+      // away the newer claim and then stood its own down as stale, leaving
+      // nothing to look after focus. Found in review.
+      if (byKeyboard && dragTurn.current === turn) settleFocus(turn);
     },
-    [dispatchSelected, dragging, settleFocus],
+    [dispatchSelected, dragging, settleFocus, yieldToPointer],
   );
 
   return (

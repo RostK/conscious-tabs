@@ -274,6 +274,21 @@ describe("who is owed focus, once a drop has landed", () => {
 
     expect(isOwedFocus(KEY)).toBe(false);
   });
+
+  // Found in review: a press of the pointer called off the search field's
+  // claim on focus and not the handle's, so a row rebuilt within three seconds
+  // of a keyboard drop took focus back from where the pointer had just put it.
+  it("is nobody once the user has pressed the pointer", async () => {
+    await mountApp();
+    const moved = vi.fn().mockResolvedValue(undefined);
+    await start(FIRST);
+    await end(zoneWith(moved), "keydown");
+    expect(isOwedFocus(KEY)).toBe(true);
+
+    fireEvent.pointerDown(document.body);
+
+    expect(isOwedFocus(KEY)).toBe(false);
+  });
 });
 
 /**
@@ -357,6 +372,35 @@ describe("focus that nobody holds after a keyboard drop", () => {
     expect(document.body).toHaveFocus();
   });
 
+  // The press can come while the drop is still being carried out, which is
+  // before there is any check to call off.
+  it("is not touched when the pointer was pressed before the drop finished", async () => {
+    await mountApp();
+    let finish: () => void = () => {};
+    const slow = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await start(FIRST);
+    vi.useFakeTimers();
+    let done: unknown;
+    act(() => {
+      done = props().onDragEnd?.(endEvent(zoneWith(slow), "keydown"));
+    });
+
+    fireEvent.pointerDown(document.body);
+    await act(async () => {
+      finish();
+      await done;
+    });
+    dropFocus();
+    vi.runOnlyPendingTimers();
+
+    expect(document.body).toHaveFocus();
+  });
+
   it("is not touched once a drag has been cancelled", async () => {
     await dropOn("keydown");
     dropFocus();
@@ -427,6 +471,38 @@ describe("a second drag begun while the first drop is still being carried out", 
 
     expect(never).toHaveBeenCalledTimes(1);
     expect(await arrowsWork()).toBe(true);
+  });
+
+  // Found in review: the first drop's tail set a focus check of its own, and
+  // setting one clears whatever is pending — which was the second drop's. Its
+  // own then stood down as stale, so nothing looked after focus at all.
+  it("keeps the second drop's focus check when the first drop finishes after it", async () => {
+    await mountApp();
+    let finish: () => void = () => {};
+    const slow = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await start(FIRST);
+    let done: unknown;
+    act(() => {
+      done = props().onDragEnd?.(endEvent(zoneWith(slow), "keydown"));
+    });
+    await start(FIRST);
+    vi.useFakeTimers();
+    await end(zoneWith(vi.fn().mockResolvedValue(undefined)), "keydown");
+
+    await act(async () => {
+      finish();
+      await done;
+    });
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.body).toHaveFocus();
+    vi.advanceTimersByTime(400);
+
+    expect(screen.getByRole("textbox", { name: "search" })).toHaveFocus();
   });
 });
 
