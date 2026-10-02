@@ -3,7 +3,8 @@ import { join, relative } from "node:path";
 
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import axe from "axe-core";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { countNodes, expectNoViolations, runAxe } from "../../test/axe.ts";
 import {
@@ -11,26 +12,63 @@ import {
   FIVE_TABS,
   MIXED_WINDOWS,
   renderList,
+  ROW_FIXTURES,
   RowFixture,
   TWENTY_TABS,
 } from "../../test/rowFixtures.tsx";
+import { getHost } from "../host.ts";
 
 /**
- * SPEC-04's baseline: what axe says about the list as it is *today*.
+ * SPEC-04's accessibility checks over the whole list, run through the real
+ * `TabsView`, in jsdom, with axe-core 4.13.0.
  *
- * These assert the **violating** numbers, on purpose. T-2, T-4 and T-5 each
- * change what a row is, and each will turn one of these red; that is the
- * point. It is the proof AC-25 asks for: a check that is red against the tree
- * it was written against, so it cannot be a check that passes on anything.
+ * **What this proves, and what it does not (A-3).** Zero violations here is
+ * necessary and not sufficient. jsdom has no layout, no virtual cursor and no
+ * accessibility-API bridge, so nothing in this file says how NVDA reads a row,
+ * and nothing in it closes AC-27. Two things are worth knowing about what axe
+ * *did* examine: `aria-required-children`, `button-name`, `nested-interactive`
+ * and the rest of the structural and naming rules ran over real nodes (the
+ * "rules that looked" case below asserts that), and `color-contrast` ran over
+ * none — the title is `overflow: hidden`, jsdom gives it no size, and axe
+ * treats the clipped text as out of scope.
  *
- * **Do not delete a case when it goes red.** T-7 converts them to
- * zero-violation assertions and keeps the numbers below in a comment, and
- * `plans/MANUAL-SWEEP-SPEC-04.md` §A carries them too. After T-2 there is no
- * "today" left to measure, and AC-1 and AC-9 are both comparisons with it.
- *
- * Measured 2026-09-30 against `main` at f99b6b2 with axe-core 4.13.0, which
- * matches the 2026-09-28 measurement in the spec (§1.1) on every figure.
+ * The first block is the AC-1 / AC-2 / AC-25 baseline. It was written *red*,
+ * against the tree as it stood on `main` at f99b6b2 (measured 2026-09-30), and
+ * it is the proof AC-25 asks for: a check that fails against the tree it was
+ * written against cannot be a check that passes on anything. The numbers it
+ * went red at are kept in a comment there, because after T-5 there is no
+ * "today" left to measure and AC-1 and AC-9 are both comparisons with it.
+ * `plans/MANUAL-SWEEP-SPEC-04.md` §A carries them too.
  */
+
+// The mid-drag case below (AC-31) needs a dropzone to report `isOver` without a
+// drag, and that is dnd-kit's to decide: it takes a real pointer, sensors and a
+// layout that jsdom does not have. Forcing the answer at the hook renders the
+// real `DropPlaceholder` where the real rows put it, and nothing else about the
+// tree changes. Off by default and reset after every test, so every other case
+// in this file sees the unmodified hook. (`RowList.test.tsx` does the same for
+// the window row's dropzone only.)
+const forceOver = vi.hoisted(() => ({ on: false }));
+vi.mock("./DnD/useDropzone.tsx", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./DnD/useDropzone.tsx")>();
+  return {
+    ...actual,
+    useDropzone: ((args: Parameters<typeof actual.useDropzone>[0]) => {
+      const result = actual.useDropzone(args);
+      return { ...result, isOver: forceOver.on ? true : result.isOver };
+    }) as typeof actual.useDropzone,
+  };
+});
+
+/** Elements this file moved into the document and React does not own. */
+const addedToBody: Element[] = [];
+afterEach(() => {
+  forceOver.on = false;
+  addedToBody.splice(0).forEach((el) => {
+    el.remove();
+  });
+  window.history.replaceState(null, "", "/");
+});
 
 const NESTED_INTERACTIVE = "nested-interactive";
 const onlyNestedInteractive = {
@@ -42,46 +80,40 @@ const rowsOf = (container: HTMLElement) =>
   container.querySelectorAll(".MuiListItemButton-root").length;
 
 /**
- * [name, fixture, nested-interactive nodes now, rows rendered].
+ * [name, fixture, rows rendered].
  *
- * The third column moves as each row kind is converted. The fourth is the
- * fixture's row count, which is also what the third *was* before T-2 — one node
- * per row, on every row (spec §1.1). That is the falsification evidence AC-25
- * asks for: these four assertions were red the moment T-2 landed, at 5, 20, 8
- * and 2, and were then updated to what T-2 leaves behind. See MANUAL-SWEEP §A.
+ * `nested-interactive` was one node per row, on every row (spec §1.1), so the
+ * numbers it began at are the row counts: **5, 20, 8 and 2**. They moved as each
+ * row kind was converted, and each step was seen red before it was updated:
  *
- * After T-2 only tab rows are toolbars, so what remained was the group and
- * window rows not yet converted: 0 + 0, then 2 windows + 1 group, then 1 group.
- * T-4 took the group rows to zero, and these two went red at 3 -> 2 and 1 -> 0
- * the moment it landed, then were updated to what it leaves behind. T-5 took
- * the last two (the window rows) to zero: the mixed fixture went red at 2 -> 0
- * the moment it landed (`expected +0 to be 2`), and was updated to what it
- * leaves behind. Every fixture is now at zero; T-7 converts the lot.
+ *   - T-2 made the tab rows toolbars. Left: 0 / 0 / 3 (the two window rows and
+ *     the group row) / 1 (the group row).
+ *   - T-4 made the group rows toolbars: 3 -> 2 and 1 -> 0.
+ *   - T-5 made the window rows toolbars: 2 -> 0 (`expected +0 to be 2`).
+ *
+ * All four are zero now, which is what this asserts. The fixtures' row counts
+ * are pinned beside it, so a fixture that drifts to a different size cannot
+ * keep a zero and lose what it was measuring.
  */
-const BASELINE: readonly [string, RowFixture, number, number][] = [
-  // was 5 before T-2
-  [FIVE_TABS.name, FIVE_TABS, 0, 5],
-  // was 20 before T-2
-  [TWENTY_TABS.name, TWENTY_TABS, 0, 20],
-  // was 8 before T-2, 3 after it (the two window rows and the group row), and
-  // 2 after T-4 (the two window rows); 0 now that they are toolbars too (T-5)
-  [MIXED_WINDOWS.name, MIXED_WINDOWS, 0, 8],
-  // was 2 before T-2, and 1 after it (the group row); 0 now that it is a
-  // toolbar (T-4). There is no window row in this fixture.
-  [COLLAPSED_GROUP.name, COLLAPSED_GROUP, 0, 2],
+const ROW_COUNTS: readonly [string, RowFixture, number][] = [
+  [FIVE_TABS.name, FIVE_TABS, 5],
+  [TWENTY_TABS.name, TWENTY_TABS, 20],
+  [MIXED_WINDOWS.name, MIXED_WINDOWS, 8],
+  [COLLAPSED_GROUP.name, COLLAPSED_GROUP, 2],
 ];
 
-describe("AC-1 · nested-interactive, while the rows are converted", () => {
-  it.each(BASELINE)(
-    "%s reports the rows not yet converted",
-    async (_name, fixture, expected, rows) => {
+describe("AC-1 · nested-interactive is zero on every fixture", () => {
+  it.each(ROW_COUNTS)(
+    "%s has no nested-interactive nodes",
+    async (_name, fixture, rows) => {
       const { container } = await renderList(fixture);
 
       const results = await runAxe(container, onlyNestedInteractive);
 
-      expect(countNodes(results, NESTED_INTERACTIVE)).toBe(expected);
-      // The row count is pinned separately, so a fixture that drifts to a
-      // different size cannot keep a number and lose what it was measuring.
+      // The matcher first, for the message: it names the node and carries axe's
+      // own account of what is nested in what. The count is the assertion.
+      expectNoViolations(results, NESTED_INTERACTIVE);
+      expect(countNodes(results, NESTED_INTERACTIVE)).toBe(0);
       expect(rowsOf(container)).toBe(rows);
     },
   );
@@ -482,5 +514,546 @@ describe("AC-2 · no axe configuration disables the rule", () => {
     } finally {
       el.remove();
     }
+  });
+});
+
+/**
+ * AC-6's automated half: the whole ruleset, not the one rule.
+ *
+ * `button-name` and `aria-command-name` are what AC-6 is about, and
+ * `image-alt` is the regression guard SPEC-04 §1.5 asks for; none of them needs
+ * naming, because nothing here narrows the run. Not `runOnly`, and not `rules`:
+ * `runAxe` refuses the second on purpose, so a rule that is off cannot make a
+ * count come out.
+ *
+ * **Where it runs.** Inside a `<main>`, which is where the list sits in the app
+ * (`App.tsx`), and over that element rather than the page. Run over the page,
+ * axe also asks `document-title`, `html-has-lang`, `landmark-one-main` and
+ * `page-has-heading-one`, which are about `index.html` and the shell around the
+ * list, and a fixture that renders only the list is a fragment of that page.
+ * Those rules would fire for what the fixture leaves out, and the only way to
+ * quiet them would be to switch them off. Putting the list in the landmark it
+ * has in the app keeps every rule on and asks them the question that is
+ * actually about this tree.
+ *
+ * `runAxe` asks for violations only, which is right for a count and wrong for
+ * this: an axe run reports a rule it could not decide as `incomplete`, not as a
+ * violation, so a violations-only run cannot tell "fine" from "could not tell".
+ * This calls axe directly, with nothing narrowed, to see all of it.
+ */
+const renderInMain = async (fixture: RowFixture) => {
+  const view = await renderList(fixture);
+  const main = document.createElement("main");
+  view.container.before(main);
+  main.append(view.container);
+  addedToBody.push(main);
+  return { ...view, main };
+};
+
+const runFull = (el: Element) =>
+  axe.run(el, {
+    resultTypes: ["violations", "incomplete", "passes", "inapplicable"],
+  });
+
+const ruleIds = (results: axe.Result[]) => results.map(({ id }) => id).sort();
+
+/**
+ * Rules axe could not decide on these fixtures. **Empty, and it has to stay
+ * visible:** a rule that lands here is neither passing nor failing, and an
+ * assertion on `violations` alone would wave it through. A new entry turns this
+ * red until someone has read it and either fixed the tree or written the rule
+ * and the reason here.
+ *
+ * `color-contrast` is the rule jsdom cannot decide, and it is not here because
+ * on this list it never gets as far as being undecided: see the last case in
+ * the block below, which pins both.
+ */
+const EXPECTED_INCOMPLETE: string[] = [];
+
+/** Rules that must have examined real nodes on every fixture. */
+const MUST_HAVE_LOOKED = [
+  "aria-allowed-attr",
+  "aria-allowed-role",
+  "aria-required-children",
+  "aria-required-parent",
+  "aria-roles",
+  "button-name",
+  "image-alt",
+  "nested-interactive",
+  "tabindex",
+];
+
+const EVERY_FIXTURE = ROW_FIXTURES.map((fixture) => [fixture.name, fixture] as const);
+
+describe("AC-6 · the full ruleset over every fixture", () => {
+  it.each(EVERY_FIXTURE)(
+    "%s: no violations, and nothing left undecided",
+    async (_name, fixture) => {
+      const { main } = await renderInMain(fixture);
+
+      const results = await runFull(main);
+
+      expectNoViolations(results);
+      expect(ruleIds(results.incomplete)).toEqual(EXPECTED_INCOMPLETE);
+    },
+  );
+
+  // An empty `violations` is only a statement if the rules ran. A rule that is
+  // inapplicable passes vacuously, which is how a renamed role would have gone
+  // unnoticed.
+  it.each(EVERY_FIXTURE)(
+    "%s: the rules that matter looked at real nodes",
+    async (_name, fixture) => {
+      const { main } = await renderInMain(fixture);
+
+      const results = await runFull(main);
+
+      const looked = ruleIds(results.passes);
+      expect(MUST_HAVE_LOOKED.filter((id) => !looked.includes(id))).toEqual([]);
+    },
+  );
+
+  // The two halves of "incomplete is reported, not swallowed". The first shows
+  // the reporting works, on a tree jsdom cannot judge, so the empty list above
+  // is not an artefact of asking for the wrong result type. The second says what
+  // the list's own text does instead of being undecided.
+  it("reports a rule it cannot decide, so an empty list means something", async () => {
+    const host = document.createElement("div");
+    host.innerHTML = '<p style="color:#777;background:#fff">Some text</p>';
+    document.body.append(host);
+    addedToBody.push(host);
+
+    const results = await runFull(host);
+
+    expect(ruleIds(results.violations)).toEqual([]);
+    // Contrast is computed from painted colours and layout; jsdom has neither,
+    // so axe says it could not tell rather than guessing.
+    expect(ruleIds(results.incomplete)).toEqual(["color-contrast"]);
+  });
+
+  it("does not examine the list's text for contrast at all", async () => {
+    const { main } = await renderInMain(MIXED_WINDOWS);
+
+    const results = await runFull(main);
+
+    // Not a pass and not undecided: inapplicable. Every title is `noWrap`, which
+    // is `overflow: hidden`, and jsdom gives it no size, so axe takes the text to
+    // be clipped away and has nothing to measure. (A plain `<p>` is undecided,
+    // above; the same `<p>` with `overflow: hidden` is inapplicable — measured.)
+    // This is why a green run here says nothing about contrast, and why the
+    // sweep owns it. If axe ever starts to judge this text, this goes red and
+    // the figure above it needs reading.
+    expect(ruleIds(results.inapplicable)).toContain("color-contrast");
+    expect(ruleIds(results.passes)).not.toContain("color-contrast");
+  });
+});
+
+/**
+ * AC-31, E-14: a drop placeholder between two rows while a drag is on.
+ *
+ * **Precondition, and what this is not.** This is a structural stand-in for a
+ * drag. No pointer moves, dnd-kit has no `active`, no row has been lifted out of
+ * the list and no `DragOverlay` exists; `isOver` is simply forced on at
+ * `useDropzone`, so every dropzone mounts the real `DropPlaceholder` where the
+ * real rows would. AC-31's own Verify asks for "a `DropPlaceholder` mounted
+ * between two rows", which is what this does. Whether the tree is right *during*
+ * a live drag, and what NVDA says as the placeholder arrives and leaves, is the
+ * manual sweep's §D (LEARNINGS 2026-09-24: an assertion about absence is a
+ * precondition, not a property — so the cases below first show there is
+ * something for the rules to be absent from).
+ */
+const STRUCTURE_RULES = {
+  runOnly: {
+    type: "rule" as const,
+    values: ["aria-required-children", "aria-required-parent"],
+  },
+  resultTypes: ["violations", "passes"] as axe.resultGroups[],
+};
+
+/**
+ * What the list owns, as the accessibility tree sees it: its children, reaching
+ * through the wrappers that have no role, no aria and no tabindex (axe treats
+ * those as transparent, which is why the `Grid` containers can sit there).
+ */
+const ownedBy = (parent: Element): Element[] =>
+  [...parent.children].flatMap((child) => {
+    const transparent =
+      /^(DIV|SPAN)$/.test(child.tagName) &&
+      !child.hasAttribute("role") &&
+      !child.hasAttribute("tabindex") &&
+      ![...child.attributes].some(({ name }) => name.startsWith("aria-"));
+    return transparent ? ownedBy(child) : [child];
+  });
+
+/** A placeholder is a `listitem` with nothing in it; every real row has content. */
+const isPlaceholder = (item: Element) => item.childElementCount === 0;
+
+describe("AC-31 · a placeholder between two rows", () => {
+  it("leaves the list owning only listitems, and the required-parent rules clean", async () => {
+    forceOver.on = true;
+    const { main } = await renderInMain(MIXED_WINDOWS);
+
+    const items = screen.getAllByRole("listitem");
+    const between = items.filter(
+      (item, at) =>
+        isPlaceholder(item) &&
+        at > 0 &&
+        at < items.length - 1 &&
+        !isPlaceholder(items[at - 1]) &&
+        !isPlaceholder(items[at + 1]),
+    );
+
+    // The precondition: placeholders are there, and at least one sits with a
+    // real row on each side of it, in the order a reader meets them.
+    expect(items.filter(isPlaceholder).length).toBeGreaterThan(1);
+    expect(between.length).toBeGreaterThan(0);
+    // And the rows are all still there beside them.
+    expect(screen.getAllByRole("toolbar")).toHaveLength(8);
+
+    const owned = ownedBy(screen.getByRole("list"));
+    expect(owned.map((child) => child.getAttribute("role"))).toEqual(
+      owned.map(() => "listitem"),
+    );
+    expect(owned).toHaveLength(items.length);
+
+    const results = await axe.run(main, STRUCTURE_RULES);
+    expect(countNodes(results, "aria-required-children")).toBe(0);
+    expect(countNodes(results, "aria-required-parent")).toBe(0);
+    expectNoViolations(results);
+    // Both rules were asked and both looked: the list for its children, the
+    // items for their parent.
+    expect(ruleIds(results.passes)).toEqual([
+      "aria-required-children",
+      "aria-required-parent",
+    ]);
+  });
+
+  // Seeing it fail on the shape it exists to catch. Without this the case above
+  // could be green because the rules are blind to a placeholder, and the fix it
+  // guards (a placeholder that is a `listitem`) could be undone unseen.
+  it("would fail on a placeholder that is not a listitem", async () => {
+    forceOver.on = true;
+    const { main } = await renderInMain(MIXED_WINDOWS);
+    const placeholder = screen
+      .getAllByRole("listitem")
+      .find(isPlaceholder) as HTMLElement;
+
+    placeholder.setAttribute("role", "group");
+    const results = await axe.run(main, STRUCTURE_RULES);
+
+    expect(countNodes(results, "aria-required-children")).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * AC-8, the unit half: the same key walk in all three hosts.
+ *
+ * Tab onto a row's primary control, Right through every control to the last,
+ * Right again (which stays put: no wrapping, DEC-2 / NG-9), Left all the way
+ * back, Left again (stays), and Up to the search field. The trace is the
+ * accessible name of every stop, with the name of the toolbar it is in, and it
+ * has to be the same sequence under the bare panel URL, `?host=anchor` and
+ * `?host=float`. `getHost()` is what tells the surfaces apart, so a branch on it
+ * anywhere in a row's keyboard handling or naming would show up as a difference.
+ *
+ * `TabsView` is what is mounted, as in every other case in this file, and the
+ * search field belongs to `App`, so a stand-in carrying the one thing
+ * `useRowKeys` looks for (`data-search-field`) is put in the page before the
+ * list. That is the contract Up relies on, and the only part of the field this
+ * walk touches. What this cannot show is the float at its real ~400 px, or a
+ * real Document Picture-in-Picture window: that is the manual half of AC-8.
+ */
+const HOSTS = [
+  ["panel", "/"],
+  ["anchor", "/?host=anchor"],
+  ["float", "/?host=float"],
+] as const;
+
+const accessibleName = (el: Element) =>
+  el.getAttribute("aria-label") ?? (el.textContent ?? "").trim();
+
+const where = () => {
+  const control = document.activeElement as HTMLElement;
+  const toolbar = control.closest('[role="toolbar"]');
+  return `${toolbar ? accessibleName(toolbar) : "(outside a row)"} > ${accessibleName(control)}`;
+};
+
+const searchField = () => {
+  const field = document.createElement("input");
+  field.setAttribute("data-search-field", "");
+  field.setAttribute("aria-label", "Search tabs");
+  document.body.prepend(field);
+  addedToBody.push(field);
+  return field;
+};
+
+/** The row the walk goes along: a tab with all five controls. */
+const WALKED_ROW = "Muted tab, ";
+
+const walk = async (url: string, expectedHost: string) => {
+  window.history.replaceState(null, "", url);
+  expect(getHost()).toBe(expectedHost);
+  const user = userEvent.setup();
+  const view = await renderList(MIXED_WINDOWS);
+  const field = searchField();
+  const trace: string[] = [];
+  const arrow = async (key: "Left" | "Right") => {
+    const before = document.activeElement;
+    await user.keyboard(`{Arrow${key}}`);
+    const moved = document.activeElement !== before;
+    trace.push(`${key}: ${moved ? "" : "stays on "}${where()}`);
+    return moved;
+  };
+
+  field.focus();
+  trace.push(`start: ${accessibleName(field)}`);
+  // Tab until the walked row's primary control takes focus, recording every
+  // stop on the way: the window chevrons, the group chevron, the plain rows.
+  for (let press = 0; press < 40; press += 1) {
+    await user.tab();
+    trace.push(`Tab: ${where()}`);
+    if (
+      document.activeElement?.hasAttribute("data-tab-row") &&
+      where().startsWith(WALKED_ROW)
+    ) {
+      break;
+    }
+  }
+  expect(where().startsWith(WALKED_ROW)).toBe(true);
+
+  // Right until it stays put, then Left until it does. Bounded, so a walk that
+  // never stops is a failure and not a hang.
+  for (let press = 0; press < 12 && (await arrow("Right")); press += 1);
+  for (let press = 0; press < 12 && (await arrow("Left")); press += 1);
+
+  await user.keyboard("{ArrowUp}");
+  trace.push(`Up: ${accessibleName(document.activeElement as Element)}`);
+  expect(document.activeElement).toBe(field);
+
+  view.unmount();
+  field.remove();
+  return trace;
+};
+
+// Pinned, so "identical" is not "identical and empty". Read down: Tab lands on
+// each window's chevron, the group's, and every tab row's `Switch` — one stop per
+// row — until the muted one; Right then visits its four other controls in the
+// order AC-30 asks for and stays on the last; Left comes back and stays on the
+// first; Up leaves for the search field.
+const PINNED_WALK = [
+  "start: Search tabs",
+  "Tab: Window 1, 5 tabs, current window > Tabs",
+  "Tab: Plain tab, example.com, 1 of 5 > Switch",
+  "Tab: Reading, group, 2 tabs > Tabs",
+  "Tab: Grouped one, example.com, 2 of 5 > Switch",
+  "Tab: Grouped two, example.com, playing audio, 3 of 5 > Switch",
+  "Tab: Muted tab, example.com, muted, 4 of 5 > Switch",
+  "Right: Muted tab, example.com, muted, 4 of 5 > Select Muted tab",
+  "Right: Muted tab, example.com, muted, 4 of 5 > Unmute Muted tab",
+  "Right: Muted tab, example.com, muted, 4 of 5 > Close Muted tab",
+  "Right: Muted tab, example.com, muted, 4 of 5 > Reorder Muted tab",
+  "Right: stays on Muted tab, example.com, muted, 4 of 5 > Reorder Muted tab",
+  "Left: Muted tab, example.com, muted, 4 of 5 > Close Muted tab",
+  "Left: Muted tab, example.com, muted, 4 of 5 > Unmute Muted tab",
+  "Left: Muted tab, example.com, muted, 4 of 5 > Select Muted tab",
+  "Left: Muted tab, example.com, muted, 4 of 5 > Switch",
+  "Left: stays on Muted tab, example.com, muted, 4 of 5 > Switch",
+  "Up: Search tabs",
+];
+
+describe("AC-8 · the key walk is the same in the panel, the anchor and the float", () => {
+  it("walks one trace under all three hosts", async () => {
+    const traces: Record<string, string[]> = {};
+    for (const [host, url] of HOSTS) {
+      traces[host] = await walk(url, host);
+    }
+
+    expect(traces.panel).toEqual(PINNED_WALK);
+    expect(traces.anchor).toEqual(traces.panel);
+    expect(traces.float).toEqual(traces.panel);
+  });
+});
+
+/**
+ * AC-16: selection is the select control's to report, never the row's.
+ *
+ * `aria-selected` is not supported on `toolbar` or on `listitem` (DEC-5), so
+ * setting it would be invalid ARIA; `aria-multiselectable` belongs to a
+ * `listbox`/`grid`, which this is not. The control reports its own state in its
+ * *name*, as `Select ‹title›` / `Deselect ‹title›` — it carries no `aria-pressed`
+ * or `aria-checked` — and the row's toolbar name adds `selected`. The spec's
+ * wording says "pressed/checked"; what is implemented is the name pair, and that
+ * is what is asserted.
+ *
+ * The absence is only a statement once something is selected, so the row is
+ * selected first and the scan runs over the list as it stands then.
+ */
+describe("AC-16 · selection is reported by the select control, not the row", () => {
+  const selectionAttributes = (container: HTMLElement) =>
+    container.querySelectorAll("[aria-selected], [aria-multiselectable]");
+
+  it("names the state on the control and the toolbar, and puts no aria-selected anywhere", async () => {
+    // The controls are `pointer-events: none` until a row is hovered or focused,
+    // which jsdom cannot do; the click is still the real one.
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const { container } = await renderList(MIXED_WINDOWS);
+    const row = () =>
+      screen.getByRole("toolbar", { name: /^Plain tab, example\.com/ });
+
+    expect(row()).toHaveAttribute("aria-label", "Plain tab, example.com, 1 of 5");
+    expect(
+      within(row()).getByRole("button", { name: "Select Plain tab" }),
+    ).toBeInTheDocument();
+    expect(selectionAttributes(container)).toHaveLength(0);
+
+    await user.click(
+      within(row()).getByRole("button", { name: "Select Plain tab" }),
+    );
+
+    // Precondition: the row is selected, by every account the user is given.
+    expect(row()).toHaveAttribute(
+      "aria-label",
+      "Plain tab, example.com, selected, 1 of 5",
+    );
+    expect(
+      within(row()).getByRole("button", { name: "Deselect Plain tab" }),
+    ).toBeInTheDocument();
+    expect(
+      within(row()).queryByRole("button", { name: "Select Plain tab" }),
+    ).toBeNull();
+
+    // The property: with a row selected, nothing in the list says so by
+    // `aria-selected`, and nothing makes the list a multiselectable widget.
+    expect(container.querySelectorAll("*").length).toBeGreaterThan(50);
+    expect(selectionAttributes(container)).toHaveLength(0);
+  });
+});
+
+/**
+ * AC-29, across the mixed fixture: every toolbar is named, and no two share a
+ * name.
+ *
+ * The spec only requires distinctness *where the subjects are distinct*, and
+ * permits two tabs on the same page to share a name (AM-1, E-18). With AM-3's
+ * ", n of N" every tab row's name carries its place in the list, so in fact no
+ * two toolbars can share one, even for the same page, and that stronger fact is
+ * what is asserted. The second case is the one that shows it: two tabs with the
+ * same title and URL, whose names differ in nothing but the position.
+ *
+ * Names are read from `aria-label` and then looked up again by role and name,
+ * so each one is also confirmed to be what the accessibility query resolves to,
+ * once.
+ */
+describe("AC-29 · every toolbar has a name, and they are all different", () => {
+  it("holds across the rows of the mixed fixture", async () => {
+    await renderList(MIXED_WINDOWS);
+
+    const toolbars = screen.getAllByRole("toolbar");
+    // Two window rows, the group row, five tab rows.
+    expect(toolbars).toHaveLength(8);
+    const names = toolbars.map((toolbar) => toolbar.getAttribute("aria-label"));
+
+    expect(names.every((name) => name !== null && name.trim() !== "")).toBe(true);
+    expect(new Set(names).size).toBe(names.length);
+    for (const name of names as string[]) {
+      expect(screen.getAllByRole("toolbar", { name })).toHaveLength(1);
+    }
+  });
+
+  it("holds for two tabs on the same page, which differ only by position", async () => {
+    await renderList({
+      name: "the same page open twice",
+      // The third tab is what the render waits for: a title that is on screen
+      // twice cannot be waited on.
+      ready: "Elsewhere",
+      build: () => ({
+        windows: [{ id: 1, focused: true, type: "normal" }],
+        tabs: [
+          { id: 1, windowId: 1, index: 0, title: "Same page", url: "https://a.test/x" },
+          { id: 2, windowId: 1, index: 1, title: "Same page", url: "https://a.test/x" },
+          { id: 3, windowId: 1, index: 2, title: "Elsewhere", url: "https://b.test/y" },
+        ],
+      }),
+    });
+
+    const [first, second] = screen.getAllByRole("toolbar");
+
+    // Same subject: the base name — what React writes — is the same.
+    expect(first.getAttribute("data-row-label")).toBe("Same page, a.test");
+    expect(second.getAttribute("data-row-label")).toBe(
+      first.getAttribute("data-row-label"),
+    );
+    // Different place: so the names are not.
+    expect(first).toHaveAttribute("aria-label", "Same page, a.test, 1 of 3");
+    expect(second).toHaveAttribute("aria-label", "Same page, a.test, 2 of 3");
+  });
+});
+
+/**
+ * NFR-6: axe-core is a test dependency and nothing that ships imports it.
+ *
+ * "Non-test" means everything under `src/` that is not a `*.test.ts(x)` file and
+ * is not in `src/test/`, which holds this suite's helpers (`axe.ts` is the one
+ * that imports it, on purpose). The scan reads syntax, so it recognises each
+ * way a module is pulled in — static, bare, dynamic, `require` — and a subpath
+ * of the package. It does not run `manifest.test.ts`'s checks or touch that
+ * file: its permission mirror and storage scan (AC-20, AC-21) stay as they were.
+ */
+const IMPORTS_AXE =
+  /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["']axe-core(?:\/[^"']*)?["']/;
+
+const isTestCode = (file: string) => {
+  const path = relative(SRC, file).replace(/\\/g, "/");
+  return /\.test\.tsx?$/.test(path) || path.startsWith("test/");
+};
+
+describe("NFR-6 · no shipped file imports axe-core", () => {
+  it("recognises every way of importing it", () => {
+    for (const line of [
+      'import axe from "axe-core";',
+      "import axe from 'axe-core';",
+      'import { run } from "axe-core";',
+      'import * as axe from "axe-core"',
+      'import "axe-core";',
+      'const axe = await import("axe-core");',
+      'const axe = require("axe-core");',
+      'import axe from "axe-core/axe.min.js";',
+      'export { default } from "axe-core";',
+    ]) {
+      expect(IMPORTS_AXE.test(line), line).toBe(true);
+    }
+    // Prose, and neighbours that are not it.
+    for (const line of [
+      "// axe-core 4.13.0 is a devDependency",
+      'import { axe } from "vitest-axe";',
+      'import axe from "./axe.ts";',
+      'const note = "see axe-core";',
+    ]) {
+      expect(IMPORTS_AXE.test(line), line).toBe(false);
+    }
+  });
+
+  it("finds it only in test code, and the declaration only in devDependencies", () => {
+    const files = sourceFiles(SRC);
+    const importing = files.filter((file) =>
+      IMPORTS_AXE.test(readFileSync(file, "utf8")),
+    );
+
+    // A scan that sees nothing passes on anything: it has to find the helper.
+    expect(importing.map((file) => relative(SRC, file).replace(/\\/g, "/"))).toEqual(
+      expect.arrayContaining(["test/axe.ts"]),
+    );
+    expect(
+      importing.filter((file) => !isTestCode(file)).map((file) => relative(SRC, file)),
+    ).toEqual([]);
+
+    const manifest = JSON.parse(
+      readFileSync(join(process.cwd(), "package.json"), "utf8"),
+    ) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    expect(manifest.devDependencies).toHaveProperty("axe-core");
+    expect(manifest.dependencies ?? {}).not.toHaveProperty("axe-core");
   });
 });
