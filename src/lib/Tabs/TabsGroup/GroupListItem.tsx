@@ -200,33 +200,6 @@ export const GroupListItem: FC<
     [dispatch, group.tabs, isSelected],
   );
 
-  // What the row's own click does in the tab list, for the keyboard. The row
-  // keeps its `onClick` for the pointer, and the chevron sits inside it, so the
-  // click is stopped here or it would toggle twice and end where it started.
-  //
-  // A modifier click is not stopped: it is the row's gesture for selecting
-  // (AC-18), and the row has a branch for it that returns before collapsing.
-  // Handling it here would either collapse on a Ctrl-click or copy that branch.
-  //
-  // No `collapsible` guard, unlike the row: the chevron is only rendered where
-  // the row collapses (`expanded === undefined`), so it cannot be reached in a
-  // surface that forces groups open.
-  const handleToggle = useCallback<MouseEventHandler>(
-    async (e) => {
-      if (e.ctrlKey || e.metaKey) return;
-      e.stopPropagation();
-      try {
-        await chrome.tabGroups.update(group.id, {
-          collapsed: !group.collapsed,
-        });
-      } catch (e) {
-        // The group can be gone by the time this lands; nothing to undo.
-        console.error(e);
-      }
-    },
-    [group.collapsed, group.id],
-  );
-
   const pre = useMemo(() => {
     return (
       <>
@@ -234,11 +207,16 @@ export const GroupListItem: FC<
           // The row's primary action, and so its one Tab stop (SPEC-04 D-5,
           // AC-32, AC-33). Not inside `.itemAction`, so it is never one of the
           // controls the row hides at rest.
+          //
+          // No `onClick`, on purpose. It sits inside the row, so a click, Enter
+          // or Space on it reaches the row's own handler in `GroupDisplay`,
+          // which collapses once, lets a modifier click select (AC-18), and
+          // collapses nothing where the surface forces groups open. A handler
+          // here had to stop the click and then repeat all three.
           <IconButton
             {...rowPrimaryProps}
             aria-label={ROW_CHEVRON_NAME}
             aria-expanded={!group.collapsed}
-            onClick={handleToggle}
           >
             {!group.collapsed ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
@@ -262,14 +240,7 @@ export const GroupListItem: FC<
         </ItemButton>
       </>
     );
-  }, [
-    expanded,
-    group.collapsed,
-    group.title,
-    handleSelectButton,
-    handleToggle,
-    isSelected,
-  ]);
+  }, [expanded, group.collapsed, group.title, handleSelectButton, isSelected]);
   return (
     <>
       {outerDZ.isOver && !outerDZ.isSelf ? <DropPlaceholder /> : null}

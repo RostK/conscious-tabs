@@ -504,6 +504,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   400 ms and again 1500 ms after the drop, the search field does. That covers a drop onto a
   collapsed window or group, and a dropped selection, where there is no handle left. Evidence:
   `src/App.tsx` (`settleFocus`).
+- 2026-10-02 — **A control that does what its row's click does needs no handler: leave it to
+  bubble.** The group and window chevrons each had an `onClick` that stopped the click and then
+  repeated the row's action, "or it would toggle twice". It only toggled twice because the copy
+  existed. With no handler, a click, Enter or Space on the chevron reaches the row's `onClick`
+  once, and the row's own rules come with it — a modifier click selects, and a surface that
+  forces groups open collapses nothing. The two copies had already drifted: one caught a
+  rejected `chrome.tabGroups.update`, the other left it unhandled. Give a nested control its own
+  handler only when it does something *different* from the row (Select, Close), and then stop
+  the click. Evidence: `src/lib/Tabs/TabsGroup/GroupDisplay.tsx` (`handleClick`),
+  `src/lib/Tabs/Window/WindowDisplay.tsx`.
 
 ## Decisions
 
@@ -659,6 +669,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   touched range for `{/*` and realign by hand. `git diff -w --stat` is the quick check that the
   rest of such a change really is whitespace. Evidence: `src/App.tsx` (the comments above
   `<Typography variant="h1">` and `<Box component="main">`).
+- 2026-10-02 — **On this machine `prettier --check <file>` fails for every file git has just
+  checked out, and says nothing about its formatting.** `core.autocrlf` is `true`, so a fresh
+  checkout has CRLF line endings and Prettier's default is LF; five files "failed" straight after
+  a fast-forward, three of which were clean. A file Prettier has itself rewritten passes, which
+  is why this hides. To ask the real question, strip the endings and use stdin:
+  `tr -d '\r' < f | npx prettier --stdin-filepath f --check`. Compare against
+  `git show HEAD:f | npx prettier --stdin-filepath f --check` to tell what an edit broke from
+  what was already off — several test files on this branch were never Prettier-clean.
 
 - 2026-09-30 — **A `ButtonBase` nested inside `ListItemButton` shares its events with the row.**
   Focus bubbles, so the row picks up `Mui-focusVisible` when the inner button takes keyboard

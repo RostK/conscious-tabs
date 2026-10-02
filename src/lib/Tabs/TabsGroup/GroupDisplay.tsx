@@ -80,7 +80,18 @@ export const GroupDisplay: FC<{
        * somewhere else is worse than one that does nothing.
        */
       if (!collapsible) return;
-      await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
+      // The one place a group is collapsed. The chevron has no handler of its
+      // own: it sits inside this row, so a click, Enter or Space on it arrives
+      // here. It used to have a copy of this call, and the two disagreed about
+      // a group that had gone — the copy logged it, this one left it unhandled.
+      try {
+        await chrome.tabGroups.update(group.id, {
+          collapsed: !group.collapsed,
+        });
+      } catch (error) {
+        // The group can be gone by the time this lands; nothing to undo.
+        console.error(error);
+      }
     },
     [collapsible, group.collapsed, group.id, onCtrlClick],
   );

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -379,9 +385,10 @@ describe("a group row's controls in the tab list", () => {
 
 /**
  * Enter and Space on the chevron do what a click on the row body does in the
- * tab list — once. The row keeps its own `onClick` for the pointer, and the
- * chevron sits inside it, so an unstopped click would collapse the group and
- * then expand it again.
+ * tab list — once. The chevron has no handler of its own: it sits inside the
+ * row, and the row's `onClick` is the one place a group is collapsed. These
+ * hold whichever way that is arranged, which is what let a second copy of the
+ * toggle be taken out from under them.
  */
 describe("the chevron", () => {
   it("collapses an expanded group on Enter, exactly once", async () => {
@@ -448,6 +455,25 @@ describe("the chevron", () => {
     expect(chrome.tabGroups.update).toHaveBeenCalledWith(7, {
       collapsed: true,
     });
+  });
+
+  // One place collapses a group, so one place answers for a group that has
+  // gone by the time the call lands. There used to be two: the chevron's own
+  // handler caught the rejection and the row's did not, so the same failure
+  // was logged from the keyboard and left unhandled from the pointer.
+  it.each([
+    ["the chevron", (row: HTMLElement) => chevronOf(row)],
+    ["the row body", (row: HTMLElement) => row],
+  ])("logs a group that has gone, from %s", async (_from, target) => {
+    const user = userEvent.setup();
+    const gone = new Error("No group with id: 7.");
+    vi.mocked(chrome.tabGroups.update).mockRejectedValue(gone);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { row } = renderGroup({ id: 7, collapsed: false });
+
+    await user.click(target(row));
+
+    await waitFor(() => expect(logged).toHaveBeenCalledWith(gone));
   });
 });
 

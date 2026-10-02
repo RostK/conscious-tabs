@@ -65,20 +65,15 @@ export const WindowDisplay: FC<{
       ]}
     >
       {/* The row's primary action, and so its one Tab stop (SPEC-04 D-5, AC-32,
-          AC-33). It does what a click on the row body does. The row keeps its
-          own `onClick` for the pointer and the chevron sits inside it, so the
-          click is stopped here or it would toggle twice and end where it
-          started. There is no modifier click to let through: unlike the tab
-          and group rows, a click on a window row never selects. */}
+          AC-33). It does what a click on the row body does, by being inside
+          it: there is no `onClick` here, so a click, Enter or Space on the
+          chevron reaches the row's own, once. A handler here had to stop the
+          click and then call the same function. */}
       <IconButton
         edge="start"
         {...rowPrimaryProps}
         aria-label={ROW_CHEVRON_NAME}
         aria-expanded={!!isOpen}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleOpenClick();
-        }}
       >
         {isOpen ? <ExpandLess /> : <ExpandMore />}
       </IconButton>

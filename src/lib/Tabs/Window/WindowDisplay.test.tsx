@@ -184,9 +184,8 @@ describe("walking a window row's controls", () => {
 
 /**
  * The chevron is the row's primary action: it does what a click on the row body
- * does, once. The row keeps its own `onClick` for the pointer and the chevron
- * sits inside it, so an unstopped click would toggle twice and end where it
- * started.
+ * does, once. It has no handler of its own. It sits inside the row, and the
+ * row's `onClick` is the one thing that toggles.
  */
 describe("the chevron", () => {
   it("is named, exposes the state, and is not hidden from assistive tech", () => {
