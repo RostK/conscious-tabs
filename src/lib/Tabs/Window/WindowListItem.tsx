@@ -3,6 +3,7 @@ import {
   CheckBoxOutlined,
   Close,
 } from "@mui/icons-material";
+import { Box } from "@mui/material";
 import {
   FC,
   MouseEventHandler,
@@ -27,11 +28,34 @@ import { TabsStructure } from "../types.ts";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
 import { WindowDisplay } from "./WindowDisplay.tsx";
 
+/**
+ * What a screen reader says on entering a window row — SPEC-04 AC-29.
+ *
+ * A PROPOSAL, awaiting a listen (PLAN-SPEC-04 T-2b, "Open for T-4/T-5"), in the
+ * same shape as the group row's: the subject once and first, then how much is in
+ * it — "Window 1, 12 tabs", with ", current window" on the one that is focused.
+ * Changing the wording is this one function, plus its assertions in
+ * WindowDisplay.test.tsx.
+ *
+ * `index` is zero-based and is the window's place among the windows the list
+ * *renders* (TabsView drops the ones with nothing to show), so two windows
+ * holding the same number of tabs still have different names. `count` is what
+ * the window holds, a collapsed group's tabs included, like the switch button's
+ * name below. Not numbered like AM-3's tab rows, so this carries no
+ * `data-row-label`. A string, never markup.
+ */
+const toolbarName = (index: number, count: number, focused: boolean): string =>
+  `Window ${index + 1}, ${count} tab${count === 1 ? "" : "s"}${
+    focused ? ", current window" : ""
+  }`;
+
 export const WindowListItem: FC<{
   window: chrome.windows.Window;
   tabsStructure: TabsStructure;
   single: boolean;
-}> = ({ single, window, tabsStructure }) => {
+  /** Zero-based place among the rendered windows; names the row (D-7). */
+  index: number;
+}> = ({ single, window, tabsStructure, index }) => {
   // flatMap, not a reduce that spreads: spreading the accumulator copies
   // everything gathered so far on every item, which is quadratic in the number
   // of rows for a result that is the same list either way.
@@ -50,7 +74,7 @@ export const WindowListItem: FC<{
 
   const { selected, dispatch } = useContext(SelectionContext);
 
-  const handleActivate = useCallback<MouseEventHandler<HTMLButtonElement>>(
+  const handleActivate = useCallback<MouseEventHandler>(
     async (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -135,14 +159,20 @@ export const WindowListItem: FC<{
     <>
       {!single && (
         <Dropzone>
-          <WindowDisplay
-            pre={pre}
-            tabs={flatTabs}
-            isOpen={isOpen}
-            handleOpenClick={handleOpen}
-            handleActivateClick={handleActivate}
-            itemAction={itemAction}
-          />
+          {/* Around the header only. The placeholder below is itself a
+              listitem (TabGrid), so wrapping the whole Dropzone body would
+              nest one inside another and fire aria-required-parent. */}
+          <Box role="listitem">
+            <WindowDisplay
+              label={toolbarName(index, flatTabs.length, !!window.focused)}
+              pre={pre}
+              tabs={flatTabs}
+              isOpen={isOpen}
+              handleOpenClick={handleOpen}
+              handleActivateClick={handleActivate}
+              itemAction={itemAction}
+            />
+          </Box>
           {isOver && <DropPlaceholder />}
         </Dropzone>
       )}

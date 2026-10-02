@@ -2,6 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { FC } from "react";
 
 import { WindowListItem } from "../../lib/Tabs";
+import { RowList } from "../../lib/Tabs/elements/RowList.tsx";
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 
@@ -41,9 +42,15 @@ export const TabsView: FC = () => {
     );
   }
 
+  // Nothing to put in a list yet: the reads have not both landed, so `windows`
+  // is empty for want of looking, not for want of tabs. An empty `RowList`
+  // would announce a list of zero (SPEC-04 E-4); before it existed the view
+  // rendered nothing here, and still does.
+  if (windows.length === 0) return null;
+
   return (
-    <>
-      {windows.map((window) => (
+    <RowList>
+      {windows.map((window, index) => (
         <WindowListItem
           // Stable across focus changes on purpose. Keying on window.focused
           // remounted the whole subtree every time the user switched windows —
@@ -57,8 +64,11 @@ export const TabsView: FC = () => {
             ({ windowId }) => window.id === windowId,
           )}
           single={windows.length === 1}
+          // Of the rendered windows, not `allWindows`: the ones with nothing to
+          // show are filtered out above, and counting them would skip a number.
+          index={index}
         />
       ))}
-    </>
+    </RowList>
   );
 };

@@ -19,6 +19,25 @@ import {
 } from "../elements/rowControls.ts";
 import { GroupItem } from "../types.ts";
 
+/**
+ * What a screen reader says on entering a group row — SPEC-04 AC-29.
+ *
+ * A PROPOSAL, to be judged by ear the way AM-3's tab-row name was (PLAN-SPEC-04
+ * T-2b, "Open for T-4/T-5"): the title once and first, then what kind of row
+ * this is, then how much is in it — "Work, group, 3 tabs". Changing the wording
+ * after the listen is this one function, plus its assertions in
+ * GroupDisplay.test.tsx.
+ *
+ * Not numbered: AM-3's "n of N" is for tab rows, so this carries no
+ * `data-row-label`. Not `Actions for …`, which is the menu button's name in
+ * GroupListItem — two controls in one row answering to the same phrase is what
+ * AC-29 exists to prevent. A string, never markup: the title is user text.
+ */
+const toolbarName = (group: GroupItem): string => {
+  const count = group.tabs.length;
+  return `${group.title || "Untitled"}, group, ${count} tab${count === 1 ? "" : "s"}`;
+};
+
 export const GroupDisplay: FC<{
   group: GroupItem;
   pre?: ReactNode;
@@ -61,13 +80,38 @@ export const GroupDisplay: FC<{
        * somewhere else is worse than one that does nothing.
        */
       if (!collapsible) return;
-      await chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
+      // The one place a group is collapsed. The chevron has no handler of its
+      // own: it sits inside this row, so a click, Enter or Space on it arrives
+      // here. It used to have a copy of this call, and the two disagreed about
+      // a group that had gone — the copy logged it, this one left it unhandled.
+      try {
+        await chrome.tabGroups.update(group.id, {
+          collapsed: !group.collapsed,
+        });
+      } catch (error) {
+        // The group can be gone by the time this lands; nothing to undo.
+        console.error(error);
+      }
     },
     [collapsible, group.collapsed, group.id, onCtrlClick],
   );
 
   return (
     <ListItemButton
+      // A toolbar, not a button: the row holds several controls, and a button
+      // may not. ButtonBase sets role="button" on a non-button component but
+      // spreads its own props after that default, so this wins — asserted in
+      // GroupDisplay.test.tsx rather than trusted. tabIndex -1 because the row is
+      // never the focus target: the chevron, or in search results the select-all
+      // control, is the row's one Tab stop (SPEC-04 D-5). That is also what drops
+      // the row from `useRowKeys`'s stops — a row counts as one only while it can
+      // hold focus (D-9).
+      component="div"
+      role="toolbar"
+      tabIndex={-1}
+      aria-label={toolbarName(group)}
+      // The pointer path is unchanged (AC-18): a click anywhere on the row still
+      // collapses, and a modifier click still only selects.
       onClick={handleClick}
       onKeyDown={rowKeys}
       sx={[

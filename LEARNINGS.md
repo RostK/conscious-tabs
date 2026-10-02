@@ -82,6 +82,86 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   listens on the document once the press is taken, and the first step has to clear its 10px
   activation distance. The drop reached the row's real handler. Evidence: `src/App.tsx`
   (`mouseSensor`), `harness/main.tsx`.
+- 2026-10-02 (adds to the record above) — **The same drag ends as "2 tabs put back." when the
+  browser pane is not displayed.** A hidden pane reports `innerWidth` and `innerHeight` of 0, so
+  every row measures zero wide, nothing collides and the drop has no zone — with no error
+  anywhere. Check `innerWidth` before driving a drag, and give the tab a size
+  (`resize_window`, 1000×700 was enough) if it is 0; `visibilityState` stays `hidden` and the
+  drag works regardless. The live region is the quickest witness: it says "Before …" mid-drag
+  and "Moved …" after a drop that landed.
+- 2026-10-02 (adds to the two records above) — **A keyboard drag can be driven the same way,
+  with synthetic `KeyboardEvent`s.** Focus a row's handle, dispatch `keydown` for Space (`key:
+  " "`, `code: "Space"`) on the handle to pick up, then `keydown` for `ArrowDown` and for Space
+  on `document` to move and drop, about 150 ms apart — dnd-kit's `KeyboardSensor` takes the first
+  key from the handle and listens on the document after that. Read `document.activeElement`
+  right after the drop and again past 1.5 s to see where focus settled. This is how the
+  pointer-press fix was checked: after a keyboard drop into a group, focus stayed on the body
+  when a `pointerdown` followed the drop, and went to the rebuilt row's handle when none did.
+
+- 2026-09-30 — **Test an in-flight load with a hand-released promise, not timers; and gate a
+  list wrapper on having rows, not on the empty state.** The tabs and windows stores both sit behind one `Promise.all`
+  (`browsingWindowIds`), so holding `windows.getAll` stalls the tabs store too, and a 20 ms
+  sleep against a 60 ms delay never proved which half had landed. Hold the read on a promise
+  you release by hand, await the reads that did go through inside `act`, assert, then release.
+  The bug it pinned: the empty-state early return waits for `loaded`, so until then
+  `RowList` rendered as an empty `role="list"` — a wrapper needs its own "has rows" gate.
+  Evidence: `src/lib/Tabs/elements/RowList.test.tsx` (`stall`), `src/views/TabsView/index.tsx`.
+
+- 2026-09-30 — **A row's position (", n of N") costs nothing when `RowList` writes it into the DOM after
+  commit, not when it is passed as a prop.** `TabDisplay` writes its base name to `aria-label` and
+  `data-row-label`; `RowList` appends the position in a `MutationObserver` that watches `childList` +
+  `subtree` + `attributeFilter: ["data-row-label"]` — never `aria-label`, which it writes itself.
+  Measured at 80 rows in jsdom: one pass is 0.1–0.8 ms for a narrowing filter, 2.3 ms for a close
+  and 3.5–4.3 ms for the worst case (69 rows re-added on Backspace), against 120–370 ms of React work
+  for the same interactions, so on vs off is inside run-to-run noise. Two test traps: favicon and
+  effect mutations fire the observer too, so assert synchronously right after `rerender` or a
+  React-erased position looks healed; and only a class-only change (the tab becoming current)
+  proves the attribute half of the observer — renames heal through `childList`. Evidence:
+  `src/lib/Tabs/elements/RowList.tsx` (`numberRows`), `src/lib/Tabs/elements/RowList.test.tsx`.
+- 2026-10-02 — **`scroll-padding` on the scroller is what keeps a focused row out from under a
+  sticky header or a fixed footer.** Chrome scrolls a newly focused element into view only when it
+  is outside the viewport, and a row under one of those bars is inside it. Measured at 86 rows and
+  400px: Shift+Tab left the focused row wholly under the header, Tab left it wholly under the
+  action bar. Each bar now writes its own height to `scroll-padding-top`/`-bottom` on its
+  document's root and follows it with a `ResizeObserver`; the same presses then bring the row to
+  the middle of what is visible. On the bar's `ownerDocument`, because the float runs the app in
+  an iframe. Evidence: `src/lib/useScrollPadding.ts`, `plans/MANUAL-SWEEP-SPEC-04.md`
+  ("Chromium pass").
+- 2026-10-02 — **A browser pass with real key presses found two defects that 430 passing tests did
+  not.** Both needed layout or a real re-render: the focused row hidden under a bar, and focus
+  lost after a drop into a group. The pass ran in the layout harness with `elementFromPoint` and
+  `getBoundingClientRect` probes and a log of `focusin`/`focusout`, and took everything off the
+  manual sweep that does not need a screen reader. Do it before asking a person to listen.
+  Evidence: `plans/MANUAL-SWEEP-SPEC-04.md`, commits `d78826e`, `084f456`.
+- 2026-10-02 — **Three implementer agents in parallel worked because their file lists were
+  disjoint and each was told which files the others held.** T-6, T-7 and T-8 ran at once from one
+  base commit; each staged its work, and three `git diff --cached --binary` patches applied
+  cleanly on top of each other. A defect one agent found in a file it did not own (the window
+  row's `div` in a `button`) came back as an `it.fails` test and a note, not as an edit.
+  Evidence: commits `39b3e40`, `66faf4a`, `da0c186`.
+- 2026-10-02 — **A reviewer given the running harness found ten real defects after the tests
+  and a browser pass had both come back clean.** It drove the page with real keys and wrote its
+  own probes: a group dragged onto a window header threw and left every row's arrows dead, a
+  drop onto a collapsed window lost focus, "Picked up X." lasted 55 ms. None was in the paths
+  the author had walked. Give an independent reviewer the diff, the constraints and the live
+  harness, not the author's conclusions. Evidence: commit `611dd83`,
+  `plans/PLAN-SPEC-04-accessible-rows.md` §0 (run state 2026-10-02).
+- 2026-10-02 — **To test what a component does when a drop lands, keep the real `DndContext` and
+  capture the props it was handed.** In jsdom a drag is never over anything, so `onDragEnd` only
+  ever saw `over: null`. A `vi.mock` that wraps `DndContext` and records its props lets the test
+  call `onDragStart` and `onDragEnd` with a zone of its own, inside `act` so the state the end
+  handler closes over has rendered. In its own file, because the mock wraps every test beside
+  it. Evidence: `src/App.drop.test.tsx`.
+- 2026-10-02 — **What interrupts a screen reader's announcement is a focus change, and unmounting
+  the focused element is one.** A dragged row was unmounted for the length of its drag, taking the
+  handle that held focus. NVDA answered with "Conscious Tabs, document", cutting off "Picked up
+  ‹title›", and re-read the landmark, list and row after each drop. A fix aimed at the live region
+  (repeating the pick-up in the next sentence) only said the title twice. Keeping the row mounted
+  and collapsed (`height: 0`, `overflow: hidden`, `opacity: 0`; never `display: none` or
+  `visibility: hidden`, which drop focus) removed all three. Height only, so the node's top-left
+  corner does not move and dnd-kit has nothing to compensate for. Evidence:
+  `src/lib/Tabs/elements/rowControls.ts` (`rowWhileDraggedSx`),
+  `plans/MANUAL-SWEEP-SPEC-04.md` ("Listening session").
 
 ## What Doesn't Work
 
@@ -167,6 +247,13 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `grid`/`row`/`gridcell` composite, which changes what the arrow keys mean and touches 11
   files — so know before starting that "we made them `-1`" is not an answer to this.
   Evidence: `src/lib/Tabs/elements/rowControls.ts`, axe-core 4.10.2.
+  - 2026-10-02 — **Correction: the count, the engine and the fix above are all out of date.**
+    "15" was the number of rows in the list that was audited that day. The rule reports one
+    node per rendered row, so the figure is whatever the list holds: 5, 20, 8 and 2 on the
+    four fixtures. The engine installed here is axe-core 4.13.0, not 4.10.2. And the fix that
+    shipped is not a `grid`: each row is a `toolbar` inside a `listitem`, which kept the
+    arrow keys' meaning and brought all four fixtures to 0 (SPEC-04). Evidence:
+    `src/lib/Tabs/rows.a11y.test.tsx`, `plans/MANUAL-SWEEP-SPEC-04.md` §A.
 
 - 2026-09-24 — **`manualChunks` buys nothing in a packaged extension.** The 500 kB Vite
   warning invites splitting, and splitting is cosmetic here: every chunk loads from local
@@ -241,6 +328,76 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   fixed on `accessible-rows` (the handler awaits; the fake has `ungroup`) and this record is
   stale once that branch lands. Evidence: `src/lib/Tabs/Tab/handleDrop.ts:6`,
   `harness/fakeChrome.ts:206`.
+- 2026-10-02 (closes the record above, on this branch) — `main` has been merged into
+  `accessible-rows`, where the tab row's handler awaits the move and the harness's fake has
+  `ungroup`. A refused move on a tab row now reaches `App`, which keeps the selection and says
+  the move failed. The record above describes `main` only until this branch lands there.
+
+- 2026-09-30 — **A test that hands a component its own child can pass for the wrong reason,
+  and a moved `data-*` hook breaks selectors that use it as an ancestor.** `TabDisplay`'s test
+  built its own drag handle with `edge="end"`, so it stayed green with `edge="end"` deleted from
+  `TabListItem`, which is what builds the real one; only a test rendered through
+  `TabListItem` fails. And moving `data-tab-row` onto the new primary button broke
+  `App.test.tsx`'s `main [data-tab-row] [data-row-control]`, which no plan had listed: grep the
+  tests, not just `App.tsx`, for every selector a moved hook appears in. Evidence:
+  `src/lib/Tabs/Tab/TabDisplay.test.tsx`, `src/App.test.tsx`.
+- 2026-10-02 — **A fake that accepts a write and changes nothing hides everything that happens
+  after the write.** The harness's `chrome.tabs.move` returned a resolved promise and moved no
+  tab, so a keyboard drop never re-rendered the list, and "focus returns to the handle" passed in
+  the browser as it had in jsdom. Making `move`, `group` and `ungroup` really mutate and fire
+  their events showed focus falling to the body the first time a tab was dropped into a group.
+  Evidence: `harness/fakeChrome.ts`.
+- 2026-10-02 — **"Was not called", asserted straight after the event, passes whether or not
+  anything fired.** `activateTab` is several awaits long, so the call has not happened yet either
+  way. Use a positive control: do something afterwards that *does* activate a tab, wait for it,
+  and compare the whole call list. Likewise an "arrow leaves focus alone" test must start on a
+  control that has a neighbour in that direction, or it passes with the guard deleted. Both were
+  caught by falsifying. Evidence: `src/App.test.tsx` (`activatedAfterAControl`),
+  `src/lib/Tabs/elements/rowControls.test.tsx`.
+- 2026-10-02 — **A flag that is only ever reset by the test's `afterEach` cannot be seen to leak.**
+  `focusOwed` was set on every keyboard drop and ended only by its three-second clock, so a row
+  dropped by keyboard and picked up again by mouse took focus when the mouse let go. The test for
+  "nobody is owed focus after a mouse drop" passed, because the suite cleared the flag between
+  tests. For module state, write at least one test where two events share a lifetime. Evidence:
+  `src/App.drop.test.tsx` ("is nobody once another drag has started").
+- 2026-10-02 — **An `await` between "start" and "reset the flag" needs a `finally`.** `App` awaited
+  the drop handler and then switched the drag flag off. A handler that rejected skipped that, and
+  every row's Left, Right and Up went dead until another drag happened to clear it. The line had
+  been there since 2024; it became serious the day the arrows became the only route to a row's
+  controls. Evidence: `src/App.tsx` (`handleDragStop`).
+- 2026-10-02 — **A handler that starts its work with `void` tells its caller nothing.** The tab
+  and group drop handlers ran `void moveTabsOnTab(…)` and returned, and one swallowed a refused
+  group move with `console.error`. `App` awaited them all the same: it cleared a dropped
+  selection before the move had run, and its new "that could not be moved" announcement could
+  never fire for those drops. A `catch` in a caller is only as good as what the callee lets
+  reach it; check the callee before trusting it. Evidence: `src/lib/Tabs/Tab/handleDrop.ts`,
+  `src/lib/Tabs/Tab/handleDrop.test.ts`.
+- 2026-10-02 — **A hook that reads a context above the provider its own component renders gets
+  the default, silently.** `App` calls `useContext(SelectionContext)` and renders
+  `SelectionProvider` in its own JSX, so its `dispatch` is the no-op default and a dropped
+  selection is never cleared. It type-checks, it does not throw, and it had no test, because
+  nothing could reach a drop that lands. A context whose default does nothing hides this; one
+  that throws would not. Evidence: `src/App.tsx`, `src/App.drop.test.tsx` (the expected failure).
+- 2026-10-02 — **A staleness check on the timer that fires is not enough when setting the timer
+  clears the ones already pending.** `settleFocus` begins with `stopSettling()`, and its timers
+  each check `dragTurn` before acting. So a drop that finished late did no harm when its timers
+  fired — and all of it when it set them, by clearing the newer drop's. The check has to guard
+  the call that sets, as well as the callback: `if (byKeyboard && dragTurn.current === turn)`.
+  The same turn counter is what a press of the pointer bumps, so one comparison covers "a newer
+  drag" and "the user has taken focus themselves". Listen for that press from the drop, not
+  from when the drop has been carried out: everything a drop is owed starts at the drop.
+  Evidence: `src/App.tsx` (`yieldToPointer`, `handleDragStop`).
+- 2026-10-02 — **Three review passes and a browser pass did not find what ten minutes of
+  listening did.** The reviews measured that "Picked up X." stood for 55 ms and prescribed a
+  fold; the Speech Viewer showed the fold made it worse and that the cause was elsewhere. For
+  anything a screen reader says, the transcript is the measurement and everything before it is a
+  guess. Budget the listening before the wording work, not after. Evidence: commits `611dd83`
+  (the fold) and `96aef2b` (its removal).
+- 2026-10-02 — **dnd-kit reports a drag as "over" its own drop zone the instant it starts.** Any
+  sentence for "its own place" is therefore said after every pick-up. Switching the zone off with
+  `useDroppable({ disabled })` while the row is dragged comes one render too late for that first
+  report, so the wording has to be silent for it too. Evidence:
+  `src/lib/Tabs/DnD/announcements.ts`, `src/lib/Tabs/DnD/useDropzone.tsx`.
 
 ## Codebase Patterns
 
@@ -304,6 +461,59 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   only inspects descendants — so a row focused by Tab needs its own `&:focus-visible`, and
   leaving it out breaks the keyboard path alone, which no pointer test will show. Evidence:
   `src/lib/Tabs/elements/rowControls.ts:38`.
+
+- 2026-09-30 — **`useRowKeys` serves rows in different states, so "is the row itself a stop" is
+  read off the element (`row.tabIndex >= 0`), not passed in.** SPEC-04 T-2 made the tab row a
+  `role="toolbar"` at `tabIndex -1` whose one stop is a primary button, and dropped the row
+  from `stops` for everyone — which silently took Left/Right away from the group and window
+  rows, still focusable `ListItemButton`s until T-4/T-5, with no failing test. Converting a row
+  to `tabIndex -1` now drops it from the walk by construction. This also updates the
+  2026-09-28 Codebase Patterns note on `&:focus-visible`: the tab row is never focused now, so
+  its reveal comes only from `&:has(:focus-visible)`; the group and window rows still need
+  both. Evidence: `src/lib/Tabs/elements/rowControls.ts` (`useRowKeys`).
+- 2026-10-02 — **The Tab-stop budget is one stop per row, before and after the toolbar
+  rework; do not re-derive it.** Measured on the 20-plain-tab fixture with a
+  `userEvent.tab()` loop: 20 stops before SPEC-04 and 20 after. What changed is what the stop
+  is. Before, it was the row itself, with 60 controls behind it at `tabIndex -1`. After, the
+  row is never focused and the stop is its primary button, so there are 80 `[data-row-control]`
+  elements and exactly 20 of them are at `tabIndex 0`. The other fixtures cost 5, 8 and 2
+  stops. The stop does not rove: nothing reassigns `tabIndex`, so coming back to a row always
+  lands on its first control. Evidence: `src/lib/Tabs/rows.a11y.test.tsx` (the AC-9 block),
+  `src/lib/Tabs/elements/rowControls.ts` (`rowPrimaryProps`).
+- 2026-10-02 — **dnd-kit restores focus after a keyboard drag once; a drop that rebuilds the row
+  needs a second answer.** A drop that moves a tab into or out of a group re-renders the row under
+  a different parent, so the handle dnd-kit just focused is removed. `App` records the dropped
+  row with `oweFocusTo`, and that row's `DragHandle` takes focus as it mounts when nobody else
+  holds it. The record lapses after 3 s and is not consumed by the first claim, because the row
+  mounts twice: once when the drag ends, again when Chrome reports the move. Keyboard drops only.
+  It is a module flag beside `dragActive`, for the same reason: a context would re-render every
+  row. Evidence: `src/lib/Tabs/elements/rowControls.ts`, `src/lib/Tabs/elements/DragHandle.tsx`.
+- 2026-10-02 — **Drag announcements are worded from what each drop zone's handler does, in one
+  file, and never say an id.** `"tab"` is "before ‹tab›" (plus "in its group" when the target is
+  grouped), `"group"` is "before group", `"group-inner"` is "into group", `"window-end"` and
+  `"in-window"` are the end and the start of a window. The zone types are bare strings, so a
+  renamed zone compiles and falls back to "Dropped ‹subject›"; `announcements.test.ts` is the
+  only guard. Evidence: `src/lib/Tabs/DnD/announcements.ts`.
+- 2026-10-02 — **`tabIndex -1` keeps an element out of Tab, not out of a click.** Every row is a
+  toolbar at -1 and never a Tab stop, but a pointer click on its padding still leaves focus on the
+  row. `useRowKeys` treats that as standing just before the first control: Right steps in, Left
+  does nothing. Without it a pointer user who then reaches for the keyboard is stuck on an element
+  where no arrow works. Evidence: `src/lib/Tabs/elements/rowControls.ts` (`useRowKeys`).
+- 2026-10-02 — **After a keyboard drop focus goes, in order: to the dropped row's handle, else to
+  the search field.** The handle takes it as it mounts (`oweFocusTo`); if nothing holds focus
+  400 ms and again 1500 ms after the drop, the search field does. That covers a drop onto a
+  collapsed window or group, and a dropped selection, where there is no handle left. Evidence:
+  `src/App.tsx` (`settleFocus`).
+- 2026-10-02 — **A control that does what its row's click does needs no handler: leave it to
+  bubble.** The group and window chevrons each had an `onClick` that stopped the click and then
+  repeated the row's action, "or it would toggle twice". It only toggled twice because the copy
+  existed. With no handler, a click, Enter or Space on the chevron reaches the row's `onClick`
+  once, and the row's own rules come with it — a modifier click selects, and a surface that
+  forces groups open collapses nothing. The two copies had already drifted: one caught a
+  rejected `chrome.tabGroups.update`, the other left it unhandled. Give a nested control its own
+  handler only when it does something *different* from the row (Select, Close), and then stop
+  the click. Evidence: `src/lib/Tabs/TabsGroup/GroupDisplay.tsx` (`handleClick`),
+  `src/lib/Tabs/Window/WindowDisplay.tsx`.
 
 ## Decisions
 
@@ -459,6 +669,84 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   touched range for `{/*` and realign by hand. `git diff -w --stat` is the quick check that the
   rest of such a change really is whitespace. Evidence: `src/App.tsx` (the comments above
   `<Typography variant="h1">` and `<Box component="main">`).
+- 2026-10-02 — **On this machine `prettier --check <file>` fails for every file git has just
+  checked out, and says nothing about its formatting.** `core.autocrlf` is `true`, so a fresh
+  checkout has CRLF line endings and Prettier's default is LF; five files "failed" straight after
+  a fast-forward, three of which were clean. A file Prettier has itself rewritten passes, which
+  is why this hides. To ask the real question, strip the endings and use stdin:
+  `tr -d '\r' < f | npx prettier --stdin-filepath f --check`. Compare against
+  `git show HEAD:f | npx prettier --stdin-filepath f --check` to tell what an edit broke from
+  what was already off — several test files on this branch were never Prettier-clean.
+
+- 2026-09-30 — **A `ButtonBase` nested inside `ListItemButton` shares its events with the row.**
+  Focus bubbles, so the row picks up `Mui-focusVisible` when the inner button takes keyboard
+  focus — today that is the tab row's only visible focus indicator, pinned in
+  `TabDisplay.test.tsx`, so do not give the button its own ring on top. `mousedown` bubbles
+  too, so both ripples play unless the inner one has `disableRipple`; `stopPropagation` in the
+  inner `onClick` stops only the click (which still has to pass the event on — Ctrl-click
+  selection reads its modifiers). And the row can be `role="toolbar"` at all only because
+  `ButtonBase` spreads props after its `role: "button"` default; that is asserted, not trusted.
+  Evidence: `src/lib/Tabs/Tab/TabDisplay.tsx` (primary `ButtonBase`).
+- 2026-09-30 — **axe in Vitest: enforce "never disable a rule" in the runner, and print node
+  HTML.** A source scan for `rules: { "nested-interactive" … }` missed multi-key, computed-key
+  and array forms; `runAxe` now throws on `rules` or `disableOtherRules`, and the scan remains
+  only for `axe.configure`, which bypasses the runner. `nested-interactive` targets are
+  class-based and identical across rows, so the failure message carries each node's HTML. Under
+  the jsdom environment `import.meta.url` is an `http:` URL and `fileURLToPath` throws — use
+  `process.cwd()` to reach `src/`. Evidence: `src/test/axe.ts`, `src/lib/Tabs/rows.a11y.test.tsx`.
+- 2026-10-02 — **axe looks straight through a wrapper that has no role, no `aria-*` and no
+  focusability, and one `aria-*` attribute ends that.** `aria-required-children` collects a
+  list's owned elements by descending through every such element, and
+  `aria-required-parent` climbs past the same ones. That is why one `role="list"` can own
+  `listitem`s that sit three layers down, under a MUI `Grid` container, a `Grid` item and the
+  `Dropzone` div. Put any global `aria-*` attribute or a `tabIndex` on one of those wrappers
+  and it becomes an owned child that is not a `listitem`, and the rule fires. Nothing shows
+  this until axe runs. Evidence: `node_modules/axe-core/axe.js:27783-27786` (4.13.0,
+  `getOwnedRoles`), `src/lib/Tabs/elements/RowList.tsx`.
+- 2026-10-02 — **An explicit `role` on a MUI `ButtonBase` wins, because of the order props are
+  spread in.** For any component that is not a `<button>`, `ButtonBase` sets
+  `buttonProps.role = 'button'`, then renders with `buttonProps` first and the caller's
+  remaining props after it. So `<ListItemButton component="div" role="toolbar"
+  tabIndex={-1}>` really is a toolbar, and keeps `dense`, `selected`, the ripple and the hover
+  fill. This is what made SPEC-04 a role change and not a rewrite of three row components.
+  It is an implementation detail of MUI 5.15.14, so each row's test asserts the rendered
+  `role` and `tabindex`; that test is the alarm if an upgrade reverses the order. Evidence:
+  `node_modules/@mui/material/ButtonBase/ButtonBase.js:263` and `:309`,
+  `src/lib/Tabs/Tab/TabDisplay.test.tsx`.
+- 2026-10-02 — **MUI `ButtonBase component="div"` is a real button to assistive technology and
+  moves no pixel.** It sets `role="button"`, fires `onClick` on Enter at keydown and on Space at
+  keyup (only when the event's target is the element itself), and prevents Space from scrolling.
+  That is how a control whose children are `div`s and a `p` stops being invalid HTML inside a
+  `<button>`. Measured at 400px: every control kept its position. `user-event` does not
+  synthesise a click for a `div`, so an Enter or Space test on it exercises MUI's handling, not
+  the browser's. Evidence: `node_modules/@mui/material/ButtonBase/ButtonBase.js:203-268`,
+  `src/lib/Tabs/Tab/TabDisplay.tsx`, `src/lib/Tabs/Window/WindowDisplay.tsx`.
+- 2026-10-02 — **In jsdom, axe's `color-contrast` is inapplicable on this list, not undecided, so a
+  green run says nothing about contrast.** A plain coloured element comes back `incomplete`,
+  because jsdom has no painted colours. Text that is `overflow: hidden` (every `noWrap` line here)
+  has no size, is treated as clipped, and drops out as `inapplicable`. A violations-only run shows
+  neither. Ask for `incomplete` and `passes` too, and assert both exactly. Evidence:
+  `src/lib/Tabs/rows.a11y.test.tsx` (the two contrast cases).
+- 2026-10-02 — **dnd-kit details that cost time.** Its `KeyboardSensor` adds its document
+  `keydown` listener in a `setTimeout`, so an Escape sent in the same instant as the pick-up is
+  not seen; only automation is that fast. Its live region is `[id^="DndLiveRegion"]`, separate
+  from the app's own `role="status"`. Outside a `DndContext`, `attributes` carry
+  `aria-describedby=""`. Focus restore runs in `requestAnimationFrame`. Evidence:
+  `src/App.test.tsx` ("reordering from the keyboard"), `src/lib/Tabs/elements/DragHandle.test.tsx`.
+- 2026-10-02 — **`it.fails` records a known defect in a file its finder may not edit.** The test
+  stays green while the defect stands and goes red the moment someone fixes it, which is the
+  prompt to turn it into a plain `it`. Used once, for the window row's `div` inside a `button`,
+  and converted in the same session. Evidence: commit `39b3e40`.
+- 2026-10-02 — **React in development calls a function component with no arguments, to build a
+  warning's component stack.** `describeNativeComponentFrame` invokes each component in the stack
+  once, with console output switched off, and reads where it throws. A `vi.mock` wrapper that
+  recorded `DndContext`'s props therefore recorded `undefined` the first time anything on the page
+  warned (here, a MUI `Grid` prop-type warning when the selection toolbar mounted), and the next
+  line of the test found the app "not mounted". The call is cached per component, so only the
+  first test to trigger a warning fails, which makes it look like an ordering bug. Any mock that
+  wraps a component and has a side effect must ignore a call with no props. Found with a `Proxy`
+  that logged each write to an array, since `console.log` is silenced during that call.
+  Evidence: `src/App.drop.test.tsx` (the `DndContext` wrapper).
 
 ## Recurring Errors & Fixes
 
@@ -486,6 +774,21 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   which asks the same question and survives rows legitimately having some. When a test's
   assertion is "there is no X", write down what makes that true, because it is a
   precondition, not a property. Evidence: `src/lib/Tabs/Tab/TabDisplay.test.tsx`.
+- 2026-10-02 — **A hidden preview pane paints about two frames a second, and everything that
+  waits for a frame looks broken.** `requestAnimationFrame`, `ResizeObserver` and screenshots all
+  lagged: dnd-kit's focus restore read as "focus lost", and `scroll-padding` read as stale for
+  seconds. Count frames first (`requestAnimationFrame` in a one-second loop), and give each step
+  1.5–3 s when the count is low. Evidence: `plans/MANUAL-SWEEP-SPEC-04.md` ("A trap in the tool").
+- 2026-10-02 — **The harness page went blank with "Element type is invalid … got: undefined"
+  after files were rewritten under a running Vite.** Vite had read `App.tsx` at the instant
+  `git apply` was writing it and cached an empty module, so the default export was undefined.
+  Tests and the build were green throughout. Fix: `touch` the file, or restart the server, and
+  check what is served with `curl …/@fs/…/App.tsx` before suspecting the code.
+- 2026-10-02 — **A doubled backslash in a shell heredoc reached the file as a single one.** A
+  script meant to write the six characters `\u0000` wrote a NUL byte, twice, before the cause
+  was found; an earlier regex lost its escape the same way. When a script has to emit a
+  backslash, write it with the file tool, or build the character with `String.fromCharCode(92)`.
+  Check the bytes that landed, not the command that was typed.
 
 ## Session Notes
 
@@ -543,6 +846,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   questions and not absolute ones: it says whether cost grows with list size, and nothing
   trustworthy about milliseconds, paint or GC.
 
+- 2026-09-30 — SPEC-04 T-0…T-2 built (the list, the tab row as a toolbar), reviewed by three
+  gates and `pr-self-review` with two fix rounds, and checked in a real Chromium on the layout
+  harness. The review caught what the suite could not: a shared key handler regressing rows
+  the unit did not touch, and a row name that read a whole `data:` URL aloud. Held for T-3,
+  the NVDA gate. `src/lib/Tabs/Tab/TabDisplay.test.tsx` contains NUL, BEL and RLO on purpose,
+  so git calls it binary: use `git diff --text`, edit it with narrow replacements, and count the
+  bytes with node afterwards.
+
 - 2026-10-02 — Fixed the dropped selection that stayed selected: `App` read `SelectionContext`
   above the `SelectionProvider` it rendered, so it is now only the providers around an
   `AppBody`. Done on `main`'s line while `accessible-rows` is unmerged, which leaves two things
@@ -552,6 +863,17 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   tab leaves a selection alone" cases into it, and delete this one. And `src/App.tsx` will
   conflict, because that branch edits the body this change re-indented — merge with
   `-Xignore-space-change` and what is left is the wrapper.
+- 2026-10-02 (closes the note above) — The branches have met, on `accessible-rows`. With
+  `-Xignore-space-change` the only conflict in `src/App.tsx` was the function's name, as
+  predicted; the JSX kept this branch's deeper indentation and needed Prettier and the three
+  block comments realigned by hand. The `it.fails` in `src/App.drop.test.tsx` is a plain `it`,
+  the two other cases moved in beside it, and `src/App.selectionDrop.test.tsx` is deleted.
+- 2026-10-02 — **Another session committed to the branch this one had checked out.** The session
+  spawned to fix the dropped selection merged `main` into `accessible-rows`, answered a review of
+  PR #25 and pushed, while this session held uncommitted edits in the same working tree. Nothing
+  collided, because the files differed, and the suite passed on the combined tree. It was noticed
+  only when a test count changed. Before committing in a long session, run `git log` against the
+  last commit this session made.
 
 ## Open Questions
 

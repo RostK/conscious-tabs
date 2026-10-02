@@ -6,6 +6,7 @@ import {
   VolumeUp,
 } from "@mui/icons-material";
 import {
+  ButtonBase,
   ListItemAvatar,
   ListItemButton,
   ListItemSecondaryAction,
@@ -19,6 +20,8 @@ import { ItemButton } from "../elements/ItemButton.tsx";
 import {
   rowControlProps,
   rowControlsSx,
+  rowLabelProps,
+  rowPrimaryProps,
   rowTailMaskSx,
   selectedProps,
   useRowKeys,
@@ -26,6 +29,43 @@ import {
 import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useSelected } from "../selection";
 import { TabItem } from "../types.ts";
+
+/**
+ * Where a tab lives, for the row's name: two tabs with the same title on
+ * different sites are still told apart. Text either way and handed to
+ * `aria-label` as a string, so it reaches no sink. Two tabs open on the same
+ * page still collide — SPEC-04 §8 item 1, not solved here.
+ *
+ * Short, because it is read aloud each time focus enters the row. A URL with no
+ * hostname (`data:`, `file:`, `about:`) used to fall back to the whole URL,
+ * which for a `data:` tab is its entire payload; those name their scheme
+ * instead, `blob:` names the page that made it, and an extension page — whose
+ * "host" is a 32-character id — says "extension".
+ */
+const MAX_UNPARSEABLE = 60;
+
+const hostOf = (url: string | undefined): string => {
+  if (!url) return "";
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url.length > MAX_UNPARSEABLE
+      ? `${url.slice(0, MAX_UNPARSEABLE)}…`
+      : url;
+  }
+  const scheme = parsed.protocol.replace(/:$/, "");
+  if (scheme === "chrome-extension") return "extension";
+  if (scheme === "blob") {
+    // `blob:https://example.com/<uuid>` — the origin is the pathname.
+    try {
+      return new URL(parsed.pathname).hostname || scheme;
+    } catch {
+      return scheme;
+    }
+  }
+  return parsed.hostname || scheme;
+};
 
 export const TabDisplay: FC<{
   tab: TabItem;
@@ -46,6 +86,18 @@ export const TabDisplay: FC<{
       void activateTab(tab.id, tab.windowId);
     },
     [switchSelection, tab.id, tab.windowId],
+  );
+  // The row stays the pointer's click target (AC-18), and the primary button
+  // sits inside it, so a click on the title would otherwise fire both. The
+  // event is passed on rather than rebuilt: `handleActivate` reads
+  // ctrlKey/metaKey from it, and a Ctrl-click that lost its modifier would
+  // silently stop selecting.
+  const handlePrimary = useCallback<MouseEventHandler>(
+    (e) => {
+      e.stopPropagation();
+      handleActivate(e);
+    },
+    [handleActivate],
   );
   const handleDelete = useCallback<MouseEventHandler>(
     (e) => {
@@ -83,28 +135,123 @@ export const TabDisplay: FC<{
     [switchSelection],
   );
 
+  // Derived here, from `tab`, and never passed in: a new prop on TabListItem
+  // would defeat its row memo (SPEC-04 D-6).
+  const host = hostOf(tab.url);
+  // SPEC-04 AM-3: the title once and first, then where it lives, then the state
+  // Chrome's own tab strip does not report. `RowList` appends ", n of N" to
+  // this after commit (it reads `data-row-label`), so the position never
+  // travels as a prop and never re-renders a row.
+  const sound = muted ? "muted" : tab.audible ? "playing audio" : "";
+  // Chrome's own pages are titled with their host: "Extensions" at
+  // chrome://extensions. Heard with NVDA as "Extensions, extensions".
+  const repeatsTitle =
+    host.toLowerCase() === (tab.title ?? "").trim().toLowerCase();
+  const toolbarName = [
+    tab.title || "tab",
+    repeatsTitle ? "" : host,
+    tab.active ? "current tab" : "",
+    sound,
+    isSelected ? "selected" : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <ListItemButton
+      // A toolbar, not a button: the row holds several controls, and a button
+      // may not. ButtonBase sets role="button" on a non-button component, but
+      // spreads its own props after that default, so this wins — asserted in
+      // TabDisplay.test.tsx rather than trusted, in case an upgrade reverses it.
+      component="div"
+      role="toolbar"
+      // Never focused and not a tab stop: the primary button below is the stop.
+      tabIndex={-1}
+      // The name, and the copy of it `RowList` reads to add the position.
+      {...rowLabelProps(toolbarName)}
       dense
       onClick={handleActivate}
       onKeyDown={handleRowKeys}
       selected={tab.active}
-      /* Marks the row without claiming the caret. Landing on the active
-         tab is still what the keyboard does — it is one Down from the
-         search field now (App.tsx), rather than a second component
-         competing for focus the moment a surface opens. */
-      data-tab-row=""
-      data-active-tab={tab.active ? "" : undefined}
       /* The two widths are measured, not read off MUI's defaults. This
          theme sets typography.fontSize 12, which scales every icon by 12/14,
          so close and mute are 36.6px wide and the drag handle 33.1px rather
          than the 40 and 36 the defaults give — which is how the numbers this
-         replaces came to be 6px and 2px too big. Close carries edge="end",
-         whose -12px margin comes off the total: drag + close is 57.7, and
-         94.3 with mute. Rounded up, so the fade finishes before the first
-         icon on either kind of row. */
+         replaces came to be 6px and 2px too big. The drag handle carries
+         edge="end", whose -12px margin comes off the total: drag + close is
+         57.7, and 94.3 with mute. Rounded up, so the fade finishes before the
+         first icon on either kind of row. */
       sx={[{ pt: 0.2, pb: 0.2 }, rowControlsSx, rowTailMaskSx(noisy ? 96 : 60)]}
     >
+      {/* The row's primary action: first in DOM order, so it is the toolbar's
+          first control and its one tab stop.
+
+          It carries the markers App reads to land the search field's Down on
+          the active tab — marks the row without claiming the caret. The row
+          itself is no longer focusable, so they have to sit on something that
+          is. Landing here announces the tab, not the toolbar, and Left/Right
+          walk on from it.
+
+          No focus style of its own, on purpose: the visible indicator is the
+          row's. Focus events bubble, so the ListItemButton above picks up
+          `Mui-focusVisible` when this takes keyboard focus — pinned in
+          TabDisplay.test.tsx, since restyling this button would double it.
+
+          A `div` with `role="button"`, not a `<button>`. Its children are the
+          avatar, the text box and the secondary line's `<p>` — flow content,
+          which HTML does not allow inside a `<button>` (phrasing only). MUI
+          sets the role on any non-button component and emulates the keys a
+          native button gives for free: Enter on keydown, Space on keyup, both
+          only when the event's target is this element. `tabIndex` below and
+          `disableRipple` apply the same either way, and nothing about the
+          box changes — ButtonBase's own styles, not the element, lay it out. */}
+      <ButtonBase
+        component="div"
+        {...rowPrimaryProps}
+        // The row plays a ripple on mousedown and this one bubbles into it, so
+        // a click on the title would otherwise play both.
+        disableRipple
+        data-tab-row=""
+        data-active-tab={tab.active ? "" : undefined}
+        // Not "Switch to <title>": the toolbar around it is named for the tab
+        // and is announced on entry, so the title would be heard twice (AM-3).
+        aria-label="Switch"
+        onClick={handlePrimary}
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          justifyContent: "flex-start",
+          textAlign: "left",
+          p: 0,
+        }}
+      >
+        {/* No top padding. It nudged the favicon down against the first line of
+            text, which put its centre ~2.5px below the row's centre line — and
+            so below the checkbox and the close button, which are both centred.
+            Invisible until the checkbox came to sit over the favicon. */}
+        <ListItemAvatar sx={{ minWidth: "36px" }}>
+          <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
+            <TabFavicon
+              key={tab.url}
+              pageUrl={tab.url}
+              browserIcon={tab.favIconUrl}
+              size={26}
+            />
+          </AudioBadge>
+        </ListItemAvatar>
+        {/* No right padding. It was reserved for the actions, which are
+            absolutely positioned — but they are invisible until the row is
+            hovered or focused, so at rest every title ellipsised against 58px
+            of empty row. `rowTailMaskSx` on the row above takes the tail away
+            only while they are actually showing, which costs no layout and so
+            cannot reflow the text the way reserving on hover would. */}
+        <ListItemText
+          primaryTypographyProps={{ noWrap: true }}
+          secondaryTypographyProps={{ noWrap: true }}
+          primary={tab.title}
+          secondary={tab.url?.replace("https://", "")}
+        />
+      </ButtonBase>
       {/* Beside the favicon, in the row's left padding — not in its slot.
           Selection persists, and a persistent checkbox that took the favicon's
           place would cost the user the one thing that identifies the tab they
@@ -118,13 +265,17 @@ export const TabDisplay: FC<{
           every other row. It used to carry a second class with its own copy
           of those six selectors, which differed only by omitting
           `:focus-within` — one behaviour with two definitions, in a file
-          that has already had to fix that behaviour twice. */}
+          that has already had to fix that behaviour twice.
+
+          After the primary button in the DOM, so it is the walk's second stop;
+          it is absolutely positioned, so where it sits in the markup does not
+          move it. */}
       <ItemButton
         className="itemAction"
         {...rowControlProps}
         {...selectedProps(isSelected)}
         onClick={handleHighlight}
-        aria-label={isSelected ? "Deselect tab" : "Select tab"}
+        aria-label={`${isSelected ? "Deselect" : "Select"} ${tab.title || "tab"}`}
         sx={{
           position: "absolute",
           /*
@@ -148,20 +299,6 @@ export const TabDisplay: FC<{
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>
-      {/* No top padding. It nudged the favicon down against the first line of
-          text, which put its centre ~2.5px below the row's centre line — and
-          so below the checkbox and the close button, which are both centred.
-          Invisible until the checkbox came to sit over the favicon. */}
-      <ListItemAvatar sx={{ minWidth: "36px" }}>
-        <AudioBadge audible={tab.audible} muted={tab.mutedInfo?.muted}>
-          <TabFavicon
-            key={tab.url}
-            pageUrl={tab.url}
-            browserIcon={tab.favIconUrl}
-            size={26}
-          />
-        </AudioBadge>
-      </ListItemAvatar>
       <ListItemSecondaryAction>
         {noisy && (
           <ItemButton
@@ -174,29 +311,21 @@ export const TabDisplay: FC<{
             {muted ? <VolumeOff /> : <VolumeUp />}
           </ItemButton>
         )}
-        {dragHandle}
         <ItemButton
           onClick={handleDelete}
-          edge="end"
           {...rowControlProps}
           aria-label={`Close ${tab.title || "tab"}`}
           className="itemAction"
         >
           <Close />
         </ItemButton>
+        {/* Last, and so the final control in the toolbar (AC-30). It carries
+            `edge="end"` — a negative margin on whatever sits flush with the
+            row's right edge, which moved here from Close — so the width the
+            tail mask reserves is unchanged. TabListItem builds the handle and
+            sets that edge on it. */}
+        {dragHandle}
       </ListItemSecondaryAction>
-      {/* No right padding. It was reserved for the actions, which are
-          absolutely positioned — but they are invisible until the row is
-          hovered or focused, so at rest every title ellipsised against 58px of
-          empty row. `rowTailMaskSx` on the row above takes the tail away only
-          while they are actually showing, which costs no layout and so cannot
-          reflow the text the way reserving on hover would. */}
-      <ListItemText
-        primaryTypographyProps={{ noWrap: true }}
-        secondaryTypographyProps={{ noWrap: true }}
-        primary={tab.title}
-        secondary={tab.url?.replace("https://", "")}
-      />
     </ListItemButton>
   );
 };

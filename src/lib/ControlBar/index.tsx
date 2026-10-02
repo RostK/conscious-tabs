@@ -30,6 +30,7 @@ import {
 import { getHost } from "../host";
 import { bringPanelAlong } from "../surfaces";
 import { SelectionContext, SelectionToolbar } from "../Tabs/selection";
+import { useScrollPadding } from "../useScrollPadding";
 import logo from "./logo.svg";
 
 const handleNewWindow = async () => {
@@ -71,6 +72,9 @@ export const ControlBar: FC = () => {
   const { selected } = useContext(SelectionContext);
   const host = getHost();
   const self = useSelfTab();
+  // This bar is fixed over the bottom of the list. Without telling the browser
+  // so, Tab could move focus to a row lying wholly underneath it.
+  const barRef = useScrollPadding("bottom");
   const floating =
     useSyncExternalStore(subscribeFloat, getFloatState) === "open";
 
@@ -110,6 +114,7 @@ export const ControlBar: FC = () => {
           one — two landmarks with the same role and no way to tell them
           apart. What it actually is, is the bar of actions at the bottom. */}
       <AppBar
+        ref={barRef}
         component="footer"
         aria-label="Actions"
         position="fixed"

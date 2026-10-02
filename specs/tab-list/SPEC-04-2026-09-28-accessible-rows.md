@@ -5,7 +5,7 @@
 | **Spec ID**    | SPEC-04                                                                                                                                                                                                                                                                |
 | **Date**       | 2026-09-28                                                                                                                                                                                                                                                             |
 | **Module**     | `tab-list` (`src/lib/Tabs/Tab/`, `src/lib/Tabs/TabsGroup/`, `src/lib/Tabs/Window/`, `src/lib/Tabs/elements/rowControls.ts`, `src/lib/Tabs/elements/DragHandle.tsx`, `src/lib/Tabs/elements/TabGrid.tsx`, `src/lib/Tabs/Tabs.tsx`) — with edges into `ui-shell` (`src/App.tsx`) |
-| **Status**     | **approved 2026-09-29**, **amended 2026-09-29** (AM-1 on AC-29, AM-2 on AC-32/AC-33 — §13.2). All eight clarifications closed; see §13.                                                                                                                                  |
+| **Status**     | **approved 2026-09-29**, **amended 2026-09-29** (AM-1 on AC-29, AM-2 on AC-32/AC-33 — §13.2), **amended 2026-09-30** (AM-3 on AC-3/AC-6/AC-29, from the T-3 gate — §13.3). All eight clarifications closed; see §13. |
 | **Supersedes** | —                                                                                                                                                                                                                                                                      |
 
 ---
@@ -363,6 +363,11 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   each row `listitem` semantics. _(Today it exposes neither — §1.4.)_
   **Verify:** unit — `getByRole("list")` resolves, and `getAllByRole("listitem")` returns one per
   rendered row for the 2-, 5-, 8- and 20-row fixtures; manual screen-reader pass per AC-27.
+  **Amended 2026-09-30 (AM-3).** Measured with NVDA, the list semantics expose neither count nor
+  position, because focus sits on a button inside the item. The **position of a focused tab row**
+  SHALL therefore also be carried in its toolbar name as ", n of N", where N is the number of tab
+  rows rendered and n is this row's place among them, in document order. See AC-29. The `list` /
+  `listitem` structure stays.
 - **AC-4** _(Must)_ The window > group > tab hierarchy SHALL NOT be expressed structurally; a
   window's and a group's descendants remain siblings in one flat list, as they are today (§1.4).
   **Verify:** Non-goal NG-12 records this, and a unit test asserts the list is flat — no nested
@@ -381,6 +386,11 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   identifies its subject.
   **Verify:** automated — axe `button-name` and `aria-command-name` report zero nodes; plus a unit
   assertion that each tab-row control's accessible name contains that tab's title.
+  **Amended 2026-09-30 (AM-3).** There is one exception: a row's **primary** control, the one Tab
+  lands on. Its subject is supplied by the row toolbar it sits in, because a screen reader
+  announces that toolbar's name on entry. So the tab row's primary control is named `Switch`, and
+  the title is not repeated. Every other control on the row still names its tab (`Select …`,
+  `Close …`, `Reorder …`, `Mute …`).
 - **AC-7** _(Must)_ WHEN the keyboard model moves focus, the newly focused element SHALL be scrolled
   into view.
   **Verify:** unit — assert focus lands on a real element (not only an `aria-activedescendant`
@@ -431,6 +441,13 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   no `aria-selected` or `aria-multiselectable` appears in the rendered list. _(Forced by AC-28:
   `aria-selected` is not supported on `toolbar` or on `listitem`, so setting it would be invalid
   ARIA. The per-row checkbox is already correct and already named.)_
+  **Amended 2026-10-02 (AM-4).** The select control SHALL convey the state through its accessible
+  name, "Select ‹title›" when the row is not selected and "Deselect ‹title›" when it is, and the
+  row's toolbar name SHALL carry "selected" (AC-29). It SHALL NOT also carry `aria-pressed` or
+  `aria-checked`: with a name that already changes, that would say the state twice.
+  **Verify:** unit — the control's name before and after selecting, the toolbar's name, and no
+  `aria-selected`, `aria-multiselectable`, `aria-pressed` or `aria-checked` on the control; manual
+  per AC-27.
 - **AC-17** _(Must)_ WHEN a row's selection state changes, the change SHALL be perceivable without
   the user moving focus to discover it.
   **Verify:** unit — the control's accessible state or the row's state updates in place; manual.
@@ -479,7 +496,8 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   never in the shipped bundle.)_
 - **AC-26** _(Must)_ This spec SHALL record what the automated check **cannot** prove, and SHALL
   require a manual screen-reader pass covering exactly those things.
-  **Verify:** §11 names them; the manual result is recorded against AC-27.
+  **Verify:** A-3 and §13.1 name them; the manual result is recorded against AC-27.
+  _(Corrected 2026-10-02: this pointed at §11, which is *Untrusted inputs*. §13.4.)_
 - **AC-27** _(Must)_ A manual **NVDA + Chrome** pass SHALL be recorded on **all three surfaces** —
   side panel, anchor tab, and the ~400px float — before this spec may reach `implemented`, naming
   the NVDA version, the Chrome version, the surface, the date, the tester, and the result per
@@ -502,6 +520,19 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
   non-empty, that rows with distinct subjects have distinct names, and that AC-24's hostile-title
   case yields a literal-text name. Include two tabs open on the same URL with the same title and
   assert this does **not** fail.
+  **Amended 2026-09-30 (AM-3).** A **tab row's** toolbar name SHALL be, in this order and joined by
+  ", ":
+  1. the title, or "tab" if it has none;
+  2. where it lives (`hostOf`: host, the scheme, or "extension");
+  3. "current tab", if it is its window's active tab;
+  4. "muted", or else "playing audio", if either applies;
+  5. "selected", if it is selected for bulk actions;
+  6. "n of N", per AC-3.
+
+  The title SHALL come first and SHALL NOT be repeated by the primary control (AC-6). The name
+  SHALL follow changes to any of its parts without a remount.
+  **Verify:** unit — the full name for a tab in each state, the renumbering after a filter and after
+  a close, and the primary is named `Switch`; manual per AC-27.
   _(**Amended 2026-09-29.** The original demanded names be both subject-derived *and* distinct from
   every other toolbar. Those two halves conflict: two tabs open on the same page have the same title
   and the same URL, so they have the same subject and cannot be told apart by any subject-derived
@@ -597,16 +628,16 @@ structure. AC-28…AC-37 are the criteria the toolbar decision added.
 | **E-5**  | A tab with no title                                                  | Controls already fall back to `"tab"` in their names (`Close ${tab.title \|\| "tab"}`). The row's own name must not become empty.                                               |
 | **E-6**  | A row that unmounts mid-drag                                         | A tab row unmounts as soon as it is picked up (`!isDragging &&`); a group row does not. `rowControls.ts` documents this asymmetry as the reason the drag flag exists.           |
 | **E-7**  | The drag overlay                                                     | `App.tsx` renders a bare `ListItemButton` in the `DragOverlay` for a multi-select drag, and `TabDisplay` / `GroupDisplay` with no `itemAction`. These are not list rows.        |
-| **E-8**  | The active tab's row                                                 | `TabDisplay` sets `autoFocus` when `tab.active && focus`. That stays the entry point (DEC-3); under the toolbar it focuses the row's first control rather than the row.            |
+| **E-8**  | The active tab's row                                                 | `TabDisplay` sets `autoFocus` when `tab.active && focus`. That stays the entry point (DEC-3); under the toolbar it focuses the row's first control rather than the row. _(Corrected 2026-10-02: `autoFocus` was removed by SPEC-05 group A before this was built. The entry point is `↓` from the search field, which lands on the active tab's first control. §13.4.)_            |
 | **E-9**  | A group whose actions menu is open                                   | `GroupListItem` holds the controls visible while its `Menu` is open. Focus is inside a portal, outside the row's DOM subtree.                                                   |
 | **E-10** | A list of eighty rows                                                | Focus must be scrolled into view (AC-7). This is the case `aria-activedescendant` handles worst.                                                                                |
 | **E-11** | A tab that is neither audible nor muted                              | No mute control. Rows are **not** uniform in control count — 3, 4 or 5 (§1.3). Any model that assumes a fixed cell or stop count per row is wrong.                              |
 | **E-12** | The `aria-hidden` expand indicators on group and window rows         | Three in the mixed fixture. Decorative today because the row's own click expands. The row stops being clickable, so where a chevron is rendered it becomes that row's primary-action button (AC-33, §1.0). Search-result group rows render none — E-17.                                       |
 | **E-13** | A row control that is `opacity: 0` and receives focus programmatically | Must reveal (AC-10). `visibility: hidden` must never be used: it takes the element out of `focus()` entirely and fails intermittently.                                          |
 | **E-14** | A `DropPlaceholder` mounted between two rows mid-drag                | `list` may own only `listitem`. The placeholder must be a `listitem` or be out of the accessibility tree, or `aria-required-children` fires — a new violation traded for the old one (AC-31).      |
-| **E-15** | A group row whose actions `Menu` is open                             | The menu is a portal, so focus leaves the toolbar's DOM subtree. The roving state must survive that and restore on close; and the menu button's name (`Actions for group …`) must stay distinct from the toolbar's own (AC-29). |
+| **E-15** | A group row whose actions `Menu` is open                             | The menu is a portal, so focus leaves the toolbar's DOM subtree. Focus must return to the menu button on close. _(Corrected 2026-10-02: this said "the roving state must survive". There is no roving state. AC-36 fixes the Tab stop on the row's first control, so there is nothing to restore but focus itself. §13.4.)_ The menu button's name (`Actions for group …`) must stay distinct from the toolbar's own (AC-29). |
 | **E-16** | Eighty rows, each an announced toolbar                               | The one unmeasured risk. Nothing documents what NVDA, JAWS or VoiceOver say on entering 20–80 toolbars in one scrollable list. Gated by AC-27, with a named retreat in §13.1.                    |
-| **E-17** | A group row in search results                                        | Renders **no chevron** (`GroupListItem.tsx:183` gates it on `expanded === undefined`; `SearchView` passes `expandedGroups`), and its tabs show regardless of collapsed state (`:271`). Its body click nevertheless still calls `chrome.tabGroups.update({collapsed: !collapsed})` — a real change to the browser with **no visible effect in the search list and no chevron to show it**. Dropping the primary action here (AC-32) removes that invisible side effect rather than merely declining to add a control. |
+| **E-17** | A group row in search results                                        | Renders **no chevron** (`GroupListItem.tsx:183` gates it on `expanded === undefined`; `SearchView` passes `expandedGroups`), and its tabs show regardless of collapsed state (`:271`). Its body click nevertheless still calls `chrome.tabGroups.update({collapsed: !collapsed})` — a real change to the browser with **no visible effect in the search list and no chevron to show it**. Dropping the primary action here (AC-32) removes that invisible side effect rather than merely declining to add a control. _(Corrected 2026-10-02: the body click no longer does this. `GroupDisplay` returns early when the row is not collapsible, which is the case in search results. §13.4.)_ |
 | **E-18** | Two tabs open on the same page                                       | Same title, same URL, same subject — so the same toolbar name. Permitted by AC-29, and the reason its original distinctness half was unsatisfiable. |
 
 ---
@@ -807,6 +838,62 @@ the search list goes on rendering the tabs anyway (`:271`) and shows no chevron 
 It is an invisible side effect on live browser state. Dropping the primary action there does not
 merely decline to add a control; **it removes that.** Not fixed by this spec beyond the row's
 keyboard surface, and worth its own look — PI-8.
+
+### 13.3 Amendment — 2026-09-30, from the T-3 screen-reader gate
+
+| #        | Amendment |
+| -------- | --------- |
+| **AM-3** | **A tab row says its title once and first, then where it lives, its state, and "n of N"; its primary control is `Switch`.** This amends AC-3, AC-6 and AC-29. |
+
+**Why.** The T-3 run (NVDA 2026.2, Chrome 154; `plans/MANUAL-SWEEP-SPEC-04.md` §B) passed the gate as written: the title came before "tool bar", so §13.1's retreat was not triggered. But it found two things no criterion had foreseen:
+- **Every row said its title twice**, once in the toolbar's name and again in "Switch to …".
+- **AC-3's list semantics produced no count or position at all.** NVDA reports position only for the focused object, and focus sits on a button, so the fallback T-1 named (`aria-posinset` on the item) could not help either.
+
+The user set the bar as **better than Chrome's own tab strip**. That strip says the title once and first, with "selected" and "3 of 20". This spec now asks for that, plus the state Chrome does not report (playing audio, muted, selected for bulk actions).
+
+**How it was decided.** By ear, not on paper. A throwaway prototype (`proto/row-names`, `e7340ac`) was loaded unpacked and tabbed through with NVDA. The verdict was "sounds right".
+
+**What it reverses.**
+- AM-1 said tab rows "deliberately do not" take an ordinal, "because `index` churns". That objection was to a number carried as a **prop**, which would defeat the row memo (plan D-6). The position here is counted over the rendered rows and written into the name **outside React's render**, so it costs the memo nothing. PLAN-SPEC-04 T-2b decides the mechanism and measures it at 80 rows.
+- AM-1's distinctness rule still holds: position makes every tab row's name unique.
+
+**Rejected.**
+- **A site-only toolbar name** ("mail.google.com, tool bar, Switch to …"). It says the title once, but only after the site and "tool bar" on every row, which is the very pattern the gate exists to catch.
+- **Keeping the doubled title.** It is accessible, but a Gmail-length title makes every row twice as long to hear, on every row, and NVDA does not shorten it after the first few.
+
+### 13.5 Amendment — 2026-10-02, from the listening session
+
+| #        | Amendment |
+| -------- | --------- |
+| **AM-4** | **A row's select control says its state in its name.** "Select ‹title›" becomes "Deselect ‹title›", and the toolbar's name gains "selected". No `aria-pressed`. This amends AC-16. |
+| **AM-5** | **A row stays in the document while it is dragged, and its handle keeps focus.** It is collapsed to no height, not unmounted. This amends E-6 and the "unchanged" in DEC-4, and adds to AC-12 and AC-13. |
+
+**Why.** AC-16 asked the control to report "its own pressed/checked state". What was built says the state in the name, and the plan check marked that a literal miss. The alternative is a toggle with a fixed name, which NVDA reads as "Select ‹title›, toggle button, pressed". Heard with NVDA on 2026-10-02: pressing Space on the control announced "Deselect ‹title›" at once, without moving focus. The user's verdict was "clear enough".
+
+**AM-5, why.** DEC-4 said reordering is unchanged, and E-6 recorded that a tab row unmounts the moment it is picked up. Heard with NVDA on 2026-10-02, that unmount is the loudest thing in a drag. The handle holding focus is removed, focus falls to the page, and NVDA says "Conscious Tabs, document" straight after the pick-up, which cuts off the announcement of what was picked up. After every drop it reads the landmark, the list and the row again. So:
+- WHILE a row is being dragged, the row SHALL stay in the document, collapsed so that it takes no height, and its drag handle SHALL keep focus from pick-up until the drag ends. It SHALL NOT be hidden with `display: none` or `visibility: hidden`, which drop focus.
+- WHILE a row is being dragged, its own drop zones SHALL be switched off, so it cannot be dropped on itself.
+- The keys, the activator and the `dragActive` hand-off of DEC-4 are unchanged. E-6's asymmetry is gone: every row is now the case the flag exists for.
+
+**Verify:** unit — after a keyboard pick-up of a tab row and of a group row, `document.activeElement` is the same handle element, and it still is after a cancel and after a drop; the row's list item has no height and is not `display: none`. Manual per AC-27.
+
+**Three wording changes from the same session**, none of them a criterion:
+- The pick-up instructions, read on every landing on a handle, are one short sentence: "Space picks up, arrows move, Space drops, Escape cancels."
+- A drag over its own starting place says nothing. A drag begins there, so it was said after every pick-up.
+- A tab row leaves out the site when it is the same word as the title, as on Chrome's own pages ("Extensions, extensions").
+
+The handle keeps dnd-kit's `aria-roledescription`, so NVDA says "draggable" where it would say "button". That was put to the user and kept.
+
+**AM-3 confirmed, with its cost known.** Every tab row's primary control is named "Switch" while the visible text is the title. That fails WCAG 2.5.3, Label in Name: someone using voice control cannot say the title to press the control, and a screen reader's list of buttons holds one "Switch" per tab. Each alternative brings the title back a second time on every row, which is what AM-3 removed. Put to the user with that cost stated, and heard again across 25 rows: "probably fine". It stands, and is the first thing to revisit if a voice-control user reports it.
+
+### 13.4 Corrections — 2026-10-02
+
+Neither changes what is built. Both fix text that contradicted a decision already made here.
+
+- **E-15** asked for "the roving state" to survive a group row's actions menu opening. AC-36 and plan D-5 fix the Tab stop on the row's first control and keep no per-row memory, so there is no such state. What E-15 needs is that focus returns to the menu button when the menu closes, and it now says that.
+- **AC-26's Verify** pointed at §11 for what the automated check cannot prove. §11 is *Untrusted inputs*. The limits are in A-3 and §13.1, and the line now points there (plan §8 item 4).
+- **E-8 and DEC-3** describe the entry point as `TabDisplay`'s `autoFocus`. SPEC-05 group A removed `autoFocus` before this spec was built. The entry point is `↓` from the search field, landing on the active tab's first control. DEC-3's decision stands: the active tab's row is where the keyboard enters, and re-entry lands on the first control.
+- **E-17, the note under AM-2 in §13.2, and PI-8** say a search-result group row's body click collapses the real group with nothing to show for it. That was true when written. `GroupDisplay` now takes a `collapsible` flag and returns early when it is false, which `GroupListItem` passes in search results (commit `81886bf`, already on `main`). The side effect is gone, so PI-8 is closed.
 
 ## 14. Traceability
 

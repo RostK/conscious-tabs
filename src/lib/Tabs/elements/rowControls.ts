@@ -24,6 +24,59 @@ export const rowControlProps = {
 } as const;
 
 /**
+ * Spread onto a row's primary action — the one control Tab stops on.
+ *
+ * Two definitions rather than one with a flag, because the difference is the
+ * whole model: the primary action is the row's **fixed** tab stop, and every
+ * other control stays at -1 and is reached with Left/Right. Nothing reassigns
+ * them. APG's roving tabindex would move the 0 to whichever control was last
+ * focused, and SPEC-04 AC-36 forbids exactly that memory — Tab back into a row
+ * always lands on its first control, not on the one you left from.
+ */
+export const rowPrimaryProps = {
+  "data-row-control": true,
+  tabIndex: 0,
+} as const;
+
+/**
+ * Where a tab row keeps its own name, without a position (SPEC-04 AM-3).
+ *
+ * `RowList` reads it and writes the name plus ", n of N" into `aria-label`
+ * after commit. One constant for both ends: the row that writes it and the
+ * list that reads it agree on nothing else, and a rename on one side alone
+ * would stop the numbering with no error anywhere.
+ */
+export const ROW_LABEL_ATTRIBUTE = "data-row-label";
+
+/**
+ * Spread onto a row that `RowList` should number.
+ *
+ * React writes the base name to `aria-label` as well, so a row outside a
+ * `RowList` (the drag overlay, a test rendering it alone) still has one.
+ * Inside a list, `RowList` overwrites `aria-label` with the same name plus its
+ * position. React rewrites both only when the name changes, and never on a
+ * render where it did not, which is what keeps the position.
+ */
+export const rowLabelProps = (name: string) => ({
+  "aria-label": name,
+  [ROW_LABEL_ATTRIBUTE]: name,
+});
+
+/**
+ * The accessible name of a group or window row's chevron — SPEC-04 AC-6, AC-33.
+ *
+ * A PROPOSAL, to be judged by ear (PLAN-SPEC-04 T-2b, "Open for T-4/T-5"). It
+ * is stable on purpose: an APG disclosure button keeps one name and lets
+ * `aria-expanded` speak, so a screen reader says "Tabs, button, expanded" and
+ * "Tabs, button, collapsed". "Expand"/"Collapse" in the name would say the
+ * state twice, and change the name under the user as they press it. The
+ * toolbar around it has already said which group or window, so this does not.
+ * One definition, so the two rows cannot drift: changing the wording is this
+ * line, plus its assertions in the two rows' tests.
+ */
+export const ROW_CHEVRON_NAME = "Tabs";
+
+/**
  * The row states in which a hidden control is showing, asked of the row rather
  * than of the control.
  *
@@ -35,6 +88,12 @@ export const rowControlProps = {
  * right* — the checkbox sits in the row's left padding, so a selected row with
  * the pointer elsewhere has nothing over there to mask.
  */
+// Updated 2026-09-30 (SPEC-04 T-2): the tab row is a `role="toolbar"` at
+// tabIndex -1 now, so it is never itself the focus-visible element and
+// `&:focus-visible` below is unreachable for it. The reveal comes from
+// `&:has(:focus-visible)` matching the focused primary button. Left in place
+// rather than deleted: removing it is a behaviour claim jsdom cannot check, in
+// a file that has had to re-fix this behaviour twice.
 const revealedRow = [
   "&:hover",
   "&:focus-visible",
@@ -55,6 +114,9 @@ export const rowControlsSx = {
     opacity: 0,
     pointerEvents: "none",
   },
+  // `&:focus-visible .itemAction` is unreachable on a row that is no longer
+  // focusable (2026-09-30, SPEC-04 T-2); `&:has(:focus-visible) .itemAction`
+  // does the work. See `revealedRow`.
   [[
     "&:hover .itemAction",
     "&:focus-visible .itemAction",
@@ -162,6 +224,29 @@ export const rowTailReserveSx = (controls: number) => ({
   maxWidth: `calc(100% - ${controls + 8}px)`,
 });
 
+/**
+ * A row while it is being dragged: gone from view, still in the document.
+ *
+ * It used to be unmounted for the length of the drag. That took the drag
+ * handle with it, and the handle is what holds focus during a keyboard drag —
+ * so focus fell to the page. Heard with NVDA: "Conscious Tabs, document"
+ * straight after picking up, which cut off the announcement of what had been
+ * picked up, and the landmark, the list and the row read out again after
+ * every drop.
+ *
+ * Collapsed, not hidden: `display: none` and `visibility: hidden` both drop
+ * focus, which is the thing this is here to keep. Height only, so the row's
+ * top-left corner stays where it was and dnd-kit has no movement of the
+ * dragged node to compensate for.
+ */
+export const rowWhileDraggedSx = {
+  height: "0px",
+  minHeight: "0px",
+  overflow: "hidden",
+  opacity: 0,
+  pointerEvents: "none",
+} as const;
+
 /** Spread onto a control that must stay visible while it is switched on. */
 export const selectedProps = (selected: boolean) =>
   selected ? { "data-selected": true } : {};
@@ -169,11 +254,11 @@ export const selectedProps = (selected: boolean) =>
 /**
  * Left/Right move along a row's controls; Tab moves between rows.
  *
- * Except while a drag is live, when the arrows belong to dnd-kit. A tab row
- * unmounts as soon as it is picked up, so this handler genuinely is not there
- * — but a group row stays mounted until something is hovered, and for that
- * stretch this handler would claim the first arrow press, move focus off the
- * drag handle and stop the event before dnd-kit's KeyboardSensor saw it.
+ * Except while a drag is live, when the arrows belong to dnd-kit. The row
+ * being dragged stays mounted (`rowWhileDraggedSx`) with focus on its drag
+ * handle, so without this guard its own handler would claim each arrow press,
+ * move focus off the handle and stop the event before dnd-kit's
+ * KeyboardSensor saw it.
  *
  * Whether a drag is running is asked at event time, not subscribed to.
  * `App`'s DndContext handlers set the flag below, which costs nothing and
@@ -191,6 +276,52 @@ let dragActive = false;
 export const setRowDragActive = (value: boolean): void => {
   dragActive = value;
 };
+
+/**
+ * The drag handle that is owed focus after a keyboard drop, and until when.
+ *
+ * dnd-kit puts focus back on the handle a keyboard drag started from, once.
+ * That is enough when the row stays where it is. It is not enough when the
+ * drop moves the tab somewhere that rebuilds its row — into a group, out of
+ * one, to another window. Chrome then reports the move, the list re-renders,
+ * the row mounts again under a different parent, and the handle that had
+ * focus is gone. Measured in a browser: focus fell to the document body, and
+ * the next arrow press did nothing (SPEC-04 AC-13).
+ *
+ * So `App` records which row was dropped, and that row's handle takes focus
+ * as it mounts. Asked at mount, not subscribed to, for the reason `dragActive`
+ * above is a flag: a context would re-render every row.
+ *
+ * It lapses, because the rebuild either follows the drop within moments or
+ * does not happen at all. And a handle only takes focus that nobody holds:
+ * if the user has already moved on, it is theirs.
+ */
+const FOCUS_OWED_MS = 3000;
+let focusOwed: { key: string; until: number } | undefined;
+
+/** Called by App when a keyboard drag is dropped. `undefined` clears it. */
+export const oweFocusTo = (key: string | undefined): void => {
+  focusOwed =
+    key === undefined ? undefined : { key, until: Date.now() + FOCUS_OWED_MS };
+};
+
+/** Asked by a drag handle as it mounts: is this the row that was dropped? */
+export const isOwedFocus = (key: string | undefined): boolean =>
+  key !== undefined &&
+  focusOwed !== undefined &&
+  focusOwed.key === key &&
+  Date.now() <= focusOwed.until;
+
+/**
+ * The name a row's handle and App agree on for one dragged row.
+ *
+ * Nothing for a row with no id: a key built from `undefined` would be shared
+ * by every such row, and each would think itself owed.
+ */
+export const dragFocusKey = (
+  type: "tab" | "group",
+  id: number | undefined,
+): string | undefined => (id === undefined ? undefined : `${type}-${id}`);
 
 /**
  * An arrow press with nothing held down.
@@ -255,12 +386,16 @@ export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
     // reserves Shift+arrow for selection, and Ctrl/Alt+arrow are the browser's.
     if (!isPlainArrow(event)) return;
     const row = event.currentTarget;
-    const stops: HTMLElement[] = [
-      row,
-      ...row.querySelectorAll<HTMLElement>("[data-row-control]"),
-    ];
-    const at = stops.indexOf(document.activeElement as HTMLElement);
-    if (at < 0) return;
+    const stops = [...row.querySelectorAll<HTMLElement>("[data-row-control]")];
+    // The row is not a stop: every row is a toolbar at tabIndex -1, which Tab
+    // never lands on (SPEC-04 D-9). But -1 is still focusable by a click, and a
+    // click on a row's padding leaves focus on the row itself. Found in review:
+    // from there the arrows did nothing, so a pointer user who then reached
+    // for the keyboard was stuck. The row counts as standing just before its
+    // first control — Right enters the walk, Left has nowhere to go.
+    const focused = document.activeElement;
+    const at = focused === row ? -1 : stops.indexOf(focused as HTMLElement);
+    if (at < 0 && focused !== row) return;
     const next = at + (event.key === "ArrowRight" ? 1 : -1);
     if (next < 0 || next >= stops.length) return;
     event.preventDefault();

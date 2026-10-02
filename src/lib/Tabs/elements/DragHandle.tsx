@@ -5,10 +5,11 @@ import {
   FC,
   KeyboardEventHandler,
   MouseEventHandler,
+  useCallback,
 } from "react";
 
 import { ItemButton } from "./ItemButton.tsx";
-import { rowControlProps } from "./rowControls.ts";
+import { isOwedFocus, rowControlProps } from "./rowControls.ts";
 
 /**
  * The keyboard's way into a drag.
@@ -40,6 +41,18 @@ export const DragHandle: FC<{
    */
   className?: string;
   sx?: ComponentProps<typeof ItemButton>["sx"];
+  /**
+   * Passed straight to the button. The last control in a row's secondary
+   * action carries `edge="end"` so it sits flush with the row's right edge;
+   * on a tab row that is this handle. Undefined elsewhere.
+   */
+  edge?: ComponentProps<typeof ItemButton>["edge"];
+  /**
+   * Names the row this handle moves, so it can take focus back when a
+   * keyboard drop rebuilds that row — see `oweFocusTo` in rowControls.ts.
+   * Leave it out where the handle does not sit in a list row.
+   */
+  focusKey?: string;
 }> = ({
   label,
   setActivatorNodeRef,
@@ -47,6 +60,8 @@ export const DragHandle: FC<{
   onKeyDown,
   className = "itemAction",
   sx,
+  edge,
+  focusKey,
 }) => {
   // The handle sits inside the row's own button, so a click on it would
   // otherwise bubble and switch tabs — grabbing is not activating.
@@ -55,14 +70,41 @@ export const DragHandle: FC<{
     event.stopPropagation();
   };
 
+  // While this handle's row is picked up the row is collapsed, not removed,
+  // so its other controls are still in the document and one of them is a Tab
+  // stop. Shift+Tab from here would land on that invisible control, and Enter
+  // there would switch tabs in the middle of the drag. So Tab does not leave
+  // the handle until the drag is over. dnd-kit marks the picked-up handle
+  // with `aria-pressed`; its own listener still sees the key.
+  const handleKeyDown: KeyboardEventHandler = (event) => {
+    if (event.key === "Tab" && attributes["aria-pressed"]) {
+      event.preventDefault();
+    }
+    onKeyDown?.(event);
+  };
+
+  const setRef = useCallback(
+    (handle: HTMLElement | null) => {
+      setActivatorNodeRef(handle);
+      if (!handle || focusKey === undefined || !isOwedFocus(focusKey)) return;
+      // Only focus nobody holds. The handle that had it was removed when its
+      // row was rebuilt, which leaves the body as the active element.
+      const { activeElement, body } = handle.ownerDocument;
+      if (activeElement && activeElement !== body) return;
+      handle.focus();
+    },
+    [focusKey, setActivatorNodeRef],
+  );
+
   return (
     <ItemButton
       className={className}
+      edge={edge}
       // Reached with Left/Right from the row, not by Tab.
       {...rowControlProps}
-      ref={setActivatorNodeRef}
+      ref={setRef}
       aria-label={label}
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
       onClick={swallowClick}
       sx={[{ cursor: "grab" }, ...(Array.isArray(sx) ? sx : [sx])]}
       {...attributes}

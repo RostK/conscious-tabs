@@ -2,6 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { FC, useCallback, useEffect, useMemo } from "react";
 
 import { Tabs } from "../../lib/Tabs";
+import { RowList } from "../../lib/Tabs/elements/RowList.tsx";
 import { useTabsStructure } from "../../lib/Tabs/useTabsStructure.ts";
 import { useWindowsStructure } from "../../lib/Tabs/useWindowsStructure.ts";
 
@@ -51,9 +52,14 @@ export const SearchView: FC<{
     );
   }
 
+  // No row can exist until both reads have landed and at least one tab is in
+  // them, and an empty `RowList` announces a list of zero (SPEC-04 E-4). Before
+  // it existed the view rendered nothing here, and still does.
+  if (!windows?.length || tabsStructure.length === 0) return null;
+
   return (
-    <>
-      {(windows ?? []).map((window) => (
+    <RowList>
+      {windows.map((window) => (
         <Tabs
           expandedGroups
           key={"w" + window.id}
@@ -62,6 +68,6 @@ export const SearchView: FC<{
           )}
         />
       ))}
-    </>
+    </RowList>
   );
 };

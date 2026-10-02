@@ -1,10 +1,16 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.tsx";
 import { reportFloatSearch } from "./lib/float";
-import { setRowDragActive } from "./lib/Tabs/elements/rowControls.ts";
+import { dragInstructions } from "./lib/Tabs/DnD";
+import {
+  dragFocusKey,
+  isOwedFocus,
+  oweFocusTo,
+  setRowDragActive,
+} from "./lib/Tabs/elements/rowControls.ts";
 import { Theme } from "./lib/Theme";
 import { installChrome } from "./test/chromeStub.ts";
 
@@ -185,13 +191,16 @@ describe("one Down from the field", () => {
   // The comment on the binding claims it works from a control inside a row,
   // which is why it lives on the row rather than on the row's own button. Both
   // other tests focus a row itself, so nothing held that claim up.
+  // Since SPEC-04 T-2 the row is a toolbar and its focus target is the
+  // primary button, so "a control inside a row" means a secondary control.
   it("comes back from a control inside a row", async () => {
     await mountApp();
     const control = document.querySelector<HTMLElement>(
-      "main [data-tab-row] [data-row-control]",
+      'main [role="toolbar"] [data-row-control]:not([data-tab-row])',
     );
     expect(control).not.toBeNull();
     control?.focus();
+    expect(document.activeElement).toBe(control);
 
     await userEvent.keyboard("{ArrowUp}");
 
@@ -257,5 +266,379 @@ describe("in every surface", () => {
     await mountApp();
 
     expect(reportFloatSearch).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Reordering, as far as jsdom can take it — SPEC-04 AC-11, AC-13, AC-14, AC-15
+ * and AC-37.
+ *
+ * What is **not** here: AC-12's first clause, that an arrow press changes
+ * dnd-kit's translation. jsdom has no layout, so the KeyboardSensor computes
+ * from zero rects and the assertion would be about nothing. `over` is therefore
+ * always null in these drags and a drop is always "put back"; where a drop lands
+ * is covered as wording in `announcements.test.ts` and checked by hand
+ * (sweep §D).
+ */
+describe("reordering from the keyboard", () => {
+  // Module state, like the drag flag: a keyboard drop in one test would
+  // otherwise leave its row owed focus in the next.
+  afterEach(() => {
+    oweFocusTo(undefined);
+  });
+
+  /** dnd-kit's own live region, not the app's polite one in <main>. */
+  const spoken = () =>
+    document.querySelector('[id^="DndLiveRegion"]')?.textContent ?? "";
+
+  const handleOf = (title: string) =>
+    screen.getByRole("button", { name: `Reorder ${title}` });
+
+  /**
+   * Which tabs `chrome.tabs.update` was asked to activate, once the activation
+   * chain has had time to run.
+   *
+   * Switching is a few awaits long (`activateTab`), so asserting "not called"
+   * straight after an event passes whether or not anything fired — it is only
+   * ever too early. Instead the third row is activated *behind* whatever the
+   * test did: its call lands last, a stray one from before it would already be
+   * in the list, and waiting for it is waiting for the chain to have finished.
+   */
+  const activatedAfterAControl = async () => {
+    const third = screen
+      .getAllByRole("toolbar")
+      .find((el) => el.textContent?.includes("Third tab")) as HTMLElement;
+    fireEvent.click(third);
+    await waitFor(() =>
+      expect(chrome.tabs.update).toHaveBeenCalledWith(3, { active: true }),
+    );
+    return vi.mocked(chrome.tabs.update).mock.calls.map(([id]) => id);
+  };
+
+  const grouped = () => {
+    installChrome({
+      windows: WINDOWS,
+      groups: [
+        {
+          id: 500,
+          title: "Reading",
+          color: "purple",
+          collapsed: false,
+          windowId: 1,
+        },
+      ],
+      tabs: [
+        tab({ id: 1, index: 0, title: "Plain tab" }),
+        tab({ id: 2, index: 1, title: "In the group", groupId: 500 }),
+      ],
+    });
+  };
+
+  // AC-11. Space and Enter both start a drag from the handle — and neither
+  // activates the tab, which is what the old wrapper was for and the reason
+  // Enter could not simply be left to the row's button.
+  it.each([
+    ["Space", " "],
+    ["Enter", "{Enter}"],
+  ])(
+    "%s on the handle picks the row up and does not switch to it",
+    async (_name, key) => {
+      await mountApp();
+      handleOf("First tab").focus();
+
+      await userEvent.keyboard(key);
+
+      await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+      await userEvent.keyboard("{Escape}");
+      expect(await activatedAfterAControl()).toEqual([3]);
+    },
+  );
+
+  // The same promise from the other side. A real Space or Enter never reaches
+  // a click here — dnd-kit prevents the keydown — so the case above does not
+  // exercise the handle's own `onClick`. This one does: the handle sits inside the toolbar whose click
+  // switches tabs, and a click that reached it would.
+  it("does not switch to the tab when the handle itself is clicked", async () => {
+    await mountApp();
+
+    // fireEvent, not userEvent: at rest the control is `pointer-events: none`
+    // (revealed by :hover, which jsdom does not evaluate), and userEvent refuses.
+    fireEvent.click(handleOf("First tab"));
+
+    expect(await activatedAfterAControl()).toEqual([3]);
+  });
+
+  // AC-15, in the DOM. Whatever the page called itself is text and only text:
+  // §11, AC-24.
+  it("speaks the app's words, and a hostile title as text", async () => {
+    const hostile = `"><img src=x onerror=alert(1)>`;
+    installChrome({
+      windows: WINDOWS,
+      tabs: [tab({ id: 1, index: 0, title: hostile })],
+    });
+    await mountApp();
+    handleOf(hostile).focus();
+
+    await userEvent.keyboard(" ");
+    await waitFor(() => expect(spoken()).toBe(`Picked up ${hostile}.`));
+    expect(spoken()).not.toMatch(/draggable item/);
+    expect(
+      document.querySelector('[id^="DndLiveRegion"]')?.querySelector("img"),
+    ).toBeNull();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(spoken()).toBe(`Cancelled. ${hostile} put back.`),
+    );
+    expect(spoken()).not.toMatch(/draggable item/);
+  });
+
+  it("says the drop in words, not an id", async () => {
+    await mountApp();
+    handleOf("First tab").focus();
+
+    await userEvent.keyboard(" ");
+    await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+    await userEvent.keyboard(" ");
+
+    await waitFor(() => expect(spoken()).toBe("First tab put back."));
+    expect(spoken()).not.toMatch(/draggable item|\d{3,}/);
+  });
+
+  // The handle's description, read on landing on it — through App's own
+  // DndContext rather than a copy of its configuration.
+  it("describes the handle with the instructions App configured", async () => {
+    await mountApp();
+
+    expect(handleOf("First tab")).toHaveAccessibleDescription(
+      dragInstructions.draggable,
+    );
+  });
+
+  // AC-13. Focus is on the handle once the drag is over. Since the row stays
+  // mounted while it is dragged (see the describe below) this is the same
+  // handle that started it; the wait is kept because a drop that moves the row
+  // elsewhere still rebuilds it.
+  // AC-37, the other end: once the drag is over the arrows walk the row again,
+  // so the same two paths — cancel and drop — prove onDragCancel and onDragEnd
+  // both clear the flag.
+  it.each([
+    ["cancelled with Escape", "{Escape}"],
+    ["dropped with Space", " "],
+  ])(
+    "puts focus back on the handle and gives the arrows back when %s",
+    async (_name, end) => {
+      await mountApp();
+      handleOf("First tab").focus();
+      await userEvent.keyboard(" ");
+      await waitFor(() => expect(spoken()).toMatch(/^Picked up/));
+
+      await userEvent.keyboard(end);
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(handleOf("First tab"));
+      });
+      const before = document.activeElement as HTMLElement;
+      await userEvent.keyboard("{ArrowLeft}");
+      expect(document.activeElement).not.toBe(before);
+      expect(document.activeElement).toHaveAttribute("data-row-control");
+      expect(document.activeElement?.closest('[role="toolbar"]')).toBe(
+        before.closest('[role="toolbar"]'),
+      );
+    },
+  );
+
+  // E-6, the case the flag exists for. A row stays mounted while it is dragged
+  // — a group row always did until something was hovered, and every row does
+  // now — so its own key handler is still there for the arrows of the drag,
+  // and would move focus off the handle and stop the event before dnd-kit saw
+  // it. Asserted through App's real handlers: only `onDragStart`
+  // setting the flag can make this pass.
+  it("keeps the arrows for dnd-kit while a group row it picked up is still mounted", async () => {
+    grouped();
+    await mountApp();
+    const handle = handleOf("group Reading");
+    handle.focus();
+
+    await userEvent.keyboard(" ");
+    await waitFor(() => expect(spoken()).toBe("Picked up group Reading."));
+    // Still there: this is the row whose handler is the risk.
+    expect(handle).toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowLeft}");
+    await userEvent.keyboard("{ArrowUp}");
+
+    expect(document.activeElement).toBe(handle);
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(spoken()).toBe("Cancelled. Group Reading put back."),
+    );
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(document.activeElement).not.toBe(handle);
+    expect(document.activeElement).toHaveAttribute("data-row-control");
+  });
+
+  // AC-14. The row keeps `onMouseDown`, so a pointer can still take hold of it
+  // anywhere — the keyboard half moved to the handle, the mouse half did not.
+  it("still starts a drag from a mouse press and a 10px move on the row body", async () => {
+    await mountApp();
+    const row = screen
+      .getAllByRole("toolbar")
+      .find((el) => el.textContent?.includes("First tab")) as HTMLElement;
+
+    fireEvent.mouseDown(row, { button: 0, clientX: 5, clientY: 5 });
+    // Below the activation distance nothing has started.
+    fireEvent.mouseMove(document, { clientX: 8, clientY: 5 });
+    expect(spoken()).toBe("");
+    fireEvent.mouseMove(document, { clientX: 20, clientY: 5 });
+
+    await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+    fireEvent.mouseUp(document);
+  });
+
+  /**
+   * A row used to be unmounted for the length of its own drag, and the handle
+   * holding keyboard focus went with it. Heard with NVDA on 2026-10-02: focus
+   * fell to the page, "Conscious Tabs, document" cut off the announcement of
+   * what had been picked up, and after each drop the landmark, the list and
+   * the row were read out again. So the row is collapsed, not removed.
+   *
+   * What jsdom cannot show is that a collapsed row takes no room and that the
+   * drag overlay does not jump; both were checked in a browser.
+   */
+  describe("the row being dragged", () => {
+    const rowOf = (handle: HTMLElement) =>
+      handle.closest('[role="listitem"]') as HTMLElement;
+
+    it.each([
+      ["a tab row", () => undefined, "First tab", "Picked up First tab."],
+      ["a group row", grouped, "group Reading", "Picked up group Reading."],
+    ])(
+      "keeps %s's handle in place, and focused, for the whole drag",
+      async (_name, arrange, title, pickedUp) => {
+        arrange();
+        await mountApp();
+        const handle = handleOf(title);
+        handle.focus();
+        expect(rowOf(handle)).not.toHaveStyle({ height: "0px" });
+
+        await userEvent.keyboard(" ");
+        await waitFor(() => expect(spoken()).toBe(pickedUp));
+
+        // The same element, still focused: nothing for a screen reader to
+        // announce a move to.
+        expect(handle).toBeInTheDocument();
+        expect(document.activeElement).toBe(handle);
+        // Gone from view, not from the document.
+        expect(rowOf(handle)).toHaveStyle({ height: "0px", opacity: "0" });
+        expect(rowOf(handle)).not.toHaveStyle({ display: "none" });
+        expect(rowOf(handle)).not.toHaveStyle({ visibility: "hidden" });
+
+        await userEvent.keyboard("{Escape}");
+        await waitFor(() => expect(spoken()).toMatch(/^Cancelled/));
+
+        expect(document.activeElement).toBe(handle);
+        expect(rowOf(handle)).not.toHaveStyle({ height: "0px" });
+      },
+    );
+
+    it.each([
+      ["a tab row", () => undefined, "First tab", "First tab put back."],
+      ["a group row", grouped, "group Reading", "Group Reading put back."],
+    ])(
+      "keeps %s's handle focused through a drop, too",
+      async (_name, arrange, title, putBack) => {
+        arrange();
+        await mountApp();
+        const handle = handleOf(title);
+        handle.focus();
+        await userEvent.keyboard(" ");
+        await waitFor(() => expect(spoken()).toMatch(/^Picked up/));
+
+        await userEvent.keyboard(" ");
+        await waitFor(() => expect(spoken()).toBe(putBack));
+
+        expect(document.activeElement).toBe(handle);
+      },
+    );
+
+    // Found in review: the collapsed row's other controls are still there,
+    // and its primary control is a Tab stop. Shift+Tab from the handle landed
+    // on it, invisible, and Enter there switched tabs mid-drag.
+    it.each([
+      ["Shift+Tab", "{Shift>}{Tab}{/Shift}"],
+      ["Tab", "{Tab}"],
+    ])("does not let %s move focus off the handle mid-drag", async (_n, keys) => {
+      await mountApp();
+      const handle = handleOf("First tab");
+      handle.focus();
+      await userEvent.keyboard(" ");
+      await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+
+      await userEvent.keyboard(keys);
+
+      expect(document.activeElement).toBe(handle);
+      // Still picked up: Tab is not one of the keys that end a drag here.
+      expect(spoken()).toBe("Picked up First tab.");
+
+      // Ended before the test is: a drag left live keeps dnd-kit's keydown
+      // listener on the document after unmount, and the next test's Space
+      // would be taken as this drag's drop.
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(spoken()).toMatch(/^Cancelled/));
+    });
+
+    it("lets Tab leave the handle when no drag is live", async () => {
+      await mountApp();
+      const handle = handleOf("First tab");
+      handle.focus();
+
+      await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+
+      expect(document.activeElement).not.toBe(handle);
+    });
+  });
+
+  // AC-13, the half dnd-kit cannot do. A drop that moves a tab into a group
+  // rebuilds its row, and the handle dnd-kit just focused is gone. App says
+  // which row was dropped so the rebuilt handle can take focus back
+  // (DragHandle.test.tsx has that half). Only a keyboard drop does: a pointer
+  // never had focus on the handle, and a cancel moves nothing.
+  describe("which row is owed focus afterwards", () => {
+    const FIRST = dragFocusKey("tab", 1);
+
+    it("is the dropped row, after a keyboard drop", async () => {
+      await mountApp();
+      handleOf("First tab").focus();
+      await userEvent.keyboard(" ");
+      await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+      expect(isOwedFocus(FIRST)).toBe(false);
+
+      await userEvent.keyboard(" ");
+
+      await waitFor(() => expect(spoken()).toBe("First tab put back."));
+      expect(isOwedFocus(FIRST)).toBe(true);
+      expect(isOwedFocus(dragFocusKey("tab", 3))).toBe(false);
+    });
+
+    // A cancel is covered in App.drop.test.tsx, where a debt can be put in
+    // place first. Here nothing would be owed either way, so a test of it
+    // could not fail.
+
+    it("is nobody, after a drop made with the mouse", async () => {
+      await mountApp();
+      const row = screen
+        .getAllByRole("toolbar")
+        .find((el) => el.textContent?.includes("First tab")) as HTMLElement;
+      fireEvent.mouseDown(row, { button: 0, clientX: 5, clientY: 5 });
+      fireEvent.mouseMove(document, { clientX: 20, clientY: 5 });
+      await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
+
+      fireEvent.mouseUp(document);
+
+      await waitFor(() => expect(spoken()).toBe("First tab put back."));
+      expect(isOwedFocus(FIRST)).toBe(false);
+    });
   });
 });
