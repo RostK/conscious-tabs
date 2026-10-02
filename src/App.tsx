@@ -303,8 +303,7 @@ function AppBody() {
       stopSettling();
       settling.current = FOCUS_SETTLE_MS.map((delay) =>
         window.setTimeout(() => {
-          // A newer drag owns focus now; a tab row is off screen while dragged
-          // and its focus sits on the body by design.
+          // A newer drag owns focus now, and holds it on its own handle.
           if (dragTurn.current !== turn) return;
           const field = searchInput.current;
           if (!field) return;

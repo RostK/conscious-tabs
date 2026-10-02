@@ -355,9 +355,8 @@ describe("reordering from the keyboard", () => {
   );
 
   // The same promise from the other side. A real Space or Enter never reaches
-  // a click here — dnd-kit prevents the keydown, and the row it came from is
-  // gone by the keyup — so the case above does not exercise the handle's own
-  // `onClick`. This one does: the handle sits inside the toolbar whose click
+  // a click here — dnd-kit prevents the keydown — so the case above does not
+  // exercise the handle's own `onClick`. This one does: the handle sits inside the toolbar whose click
   // switches tabs, and a click that reached it would.
   it("does not switch to the tab when the handle itself is clicked", async () => {
     await mountApp();
@@ -544,17 +543,60 @@ describe("reordering from the keyboard", () => {
       },
     );
 
-    it("stays focused through a drop, too", async () => {
+    it.each([
+      ["a tab row", () => undefined, "First tab", "First tab put back."],
+      ["a group row", grouped, "group Reading", "Group Reading put back."],
+    ])(
+      "keeps %s's handle focused through a drop, too",
+      async (_name, arrange, title, putBack) => {
+        arrange();
+        await mountApp();
+        const handle = handleOf(title);
+        handle.focus();
+        await userEvent.keyboard(" ");
+        await waitFor(() => expect(spoken()).toMatch(/^Picked up/));
+
+        await userEvent.keyboard(" ");
+        await waitFor(() => expect(spoken()).toBe(putBack));
+
+        expect(document.activeElement).toBe(handle);
+      },
+    );
+
+    // Found in review: the collapsed row's other controls are still there,
+    // and its primary control is a Tab stop. Shift+Tab from the handle landed
+    // on it, invisible, and Enter there switched tabs mid-drag.
+    it.each([
+      ["Shift+Tab", "{Shift>}{Tab}{/Shift}"],
+      ["Tab", "{Tab}"],
+    ])("does not let %s move focus off the handle mid-drag", async (_n, keys) => {
       await mountApp();
       const handle = handleOf("First tab");
       handle.focus();
       await userEvent.keyboard(" ");
       await waitFor(() => expect(spoken()).toBe("Picked up First tab."));
 
-      await userEvent.keyboard(" ");
-      await waitFor(() => expect(spoken()).toBe("First tab put back."));
+      await userEvent.keyboard(keys);
 
       expect(document.activeElement).toBe(handle);
+      // Still picked up: Tab is not one of the keys that end a drag here.
+      expect(spoken()).toBe("Picked up First tab.");
+
+      // Ended before the test is: a drag left live keeps dnd-kit's keydown
+      // listener on the document after unmount, and the next test's Space
+      // would be taken as this drag's drop.
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(spoken()).toMatch(/^Cancelled/));
+    });
+
+    it("lets Tab leave the handle when no drag is live", async () => {
+      await mountApp();
+      const handle = handleOf("First tab");
+      handle.focus();
+
+      await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+
+      expect(document.activeElement).not.toBe(handle);
     });
   });
 

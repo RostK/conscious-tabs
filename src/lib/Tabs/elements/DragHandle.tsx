@@ -70,12 +70,25 @@ export const DragHandle: FC<{
     event.stopPropagation();
   };
 
+  // While this handle's row is picked up the row is collapsed, not removed,
+  // so its other controls are still in the document and one of them is a Tab
+  // stop. Shift+Tab from here would land on that invisible control, and Enter
+  // there would switch tabs in the middle of the drag. So Tab does not leave
+  // the handle until the drag is over. dnd-kit marks the picked-up handle
+  // with `aria-pressed`; its own listener still sees the key.
+  const handleKeyDown: KeyboardEventHandler = (event) => {
+    if (event.key === "Tab" && attributes["aria-pressed"]) {
+      event.preventDefault();
+    }
+    onKeyDown?.(event);
+  };
+
   const setRef = useCallback(
     (handle: HTMLElement | null) => {
       setActivatorNodeRef(handle);
       if (!handle || focusKey === undefined || !isOwedFocus(focusKey)) return;
-      // Only focus nobody holds. The handle that had it was removed with its
-      // row, which leaves the body as the active element.
+      // Only focus nobody holds. The handle that had it was removed when its
+      // row was rebuilt, which leaves the body as the active element.
       const { activeElement, body } = handle.ownerDocument;
       if (activeElement && activeElement !== body) return;
       handle.focus();
@@ -91,7 +104,7 @@ export const DragHandle: FC<{
       {...rowControlProps}
       ref={setRef}
       aria-label={label}
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
       onClick={swallowClick}
       sx={[{ cursor: "grab" }, ...(Array.isArray(sx) ? sx : [sx])]}
       {...attributes}

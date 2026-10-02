@@ -254,11 +254,11 @@ export const selectedProps = (selected: boolean) =>
 /**
  * Left/Right move along a row's controls; Tab moves between rows.
  *
- * Except while a drag is live, when the arrows belong to dnd-kit. A tab row
- * unmounts as soon as it is picked up, so this handler genuinely is not there
- * — but a group row stays mounted until something is hovered, and for that
- * stretch this handler would claim the first arrow press, move focus off the
- * drag handle and stop the event before dnd-kit's KeyboardSensor saw it.
+ * Except while a drag is live, when the arrows belong to dnd-kit. The row
+ * being dragged stays mounted (`rowWhileDraggedSx`) with focus on its drag
+ * handle, so without this guard its own handler would claim each arrow press,
+ * move focus off the handle and stop the event before dnd-kit's
+ * KeyboardSensor saw it.
  *
  * Whether a drag is running is asked at event time, not subscribed to.
  * `App`'s DndContext handlers set the flag below, which costs nothing and

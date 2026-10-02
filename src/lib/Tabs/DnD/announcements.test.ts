@@ -316,7 +316,6 @@ describe("the instructions", () => {
     expect(dragInstructions.draggable).toBe(
       "Space picks up, arrows move, Space drops, Escape cancels.",
     );
-    expect(dragInstructions.draggable.length).toBeLessThan(60);
   });
 });
 
