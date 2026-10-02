@@ -24,6 +24,7 @@ import { DragHandle } from "../elements/DragHandle.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import {
   dragFocusKey,
+  ROW_CHEVRON_NAME,
   rowControlProps,
   rowPrimaryProps,
   selectedProps,
@@ -35,19 +36,6 @@ import { TabListItem } from "../Tab/TabListItem.tsx";
 import { GroupDisplay } from "./GroupDisplay.tsx";
 import { handleDrop } from "./handleDrop.ts";
 import { handleInnerDrop } from "./handleInnerDrop.ts";
-
-/**
- * The chevron's accessible name — SPEC-04 AC-6, AC-33.
- *
- * A PROPOSAL, to be judged by ear (PLAN-SPEC-04 T-2b, "Open for T-4/T-5"), like
- * the toolbar's name in GroupDisplay. It is stable on purpose: an APG disclosure
- * button keeps one name and lets `aria-expanded` speak, so a screen reader says
- * "Tabs, button, expanded" and "Tabs, button, collapsed". "Expand"/"Collapse" in
- * the name would say the state twice, and change the name under the user as they
- * press it. The toolbar around it already said which group, so this does not.
- * Changing the wording is this one line.
- */
-const CHEVRON_NAME = "Tabs";
 
 export const GroupListItem: FC<
   ComponentProps<typeof GroupDisplay> & { expanded?: boolean }
@@ -237,7 +225,7 @@ export const GroupListItem: FC<
           // controls the row hides at rest.
           <IconButton
             {...rowPrimaryProps}
-            aria-label={CHEVRON_NAME}
+            aria-label={ROW_CHEVRON_NAME}
             aria-expanded={!group.collapsed}
             onClick={handleToggle}
           >

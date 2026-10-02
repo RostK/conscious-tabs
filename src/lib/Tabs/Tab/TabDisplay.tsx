@@ -20,6 +20,7 @@ import { ItemButton } from "../elements/ItemButton.tsx";
 import {
   rowControlProps,
   rowControlsSx,
+  rowLabelProps,
   rowPrimaryProps,
   rowTailMaskSx,
   selectedProps,
@@ -162,13 +163,8 @@ export const TabDisplay: FC<{
       role="toolbar"
       // Never focused and not a tab stop: the primary button below is the stop.
       tabIndex={-1}
-      // React writes the base name here so a row outside a `RowList` (the drag
-      // overlay, a test rendering this alone) still has one. Inside a list,
-      // `RowList` reads `data-row-label` and overwrites this with the same name
-      // plus its position. React writes both only when the name changes, and
-      // never on a render where it did not, which is what keeps the position.
-      aria-label={toolbarName}
-      data-row-label={toolbarName}
+      // The name, and the copy of it `RowList` reads to add the position.
+      {...rowLabelProps(toolbarName)}
       dense
       onClick={handleActivate}
       onKeyDown={handleRowKeys}

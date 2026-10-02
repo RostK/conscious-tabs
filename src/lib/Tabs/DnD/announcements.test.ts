@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { GroupItem, TabItem } from "../types.ts";
 import { dragAnnouncements, dragInstructions } from "./announcements.ts";
@@ -54,6 +54,12 @@ const over = (drag: DefaultDrag | undefined, z?: unknown) =>
   dragAnnouncements.onDragOver(arg(drag, z));
 const drop = (drag: DefaultDrag | undefined, z?: unknown) =>
   dragAnnouncements.onDragEnd(arg(drag, z));
+
+// The pick-up sentence is remembered for a moment so the first place can carry
+// it (see `pickedUp`). Ending a drag forgets it, so each test starts clean.
+beforeEach(() => {
+  dragAnnouncements.onDragCancel(arg(tab()));
+});
 
 const ID = /2877238473|5550123|8675309|zone--|tab--|group--|window-end|in-window|\b91\b/;
 
@@ -173,9 +179,17 @@ describe("while a drag is over a zone", () => {
     expect(over(group(), zone("group", group()))).toBe(
       "Group Work, where it started.",
     );
-    expect(over([tab(), tab({ id: 7 })], zone("tab", tab({ id: 7 })))).toBe(
-      "2 tabs, where it started.",
-    );
+  });
+
+  // Found in review: `handleDrop` moves a selection wherever it is dropped,
+  // including onto one of its own tabs, so "where it started" was contradicted
+  // by the drop that followed it.
+  it("never calls a selection's own tab its own place, because the drop moves it", () => {
+    const selection = [tab(), tab({ id: 7, title: "Inbox" })];
+    const ownTab = zone("tab", tab({ id: 7, title: "Inbox" }));
+
+    expect(over(selection, ownTab)).toBe("Before Inbox.");
+    expect(drop(selection, ownTab)).toBe("Moved 2 tabs before Inbox.");
   });
 
   it("is silent over nothing, over a zone that would do nothing, and over one it has no words for", () => {
@@ -305,5 +319,65 @@ describe("the instructions", () => {
     expect(dragInstructions.draggable).toBe(
       "Press Space or Enter to pick up. Arrow keys move it, Space or Enter drops it, Escape cancels.",
     );
+  });
+});
+
+/**
+ * A tab row is removed as it is picked up, the next row slides under the drag,
+ * and dnd-kit reports it at once. Measured in a browser: "Picked up X." stood
+ * for 55 ms before "Before Y." replaced it.
+ */
+describe("the pick-up, and the first place after it", () => {
+  const inbox = zone("tab", tab({ id: 3, title: "Inbox" }));
+  const later = zone("tab", tab({ id: 4, title: "Calendar" }));
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("carries the pick-up into the first place, once", () => {
+    expect(dragAnnouncements.onDragStart(arg(tab()))).toBe(
+      "Picked up Quarterly report.",
+    );
+
+    expect(over(tab(), inbox)).toBe("Picked up Quarterly report. Before Inbox.");
+    expect(over(tab(), later)).toBe("Before Calendar.");
+  });
+
+  it("repeats the pick-up over its own place, so nothing cuts it off", () => {
+    dragAnnouncements.onDragStart(arg(group()));
+
+    // The same text again is no change to the live region, so it is not re-read.
+    expect(over(group(), zone("group", group()))).toBe("Picked up group Work.");
+    // And the first real place still carries it.
+    expect(over(group(), inbox)).toBe("Picked up group Work. Before Inbox.");
+  });
+
+  it("is not held back by a gap between rows", () => {
+    dragAnnouncements.onDragStart(arg(tab()));
+
+    expect(over(tab(), undefined)).toBeUndefined();
+    expect(over(tab(), inbox)).toBe("Picked up Quarterly report. Before Inbox.");
+  });
+
+  it("stands alone once it has had time to be heard", () => {
+    vi.useFakeTimers();
+    dragAnnouncements.onDragStart(arg(tab()));
+    vi.advanceTimersByTime(501);
+
+    expect(over(tab(), inbox)).toBe("Before Inbox.");
+    expect(over(tab(), zone("tab", tab()))).toBe(
+      "Quarterly report, where it started.",
+    );
+  });
+
+  it.each([
+    ["a drop", () => drop(tab(), undefined)],
+    ["a cancel", () => dragAnnouncements.onDragCancel(arg(tab()))],
+  ])("is forgotten after %s", (_name, end) => {
+    dragAnnouncements.onDragStart(arg(tab()));
+    end();
+
+    expect(over(tab(), inbox)).toBe("Before Inbox.");
   });
 });

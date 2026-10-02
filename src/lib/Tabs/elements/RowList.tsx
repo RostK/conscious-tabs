@@ -1,11 +1,7 @@
 import { Box } from "@mui/material";
 import { FC, PropsWithChildren, useLayoutEffect, useRef } from "react";
 
-/**
- * A tab row keeps its own name, without a position, in this attribute
- * (`TabDisplay` writes it). SPEC-04 AM-3.
- */
-const ROW_LABEL_ATTRIBUTE = "data-row-label";
+import { ROW_LABEL_ATTRIBUTE } from "./rowControls.ts";
 
 /**
  * Says ", n of N" on every named row in the list: N is the rows rendered, n the

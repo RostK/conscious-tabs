@@ -148,3 +148,61 @@ describe.each(["tab", "group"] as const)("in a %s row", (shape) => {
     expect(document.activeElement).toBe(screen.getByLabelText("search"));
   });
 });
+
+/**
+ * A row is never a Tab stop, but `tabIndex -1` is still focusable by a click,
+ * and a click on a row's padding leaves focus on the row itself. Found in
+ * review: from there the arrows did nothing, so someone who clicked a group
+ * header to open it and then reached for the keyboard was stuck. For group and
+ * window rows that was a regression — the row used to be the walk's first stop.
+ */
+describe.each(["tab", "group"] as const)(
+  "a %s row that a click left focus on",
+  (shape) => {
+    const first = shape === "group" ? "chevron" : "select";
+
+    it("steps into its first control on Right", async () => {
+      render(<Row shape={shape} />);
+      const row = screen.getByRole("toolbar");
+      row.focus();
+      expect(document.activeElement).toBe(row);
+
+      await userEvent.keyboard("{ArrowRight}");
+
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: first }),
+      );
+    });
+
+    it("has nowhere to go on Left, and does not swallow the key", async () => {
+      render(<Row shape={shape} />);
+      const row = screen.getByRole("toolbar");
+      row.focus();
+      const probe = observeKey();
+
+      await userEvent.keyboard("{ArrowLeft}");
+      probe.stop();
+
+      expect(document.activeElement).toBe(row);
+      expect(probe.seen).toEqual([{ reached: true, defaultPrevented: false }]);
+    });
+
+    it("still ignores an arrow from somewhere that is not one of its controls", async () => {
+      render(
+        <>
+          <Row shape={shape} />
+        </>,
+      );
+      // An element inside the row that is not a row control: the walk has no
+      // position for it, and must not guess one.
+      const stray = document.createElement("button");
+      stray.textContent = "stray";
+      screen.getByRole("toolbar").append(stray);
+      stray.focus();
+
+      await userEvent.keyboard("{ArrowRight}");
+
+      expect(document.activeElement).toBe(stray);
+    });
+  },
+);

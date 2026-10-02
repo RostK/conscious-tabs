@@ -338,9 +338,8 @@ describe("AC-31 · a drop placeholder is a row, so it is an item (E-14)", () => 
  * mechanism these are here to prove.
  */
 describe("AM-3 · RowList numbers the tab rows", () => {
-  // Tab rows only: a group row is a toolbar too since SPEC-04 T-4 (and a window
-  // row will be after T-5), but it is not numbered, and `data-row-label` is the
-  // marker `RowList` itself counts by.
+  // Tab rows only: group and window rows are toolbars too, but they are not
+  // numbered, and `data-row-label` is the marker `RowList` itself counts by.
   const names = () =>
     screen
       .getAllByRole("toolbar")

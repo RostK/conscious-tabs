@@ -204,12 +204,17 @@ export const installFakeChrome = () => {
     moving.forEach((tab) => {
       tab.windowId = windowId;
     });
-    inWindow.forEach((tab, index) => {
-      tab.index = index;
-    });
     tabs.length = 0;
     tabs.push(...inWindow, ...others);
-    tabs.sort((a, b) => a.windowId - b.windowId || a.index - b.index);
+    // Every window, not only the destination: a tab that left one leaves a
+    // gap in its numbering, and the next drop there lands one slot late.
+    const seen = new Map<number, number>();
+    tabs.sort((a, b) => a.windowId - b.windowId);
+    tabs.forEach((tab) => {
+      const next = seen.get(tab.windowId) ?? 0;
+      tab.index = next;
+      seen.set(tab.windowId, next + 1);
+    });
     (onMoved.fire as (...a: unknown[]) => void)(moving[0].id, {
       windowId,
       fromIndex: 0,
@@ -224,6 +229,27 @@ export const installFakeChrome = () => {
     });
     (onUpdated.fire as (...a: unknown[]) => void)(idsOf(ids)[0], { groupId }, {});
   };
+
+  const onGroupUpdated = event();
+  const fireGroup = (group: chrome.tabGroups.TabGroup) => {
+    (onGroupUpdated.fire as (...a: unknown[]) => void)(group);
+  };
+  // A group moves as the block of its tabs, and keeps them grouped.
+  const moveGroup = (
+    groupId: number,
+    to: { index: number; windowId?: number },
+  ) => {
+    const group = groups.find((candidate) => candidate.id === groupId);
+    const ids = tabs
+      .filter((tab) => tab.groupId === groupId)
+      .map((tab) => tab.id as number);
+    if (!group || !ids.length) return Promise.resolve(group);
+    if (to.windowId !== undefined) group.windowId = to.windowId;
+    void move(ids, to);
+    fireGroup(group);
+    return Promise.resolve(group);
+  };
+  let nextGroupId = 600;
 
   (globalThis as unknown as { chrome: unknown }).chrome = {
     runtime: {
@@ -249,7 +275,22 @@ export const installFakeChrome = () => {
       remove,
       move,
       group: (options: { tabIds: number | number[]; groupId?: number }) => {
-        const groupId = options.groupId ?? 1;
+        let groupId = options.groupId;
+        if (groupId === undefined) {
+          // A new group has to exist, or its tabs render as ungrouped.
+          groupId = nextGroupId;
+          nextGroupId += 1;
+          const first = tabs.find(
+            (tab) => tab.id === idsOf(options.tabIds)[0],
+          );
+          groups.push({
+            id: groupId,
+            title: "",
+            color: "grey",
+            collapsed: false,
+            windowId: first?.windowId ?? 1,
+          } as chrome.tabGroups.TabGroup);
+        }
         setGroup(options.tabIds, groupId);
         return Promise.resolve(groupId);
       },
@@ -269,9 +310,18 @@ export const installFakeChrome = () => {
     },
     tabGroups: {
       TAB_GROUP_ID_NONE: -1,
-      query: () => Promise.resolve(groups),
-      update: () => Promise.resolve(undefined),
-      onUpdated: event(),
+      query: () => Promise.resolve(structuredClone(groups)),
+      // Real, so the chevron collapses its group and a rename shows.
+      update: (id: number, changes: Partial<chrome.tabGroups.TabGroup>) => {
+        const group = groups.find((candidate) => candidate.id === id);
+        if (group) {
+          Object.assign(group, changes);
+          fireGroup(group);
+        }
+        return Promise.resolve(group);
+      },
+      move: moveGroup,
+      onUpdated: onGroupUpdated,
     },
     windows: {
       WINDOW_ID_NONE: -1,

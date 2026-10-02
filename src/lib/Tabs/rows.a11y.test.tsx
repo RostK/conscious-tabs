@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import axe from "axe-core";
+import type axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { countNodes, expectNoViolations, runAxe } from "../../test/axe.ts";
@@ -550,8 +550,11 @@ const renderInMain = async (fixture: RowFixture) => {
   return { ...view, main };
 };
 
+// Through `runAxe`, like every other run here, so the refusal of `rules` and
+// `disableOtherRules` covers this one too. The result types are named because
+// the default asks for violations only.
 const runFull = (el: Element) =>
-  axe.run(el, {
+  runAxe(el, {
     resultTypes: ["violations", "incomplete", "passes", "inapplicable"],
   });
 
@@ -716,7 +719,7 @@ describe("AC-31 · a placeholder between two rows", () => {
     );
     expect(owned).toHaveLength(items.length);
 
-    const results = await axe.run(main, STRUCTURE_RULES);
+    const results = await runAxe(main, STRUCTURE_RULES);
     expect(countNodes(results, "aria-required-children")).toBe(0);
     expect(countNodes(results, "aria-required-parent")).toBe(0);
     expectNoViolations(results);
@@ -739,7 +742,7 @@ describe("AC-31 · a placeholder between two rows", () => {
       .find(isPlaceholder) as HTMLElement;
 
     placeholder.setAttribute("role", "group");
-    const results = await axe.run(main, STRUCTURE_RULES);
+    const results = await runAxe(main, STRUCTURE_RULES);
 
     expect(countNodes(results, "aria-required-children")).toBeGreaterThan(0);
   });
@@ -1055,5 +1058,36 @@ describe("NFR-6 · no shipped file imports axe-core", () => {
     };
     expect(manifest.devDependencies).toHaveProperty("axe-core");
     expect(manifest.dependencies ?? {}).not.toHaveProperty("axe-core");
+  });
+});
+
+/**
+ * AC-2's other half. The first is that no rule is switched off; this is that
+ * no *control* is, which would clear `nested-interactive` just as well: a
+ * control hidden with `aria-hidden`, or stripped of its role, stops being an
+ * interactive descendant and stops being reachable by a screen reader.
+ */
+describe("AC-2 · no row control is taken out of the accessibility tree", () => {
+  it.each(
+    [FIVE_TABS, TWENTY_TABS, MIXED_WINDOWS, COLLAPSED_GROUP].map(
+      (fixture) => [fixture.name, fixture] as const,
+    ),
+  )("%s", async (_name, fixture) => {
+    const { container } = await renderList(fixture);
+    const controls = [
+      ...container.querySelectorAll<HTMLElement>("[data-row-control]"),
+    ];
+
+    // A scan of nothing passes trivially.
+    expect(controls.length).toBeGreaterThanOrEqual(
+      container.querySelectorAll('[role="toolbar"]').length,
+    );
+    controls.forEach((control) => {
+      expect(control.closest("[aria-hidden]")).toBeNull();
+      expect(control.closest("[inert]")).toBeNull();
+      expect(control).not.toHaveAttribute("role", "presentation");
+      expect(control).not.toHaveAttribute("role", "none");
+      expect(control).toHaveAccessibleName();
+    });
   });
 });

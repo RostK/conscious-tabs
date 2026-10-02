@@ -61,7 +61,8 @@ describe("the row layout helpers are each defined once", () => {
   it("can see the file that defines them", () => {
     // A scan of nothing passes trivially.
     expect(FILES.map(({ path }) => path)).toContain(HOME);
-    expect(FILES.some(({ path }) => path.endsWith(".test.ts"))).toBe(false);
+    // And the rows that use the helpers, so a copy in one would be seen.
+    expect(FILES.length).toBeGreaterThan(20);
   });
 
   it.each(["rowControlsSx", "rowTailMaskSx", "rowTailReserveSx"])(

@@ -8,6 +8,7 @@ import {
 import { ComponentProps, FC, MouseEventHandler, ReactNode } from "react";
 
 import {
+  ROW_CHEVRON_NAME,
   rowControlProps,
   rowControlsSx,
   rowPrimaryProps,
@@ -15,18 +16,6 @@ import {
 } from "../elements/rowControls.ts";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
 import { TabItem } from "../types.ts";
-
-/**
- * The chevron's accessible name — SPEC-04 AC-6, AC-33.
- *
- * A PROPOSAL, awaiting a listen (PLAN-SPEC-04 T-2b, "Open for T-4/T-5"), and
- * the same word as the group row's chevron on purpose. It is stable: an APG
- * disclosure button keeps one name and lets `aria-expanded` speak, so a screen
- * reader says "Tabs, button, expanded" and "Tabs, button, collapsed". The
- * toolbar around it has already said which window, so this does not. Changing
- * the wording is this one line, plus its assertions in WindowDisplay.test.tsx.
- */
-const CHEVRON_NAME = "Tabs";
 
 export const WindowDisplay: FC<{
   tabs: TabItem[];
@@ -84,7 +73,7 @@ export const WindowDisplay: FC<{
       <IconButton
         edge="start"
         {...rowPrimaryProps}
-        aria-label={CHEVRON_NAME}
+        aria-label={ROW_CHEVRON_NAME}
         aria-expanded={!!isOpen}
         onClick={(e) => {
           e.stopPropagation();

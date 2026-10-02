@@ -200,7 +200,7 @@ describe("a tab title supplied by a web page", () => {
   });
 
   it("survives control characters and right-to-left overrides", () => {
-    const { container } = renderTab(tab({ title: "sloppy‮gnp.exe  name" }));
+    const { container } = renderTab(tab({ title: "sloppy\u202egnp.exe\u0000\u0007 name" }));
 
     expect(container.textContent).toContain("sloppy");
     expect(container.querySelector("script")).toBeNull();

@@ -39,6 +39,44 @@ export const rowPrimaryProps = {
 } as const;
 
 /**
+ * Where a tab row keeps its own name, without a position (SPEC-04 AM-3).
+ *
+ * `RowList` reads it and writes the name plus ", n of N" into `aria-label`
+ * after commit. One constant for both ends: the row that writes it and the
+ * list that reads it agree on nothing else, and a rename on one side alone
+ * would stop the numbering with no error anywhere.
+ */
+export const ROW_LABEL_ATTRIBUTE = "data-row-label";
+
+/**
+ * Spread onto a row that `RowList` should number.
+ *
+ * React writes the base name to `aria-label` as well, so a row outside a
+ * `RowList` (the drag overlay, a test rendering it alone) still has one.
+ * Inside a list, `RowList` overwrites `aria-label` with the same name plus its
+ * position. React rewrites both only when the name changes, and never on a
+ * render where it did not, which is what keeps the position.
+ */
+export const rowLabelProps = (name: string) => ({
+  "aria-label": name,
+  [ROW_LABEL_ATTRIBUTE]: name,
+});
+
+/**
+ * The accessible name of a group or window row's chevron — SPEC-04 AC-6, AC-33.
+ *
+ * A PROPOSAL, to be judged by ear (PLAN-SPEC-04 T-2b, "Open for T-4/T-5"). It
+ * is stable on purpose: an APG disclosure button keeps one name and lets
+ * `aria-expanded` speak, so a screen reader says "Tabs, button, expanded" and
+ * "Tabs, button, collapsed". "Expand"/"Collapse" in the name would say the
+ * state twice, and change the name under the user as they press it. The
+ * toolbar around it has already said which group or window, so this does not.
+ * One definition, so the two rows cannot drift: changing the wording is this
+ * line, plus its assertions in the two rows' tests.
+ */
+export const ROW_CHEVRON_NAME = "Tabs";
+
+/**
  * The row states in which a hidden control is showing, asked of the row rather
  * than of the control.
  *
@@ -317,19 +355,17 @@ export const useRowKeys = (): KeyboardEventHandler<HTMLDivElement> =>
     // reserves Shift+arrow for selection, and Ctrl/Alt+arrow are the browser's.
     if (!isPlainArrow(event)) return;
     const row = event.currentTarget;
-    // The row is a stop only while it can hold focus. The tab row is a
-    // toolbar at tabIndex -1 and never does, so it could not match
-    // `activeElement`, and Left from the first control would `focus()` a
-    // non-focusable div (SPEC-04 D-9). The group and window rows are still
-    // focusable `ListItemButton`s until T-4 and T-5 convert them, and without
-    // the row here Right from a focused one finds no stop and does nothing —
-    // their controls are unreachable, and Left from the first cannot come back.
-    const stops: HTMLElement[] = [
-      ...(row.tabIndex >= 0 ? [row] : []),
-      ...row.querySelectorAll<HTMLElement>("[data-row-control]"),
-    ];
-    const at = stops.indexOf(document.activeElement as HTMLElement);
-    if (at < 0) return;
+    const stops = [...row.querySelectorAll<HTMLElement>("[data-row-control]")];
+    // The row is not a stop: every row is a toolbar at tabIndex -1, which Tab
+    // never lands on (SPEC-04 D-9). But -1 is still focusable by a click, and a
+    // click on a row's padding leaves focus on the row itself. Found in review:
+    // from there the arrows did nothing, so a pointer user who then reached
+    // for the keyboard was stuck. The row counts as standing just before its
+    // first control — Right enters the walk, Left has nowhere to go.
+    const focused = document.activeElement;
+    const at =
+      focused === row ? -1 : stops.indexOf(focused as HTMLElement);
+    if (at < 0 && focused !== row) return;
     const next = at + (event.key === "ArrowRight" ? 1 : -1);
     if (next < 0 || next >= stops.length) return;
     event.preventDefault();

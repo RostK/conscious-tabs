@@ -93,10 +93,13 @@ const placeOf = (drag: Dragged, zone: DZCurrentData | undefined): Place => {
     // that belongs to a group, in that group (`chrome.tabs.group`).
     case "tab": {
       if (!isTab(data)) return UNKNOWN;
-      const own = Array.isArray(drag)
-        ? drag.some(({ id }) => id !== undefined && id === data.id)
-        : drag?.type === "tab" && drag.id === data.id;
-      if (own) return OWN;
+      // Only a single tab can be over its own place. A selection dropped on
+      // one of its own tabs is still moved — `handleDrop` runs `moveTabsOnTab`
+      // for every array — so calling that "where it started" was a lie the
+      // drop then contradicted. Found in review.
+      if (!Array.isArray(drag) && drag?.type === "tab" && drag.id === data.id) {
+        return OWN;
+      }
       const joins = !draggedGroup && data.groupId >= 0;
       const tail = joins ? ", in its group" : "";
       return {
@@ -152,21 +155,54 @@ const dragOf = (active: { data: { current?: unknown } }): Dragged =>
 const zoneOf = (over: { data: { current?: unknown } } | null) =>
   over ? (over.data.current as DZCurrentData | undefined) : undefined;
 
+/**
+ * The pick-up sentence, for as long as it could still be cut off.
+ *
+ * A tab row is removed the moment it is picked up, the row below slides into
+ * its place, and dnd-kit reports that row as the first thing the drag is over.
+ * Measured in a browser: "Picked up X." was replaced by "Before Y." 55 ms
+ * later, which leaves a screen reader no time to say what is being moved. So
+ * the first place spoken soon after a pick-up carries the pick-up with it.
+ *
+ * Module state, and reset at every end and cancel: dnd-kit calls these one
+ * drag at a time.
+ */
+const PICKUP_FOLD_MS = 500;
+let pickedUp: { sentence: string; at: number } | undefined;
+
 export const dragAnnouncements: Announcements = {
-  onDragStart: ({ active }) => `Picked up ${subjectOf(dragOf(active))}.`,
+  onDragStart: ({ active }) => {
+    const sentence = `Picked up ${subjectOf(dragOf(active))}.`;
+    pickedUp = { sentence, at: Date.now() };
+    return sentence;
+  },
 
   // Silence over nothing: a pointer or arrow passing through gaps would
   // otherwise read out a sentence per gap, and the last real one is still true.
   onDragOver: ({ active, over }) => {
+    if (!over) return undefined;
     const drag = dragOf(active);
     const place = placeOf(drag, zoneOf(over));
-    if (!over) return undefined;
-    if (place.kind === "at") return `${place.over}.`;
-    if (place.kind === "own") return `${subjectOf(drag, true)}, where it started.`;
+    const lead =
+      pickedUp && Date.now() - pickedUp.at <= PICKUP_FOLD_MS
+        ? pickedUp.sentence
+        : undefined;
+    if (place.kind === "at") {
+      pickedUp = undefined;
+      return lead ? `${lead} ${place.over}.` : `${place.over}.`;
+    }
+    if (place.kind === "own") {
+      // Straight after the pick-up this adds nothing, and saying it would cut
+      // the pick-up off. The same sentence again changes nothing in the live
+      // region, so nothing is re-read.
+      if (lead) return lead;
+      return `${subjectOf(drag, true)}, where it started.`;
+    }
     return undefined;
   },
 
   onDragEnd: ({ active, over }) => {
+    pickedUp = undefined;
     const drag = dragOf(active);
     if (!over) return `${subjectOf(drag, true)} put back.`;
     const place = placeOf(drag, zoneOf(over));
@@ -177,8 +213,10 @@ export const dragAnnouncements: Announcements = {
     return `${subjectOf(drag, true)} put back.`;
   },
 
-  onDragCancel: ({ active }) =>
-    `Cancelled. ${subjectOf(dragOf(active), true)} put back.`,
+  onDragCancel: ({ active }) => {
+    pickedUp = undefined;
+    return `Cancelled. ${subjectOf(dragOf(active), true)} put back.`;
+  },
 };
 
 /**
