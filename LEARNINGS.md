@@ -162,6 +162,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   corner does not move and dnd-kit has nothing to compensate for. Evidence:
   `src/lib/Tabs/elements/rowControls.ts` (`rowWhileDraggedSx`),
   `plans/MANUAL-SWEEP-SPEC-04.md` ("Listening session").
+- 2026-10-03 — **To test that something does no work, count the work.** `RowList` renumbered
+  every row for any node added or removed inside it, and nothing visible was wrong, so no
+  assertion about names could fail. A `vi.spyOn(list, "querySelectorAll")` on the list element
+  could: four calls for a ripple and a placeholder coming and going, none after the observer
+  learned to ask whether a row was involved. Wait a macrotask (`setTimeout(…, 0)`) before
+  asserting "not called" — a MutationObserver reports in a microtask, and an assertion made in
+  the same tick passes whatever the observer would have done. Evidence:
+  `src/lib/Tabs/elements/RowList.tsx` (`touchesRows`), `RowList.test.tsx` ("renumbers for rows").
 
 ## What Doesn't Work
 
@@ -514,6 +522,23 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   handler only when it does something *different* from the row (Select, Close), and then stop
   the click. Evidence: `src/lib/Tabs/TabsGroup/GroupDisplay.tsx` (`handleClick`),
   `src/lib/Tabs/Window/WindowDisplay.tsx`.
+- 2026-10-03 — **A cell that takes a row's place in the list and is not a row is `decorative`:
+  no role, and `aria-hidden`.** `TabGrid` is every row's `listitem`, and a drop placeholder and
+  a window's end zone are `TabGrid`s too, so they were empty unnamed items for the length of a
+  drag. SPEC-04 AC-31 allows the other form, out of the tree, and that is what they are now.
+  Pass `decorative` for anything new of that kind. Two things follow for tests. `getAllByRole`
+  cannot see such a cell, so a precondition that placeholders *are there* has to be read off
+  the document (`.MuiGrid2-root[aria-hidden="true"]`), not asked of roles. And the row count is
+  then the same with a drag live as without, which is the assertion worth making. Evidence:
+  `src/lib/Tabs/elements/TabGrid.tsx`, `src/lib/Tabs/rows.a11y.test.tsx` (AC-31).
+- 2026-10-03 — **One drag has one owner: `useRowDrag`.** Start, end, cancel and a pointer press
+  are each one function there, and each says what it resets. `App` passes where focus goes home
+  to and is told three things — a drag began, a drop was refused, a dragged selection was moved —
+  which is what keeps the live region's words and the selection out of the hook. The two module
+  flags (`dragActive`, `focusOwed`) stay in `rowControls.ts` because rows read them without
+  subscribing; nothing but the hook writes them. A new rule about a drag goes in the hook, and
+  its test in `src/App.drop.test.tsx`, which drives `App`'s real `DndContext` and so held through
+  the move without an edit. Evidence: `src/lib/Tabs/DnD/useRowDrag.ts`.
 
 ## Decisions
 

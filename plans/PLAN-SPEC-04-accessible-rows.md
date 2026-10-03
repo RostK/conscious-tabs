@@ -59,8 +59,11 @@ the header is no longer true of this run. The three review gates then ran over e
     fired for the drops most likely to be refused. They are awaited now.
   - A drag ends as soon as dnd-kit reports the drop, before the drop is carried out.
   - The drop tests run on fake timers, and every new branch has a test that fails without it.
-  - Left as discuss-only: the drag lifecycle is about ninety lines in `App`'s body and would sit
-    better in a `useRowDrag` hook under `DnD/`, with the two module flags beside it (S-06).
+  - ~~Left as discuss-only: the drag lifecycle is about ninety lines in `App`'s body and would sit
+    better in a `useRowDrag` hook under `DnD/`, with the two module flags beside it (S-06).~~
+    Done on 2026-10-03 (`52c34a5`), after the review of #25 below found two ordering defects in
+    it. The hook is `DnD/useRowDrag.ts`. The two flags stay in `rowControls.ts`, where the rows
+    that read them are; the hook is the only thing that writes them.
 - ~~**A defect on `main`, found and not fixed here.** A dropped selection is never cleared: `App`
   reads `SelectionContext` above the `SelectionProvider` it renders, so its `dispatch` is the
   default no-op. It is outside SPEC-04. `App.drop.test.tsx` records it as an expected failure,
@@ -68,6 +71,22 @@ the header is no longer true of this run. The three review gates then ran over e
   (`124d79a`): `App` is only the providers around an `AppBody`. The expected failure is a plain
   test now, with two beside it — a refused move keeps the selection, and a single dragged tab
   leaves one alone.
+- **Review of PR #25, at `c177995`: seven findings, six answered.** Each fix has a test that was
+  red first, except the hook, which is a move the existing tests hold.
+  - A keyboard drop whose move finished late cleared a newer drop's focus check (`6eb49f7`).
+  - A press of the pointer did not end the handle's claim on focus, and one made while the move
+    was still awaited was answered by the caret jumping to the search field (`6eb49f7`).
+  - The group and window chevrons each repeated the row's own click, and the two group copies
+    disagreed about a group that had gone. They have no handler now (`9f4f676`).
+  - The list renumbered on every node added or removed inside it. It renumbers when a row
+    arrives, leaves or is renamed (`cd80ce8`).
+  - A drop placeholder, and the zone at the end of each window, were empty unnamed list items for
+    the length of a drag. They are out of the accessibility tree, which is AC-31's other allowed
+    form (`9891154`). T-1 below still describes the first form; D-4's walk order is untouched.
+  - The drag lifecycle is one hook (`52c34a5`, and S-06 above).
+  - **Open, and the user's to decide:** a tab row says "n of N" counting tab rows (AM-3), while
+    the list's own item count also includes group and window rows. NVDA did not announce the
+    list's size in the listening session, so it was not heard there.
 
 **Both decisions below were made on 2026-10-02, by ear, during the listening session.** (1) The
 name carries the state, and AC-16 is amended to say so: SPEC-04 AM-4. (2) "Switch" stands, with
