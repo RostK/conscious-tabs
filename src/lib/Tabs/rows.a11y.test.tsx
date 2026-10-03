@@ -676,10 +676,12 @@ const STRUCTURE_RULES = {
 /**
  * What the list owns, as the accessibility tree sees it: its children, reaching
  * through the wrappers that have no role, no aria and no tabindex (axe treats
- * those as transparent, which is why the `Grid` containers can sit there).
+ * those as transparent, which is why the `Grid` containers can sit there), and
+ * leaving out what `aria-hidden` has taken from the tree.
  */
 const ownedBy = (parent: Element): Element[] =>
   [...parent.children].flatMap((child) => {
+    if (child.getAttribute("aria-hidden") === "true") return [];
     const transparent =
       /^(DIV|SPAN)$/.test(child.tagName) &&
       !child.hasAttribute("role") &&
@@ -688,32 +690,41 @@ const ownedBy = (parent: Element): Element[] =>
     return transparent ? ownedBy(child) : [child];
   });
 
-/** A placeholder is a `listitem` with nothing in it; every real row has content. */
-const isPlaceholder = (item: Element) => item.childElementCount === 0;
+/**
+ * A placeholder is a row-sized cell with nothing in it, out of the tree. Read
+ * off the document, because `getAllByRole` no longer sees it — which is the
+ * point, and also why the precondition below cannot be asked of roles.
+ */
+const placeholdersIn = (list: Element) =>
+  [...list.querySelectorAll('.MuiGrid2-root[aria-hidden="true"]')].filter(
+    (cell) => cell.childElementCount === 0,
+  );
 
 describe("AC-31 · a placeholder between two rows", () => {
-  it("leaves the list owning only listitems, and the required-parent rules clean", async () => {
+  it("leaves the list owning only its rows, and the required-parent rules clean", async () => {
     forceOver.on = true;
     const { main } = await renderInMain(MIXED_WINDOWS);
+    const list = screen.getByRole("list");
 
-    const items = screen.getAllByRole("listitem");
-    const between = items.filter(
-      (item, at) =>
-        isPlaceholder(item) &&
-        at > 0 &&
-        at < items.length - 1 &&
-        !isPlaceholder(items[at - 1]) &&
-        !isPlaceholder(items[at + 1]),
+    const placeholders = placeholdersIn(list);
+    const isItem = (el: Element | null) =>
+      el?.getAttribute("role") === "listitem";
+    const between = placeholders.filter(
+      (cell) =>
+        isItem(cell.previousElementSibling) && isItem(cell.nextElementSibling),
     );
 
     // The precondition: placeholders are there, and at least one sits with a
     // real row on each side of it, in the order a reader meets them.
-    expect(items.filter(isPlaceholder).length).toBeGreaterThan(1);
+    expect(placeholders.length).toBeGreaterThan(1);
     expect(between.length).toBeGreaterThan(0);
-    // And the rows are all still there beside them.
+    // And the rows are all still there beside them, and are all the list has:
+    // the same eight items as with no drag at all.
     expect(screen.getAllByRole("toolbar")).toHaveLength(8);
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(8);
 
-    const owned = ownedBy(screen.getByRole("list"));
+    const owned = ownedBy(list);
     expect(owned.map((child) => child.getAttribute("role"))).toEqual(
       owned.map(() => "listitem"),
     );
@@ -733,14 +744,13 @@ describe("AC-31 · a placeholder between two rows", () => {
 
   // Seeing it fail on the shape it exists to catch. Without this the case above
   // could be green because the rules are blind to a placeholder, and the fix it
-  // guards (a placeholder that is a `listitem`) could be undone unseen.
-  it("would fail on a placeholder that is not a listitem", async () => {
+  // guards (a placeholder that is out of the tree) could be undone unseen.
+  it("would fail on a placeholder that is in the tree and is not a listitem", async () => {
     forceOver.on = true;
     const { main } = await renderInMain(MIXED_WINDOWS);
-    const placeholder = screen
-      .getAllByRole("listitem")
-      .find(isPlaceholder) as HTMLElement;
+    const [placeholder] = placeholdersIn(screen.getByRole("list"));
 
+    placeholder.removeAttribute("aria-hidden");
     placeholder.setAttribute("role", "group");
     const results = await runAxe(main, STRUCTURE_RULES);
 
