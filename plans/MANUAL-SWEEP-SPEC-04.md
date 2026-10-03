@@ -339,6 +339,12 @@ view, the float, and eighty rows.
       **Structure passes 2026-10-02 (Chromium), real drag:** with a drag live there were two more
       `listitem`s than toolbars (the placeholders), no other role inside the list, and the drag
       overlay sat outside `<main>`. **Still open, by ear:** how it reads.
+      **Changed 2026-10-03, after that pass:** a placeholder, and the empty zone at the end of each
+      window, are out of the accessibility tree now (`aria-hidden`, AC-31's other allowed form), so
+      the count above no longer holds: with a drag live the list has exactly as many `listitem`s as
+      toolbars. **By ear, expect** nothing to be read for a placeholder at all, in browse mode
+      included; where a drop would land is said only by the drag's own announcements. Not yet
+      re-checked in a real Chromium or with NVDA.
 - [ ] **AC-14 · pointer reordering is unchanged** — drag a row by its body with the mouse.
 - [x] **E-6 · a group row mid-drag** — a tab row unmounts the instant it is picked up; a group row
       does not. Pick up a **group** and press an arrow before hovering anything.

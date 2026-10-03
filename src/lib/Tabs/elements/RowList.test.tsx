@@ -1,3 +1,4 @@
+import { DndContext } from "@dnd-kit/core";
 import {
   act,
   fireEvent,
@@ -6,6 +7,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { expectNoViolations,runAxe } from "../../../test/axe.ts";
@@ -28,7 +30,9 @@ import { TabsView } from "../../../views/TabsView/index.tsx";
 import { DropPlaceholder } from "../DnD";
 import { SelectionProvider } from "../selection";
 import { TabDisplay } from "../Tab/TabDisplay.tsx";
+import { TabListItem } from "../Tab/TabListItem.tsx";
 import { TabItem } from "../types.ts";
+import { WindowDropzone } from "../Window/WindowDropzone.tsx";
 import { RowList } from "./RowList.tsx";
 
 // `isOver` comes from dnd-kit and needs a live drag to become true. Forcing it
@@ -299,8 +303,21 @@ describe("E-4 · no list before there is a row to put in it", () => {
   }
 });
 
-describe("AC-31 · a drop placeholder is a row, so it is an item (E-14)", () => {
-  it("is a listitem between two rows and satisfies the list rules", async () => {
+/**
+ * AC-31 gives what a drag inserts two ways to be legal: a `listitem`, or out of
+ * the accessibility tree. It was a `listitem` at first. Found in review: that
+ * made every placeholder, and every window's end zone, an empty item with no
+ * name — a blank entry to anyone reading the list during a drag, and a list
+ * whose size changed with every arrow press. They are out of the tree now. What
+ * says where a drop would land is the drag's own announcement.
+ */
+describe("AC-31 · what a drag inserts is not a row, so it is not an item (E-14)", () => {
+  /** A `TabGrid` that is in the document and not in the tree. */
+  const notItems = (container: HTMLElement) => [
+    ...container.querySelectorAll('.MuiGrid2-root[aria-hidden="true"]'),
+  ];
+
+  it("keeps a placeholder between two rows out of the tree, and satisfies the list rules", async () => {
     const { container } = render(
       <RowList>
         <div role="listitem">before</div>
@@ -309,22 +326,69 @@ describe("AC-31 · a drop placeholder is a row, so it is an item (E-14)", () => 
       </RowList>,
     );
 
-    const items = screen.getAllByRole("listitem");
-    expect(items).toHaveLength(3);
-    expect(items[1]).toHaveAttribute("role", "listitem");
+    const [placeholder, ...others] = notItems(container);
+    expect(others).toHaveLength(0);
+    expect(placeholder.previousElementSibling).toHaveTextContent("before");
+    expect(placeholder.nextElementSibling).toHaveTextContent("after");
+    // No role to be an unallowed child with, should it ever come back in.
+    expect(placeholder).not.toHaveAttribute("role");
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expectNoViolations(await runAxe(container, STRUCTURE_RULES));
   });
 
-  it("does not nest the window row's placeholder inside the window row's item", async () => {
+  it("adds nothing to the list's items when the window rows' placeholders show", async () => {
     forceOver.on = true;
     const { container } = await renderList(MIXED_WINDOWS);
 
-    // Two window rows, each now with a placeholder beside its header.
-    expect(screen.getAllByRole("listitem")).toHaveLength(8 + 2);
+    // Two window rows, each now with a placeholder beside its header, and
+    // the same eight items as without them.
+    expect(notItems(container)).toHaveLength(2);
+    expect(screen.getAllByRole("listitem")).toHaveLength(8);
     for (const item of screen.getAllByRole("listitem")) {
       expect(within(item).queryAllByRole("listitem")).toHaveLength(0);
     }
     expectNoViolations(await runAxe(container, STRUCTURE_RULES));
+  });
+
+  // The end of a window is a zone with nothing in it, mounted for the whole of
+  // every drag. A real pick-up, because that is what mounts it.
+  it("keeps a window's end zone out of the tree for the length of a drag", async () => {
+    installChrome();
+    const row: TabItem = {
+      type: "tab",
+      id: 1,
+      index: 0,
+      windowId: 1,
+      groupId: -1,
+      active: false,
+      highlighted: false,
+      title: "First tab",
+      url: "https://example.com/",
+    };
+    const { container } = render(
+      <SelectionProvider>
+        <DndContext>
+          <RowList>
+            <TabListItem tab={row} />
+            <WindowDropzone window={{ id: 1 } as chrome.windows.Window} />
+          </RowList>
+        </DndContext>
+      </SelectionProvider>,
+    );
+    expect(notItems(container)).toHaveLength(0);
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+
+    const handle = screen.getByRole("button", { name: "Reorder First tab" });
+    handle.focus();
+    await userEvent.keyboard(" ");
+    await waitFor(() => expect(notItems(container)).toHaveLength(1));
+
+    // The dragged row is still an item, and the zone has not become one.
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expectNoViolations(await runAxe(container, STRUCTURE_RULES));
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(notItems(container)).toHaveLength(0));
   });
 });
 

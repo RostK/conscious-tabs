@@ -17,8 +17,10 @@ export const WindowDropzone: FC<
   return (
     <>
       {isOver && <DropPlaceholder />}
+      {/* Somewhere to drop, mounted for the length of every drag, with nothing
+          in it. Not a row, so not an item: see `decorative` on `TabGrid`. */}
       {active?.id && (
-        <TabGrid>
+        <TabGrid decorative>
           <Dropzone sx={{ minHeight: "2rem" }} />
         </TabGrid>
       )}
