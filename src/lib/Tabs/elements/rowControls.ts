@@ -261,7 +261,7 @@ export const selectedProps = (selected: boolean) =>
  * KeyboardSensor saw it.
  *
  * Whether a drag is running is asked at event time, not subscribed to.
- * `App`'s DndContext handlers set the flag below, which costs nothing and
+ * `useRowDrag`'s handlers set the flag below, which costs nothing and
  * cannot drift: both of the alternatives tried here were worse.
  * `aria-pressed` on the focused element is dnd-kit's activator marker, but
  * the attribute means "this toggle is on", so the first row control to
@@ -272,7 +272,7 @@ export const selectedProps = (selected: boolean) =>
  */
 let dragActive = false;
 
-/** Called by App's DndContext on drag start, end and cancel. */
+/** Called by `useRowDrag` on drag start, end and cancel. */
 export const setRowDragActive = (value: boolean): void => {
   dragActive = value;
 };
@@ -288,9 +288,9 @@ export const setRowDragActive = (value: boolean): void => {
  * focus is gone. Measured in a browser: focus fell to the document body, and
  * the next arrow press did nothing (SPEC-04 AC-13).
  *
- * So `App` records which row was dropped, and that row's handle takes focus
- * as it mounts. Asked at mount, not subscribed to, for the reason `dragActive`
- * above is a flag: a context would re-render every row.
+ * So `useRowDrag` records which row was dropped, and that row's handle takes
+ * focus as it mounts. Asked at mount, not subscribed to, for the reason
+ * `dragActive` above is a flag: a context would re-render every row.
  *
  * It lapses, because the rebuild either follows the drop within moments or
  * does not happen at all. And a handle only takes focus that nobody holds:
@@ -299,7 +299,7 @@ export const setRowDragActive = (value: boolean): void => {
 const FOCUS_OWED_MS = 3000;
 let focusOwed: { key: string; until: number } | undefined;
 
-/** Called by App when a keyboard drag is dropped. `undefined` clears it. */
+/** Called by `useRowDrag` on a keyboard drop. `undefined` clears it. */
 export const oweFocusTo = (key: string | undefined): void => {
   focusOwed =
     key === undefined ? undefined : { key, until: Date.now() + FOCUS_OWED_MS };
@@ -313,7 +313,7 @@ export const isOwedFocus = (key: string | undefined): boolean =>
   Date.now() <= focusOwed.until;
 
 /**
- * The name a row's handle and App agree on for one dragged row.
+ * The name a row's handle and `useRowDrag` agree on for one dragged row.
  *
  * Nothing for a row with no id: a key built from `undefined` would be shared
  * by every such row, and each would think itself owed.
