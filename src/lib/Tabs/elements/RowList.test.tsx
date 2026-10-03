@@ -636,6 +636,58 @@ describe("AM-3 · RowList numbers the tab rows", () => {
     });
   });
 
+  // Found in review: the observer renumbered for every node that came or went
+  // anywhere inside the list. A ripple is a span added on each press and each
+  // keyboard focus, and a drop placeholder arrives and leaves on every change
+  // of hover, so on the drag path each of those cost a query over every row
+  // and two reads on each. Bare elements again, so the count is this file's.
+  it("renumbers for rows, and not for anything else that comes and goes inside the list", async () => {
+    const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
+    render(
+      <RowList>
+        <div role="listitem" data-row-label="a" aria-label="a">
+          <span data-testid="inside" />
+        </div>
+      </RowList>,
+    );
+    const list = screen.getByRole("list");
+    const first = screen.getByRole("listitem");
+    expect(first).toHaveAttribute("aria-label", "a, 1 of 1");
+    const queried = vi.spyOn(list, "querySelectorAll");
+
+    // What a ripple does: a node inside a row, there and gone again.
+    const ripple = document.createElement("span");
+    screen.getByTestId("inside").append(ripple);
+    await settled();
+    ripple.remove();
+    await settled();
+    // What a placeholder does: a node between rows that is not one.
+    const placeholder = document.createElement("div");
+    list.append(placeholder);
+    await settled();
+    placeholder.remove();
+    await settled();
+
+    expect(queried).not.toHaveBeenCalled();
+
+    // A row arriving is still followed, and so is one that arrives wrapped.
+    const wrapper = document.createElement("div");
+    const second = document.createElement("div");
+    second.setAttribute("role", "listitem");
+    second.setAttribute("data-row-label", "b");
+    wrapper.append(second);
+    list.append(wrapper);
+    await waitFor(() => {
+      expect(second).toHaveAttribute("aria-label", "b, 2 of 2");
+    });
+    expect(first).toHaveAttribute("aria-label", "a, 1 of 2");
+
+    wrapper.remove();
+    await waitFor(() => {
+      expect(first).toHaveAttribute("aria-label", "a, 1 of 1");
+    });
+  });
+
   it("leaves a row outside any list with the name it has on its own", () => {
     installChrome();
     render(
