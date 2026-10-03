@@ -84,9 +84,10 @@ the header is no longer true of this run. The three review gates then ran over e
     the length of a drag. They are out of the accessibility tree, which is AC-31's other allowed
     form (`9891154`). T-1 below still describes the first form; D-4's walk order is untouched.
   - The drag lifecycle is one hook (`52c34a5`, and S-06 above).
-  - **Open, and the user's to decide:** a tab row says "n of N" counting tab rows (AM-3), while
-    the list's own item count also includes group and window rows. NVDA did not announce the
-    list's size in the listening session, so it was not heard there.
+  - **Kept as it is, by the user's decision on 2026-10-03:** a tab row says "n of N" counting tab
+    rows (AM-3), while the list's own item count also includes group and window rows. NVDA did
+    not announce the list's size in the listening session, so it was not heard there. Recorded
+    as known and accepted in SPEC-04 §13.6, with the two alternatives that were turned down.
 
 **Both decisions below were made on 2026-10-02, by ear, during the listening session.** (1) The
 name carries the state, and AC-16 is amended to say so: SPEC-04 AM-4. (2) "Switch" stands, with
