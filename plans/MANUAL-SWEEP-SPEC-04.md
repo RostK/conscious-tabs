@@ -275,6 +275,103 @@ person or an inbox are replaced with `‹Gmail tab›`.
 **Still to run:** Part 2 again on the new build, then the group's menu, search results, the full
 view, the float, and eighty rows.
 
+## Listening session — 2026-10-06, NVDA and Chrome, side panel
+
+Run by the user with the Speech Viewer open, to hear the placeholder change of 2026-10-03
+(AC-31 / E-14 in §D). One keyboard drag, in focus mode. Browse mode was not run.
+
+- **Setup:** a build of `accessible-rows`. The commit was not noted, and neither was the NVDA or
+  the Chrome version. The handle's instructions heard are the ones in `announcements.ts` at
+  `673a8be`.
+- **Tabs:** 23 in window 1, and a second window of 10 with one unnamed group, collapsed when the
+  drag began. The tab dragged was window 1's current tab and its last.
+- **Recording:** from the Speech Viewer. A title that names a person is `‹personal site›` and one
+  that names another repository is `‹pull request›`. What Windows said while the tester was away
+  from the panel (the desktop, the taskbar, the Speech Viewer) is left out, and `…` marks where.
+
+```
+search  edit  Search…  blank
+main landmark
+Open tabs  list
+where am i, rostk.github.io, current tab, 23 of 23  tool bar
+Switch  button
+Select where am i  button
+Close where am i  button
+Reorder where am i  draggable  Space picks up, arrows move, Space drops, Escape cancels.
+Picked up where am i.
+pressed
+Start of window.
+…
+End of window.
+Before ‹personal site›.
+Before where am i.
+Before API Tokens | Cloudflare.
+Before ‹pull request›.
+Before API Tokens | Cloudflare.
+Before where am i.
+Before ‹personal site›.
+End of window.
+Start of window.
+…
+Window 2, 10 tabs  tool bar
+Tabs  button  collapsed
+expanded
+Before group Untitled.
+Before Computer Coding Python Games for Kids By Carol Vorderman, in its group.
+Before Computer Coding Games in Scratch for Kids By Carol Vorderman, in its group.
+Before Escape Room: Game Zero By Christopher Edge, in its group.
+Before Computer Coding Games in Scratch for Kids By Carol Vorderman, in its group.
+Moved where am i before Computer Coding Games in Scratch for Kids By Carol Vorderman, in its group.
+unknown
+‹personal site›   (then the page itself, read from its banner down)
+```
+
+**The placeholder, in focus mode. Nothing was read for one.**
+
+- From "Picked up" to "Moved", every line the list spoke is one of the drag's own sentences. There
+  was no "list item", no "blank" and no stop without a name.
+- The drag passed placeholders between plain tabs, the end zone of window 1, and placeholders
+  inside a group in window 2. Window 2 was opened part-way through and the drag went on into it;
+  how it was opened was not noted.
+- **This does not settle AC-31.** A placeholder was never focusable, so focus mode would not have
+  read one before the change either, and did not on 2026-10-02. Browse mode is where an empty
+  `listitem` would have been met. The item in §D stays open.
+
+**From the 2026-10-02 list ("Part 2 again on the new build"): the pick-up half is confirmed.** The
+title was said once, and "Conscious Tabs, document" did not follow the pick-up. The other half, that
+a drop is not followed by the landmark, the list and the row read again, could not be heard: focus
+left the panel (finding 1).
+
+**Found. None is fixed, and none is decided.**
+
+1. **After the drop, focus was in a web page, not on Reorder.** NVDA said "unknown" and then read
+   the page of the tab beside the one that was moved.
+   - The tab moved was window 1's current tab, and it went to window 2. AC-13 passed on 2026-10-02
+     for a drop within a window and a drop into a group; this case was not in it.
+   - **Read from the code, not measured:** Chrome made the neighbouring tab current and gave its
+     page the focus. `settleFocus` in `useRowDrag.ts` acts only on focus nobody holds inside the
+     panel's own document, so it does not see this.
+   - **Not known:** whether an extension can take focus back into its side panel at all, and
+     whether `main` does the same. The drag code was moved in `52c34a5`, not changed.
+2. **"pressed" after each pick-up.** dnd-kit sets `aria-pressed` on the handle a drag starts from.
+   Since `96aef2b` (AM-5) the row stays mounted with focus on that handle, so NVDA reports the
+   change. It was not heard on 2026-10-02 because focus had fallen to the document by then.
+   `DragHandle.tsx` reads the same marker to keep Tab on the handle during a drag.
+3. **"Start of window." does not say which window.** It was the first thing heard after picking up
+   the last tab of window 1. The zone that says it is a window's header row (`in-window`), and here
+   that was most likely Window 2's, the row below; the transcript cannot show which. "End of
+   window." leaves the same thing out. With one window there is nothing to tell apart.
+
+Findings 2 and 3 are questions of how it sounds. A candidate wording is to be heard before it is
+built, as the row names were in §B.
+
+**One line not explained.** "Before where am i." was said while "where am i" was the tab being
+dragged. A dragged tab's own place is silent (`own`, in `announcements.ts`), so this should be a
+second tab with the same title. Not confirmed with the tester.
+
+**Still to run:** the same drag read in browse mode, for AC-31; a drop that stays in its window,
+heard to the end, for the half of Part 2 above; then everything the 2026-10-02 session left.
+
 ## C. The other two surfaces, and the narrow one  *(T-10)*
 
 - [ ] **AC-27 · the anchor tab** — repeat §B's first three items. Record any difference.
@@ -319,6 +416,9 @@ view, the float, and eighty rows.
       **Still open, by ear:** whether NVDA says the title once or twice across those two. The handle
       also still carries dnd-kit's `aria-roledescription="draggable"`, so it may be read as
       "draggable" in place of "button".
+      **Heard 2026-10-06:** the title once, in "Picked up ‹title›.", and the handle read as
+      "draggable", which was decided on 2026-10-02. **New:** NVDA says "pressed" after the pick-up
+      (finding 2 of that session), so this stays open.
 - [x] **AC-12 / AC-37 · the arrows, while a drag is live** — press ↑/↓. **Expect:** the item moves;
       focus does **not** move between controls. This is the half no jsdom test can reach.
       **Passed 2026-10-02 (Chromium):** the dragged row went from 199 px to 249 px on two Downs and
@@ -343,8 +443,10 @@ view, the float, and eighty rows.
       window, are out of the accessibility tree now (`aria-hidden`, AC-31's other allowed form), so
       the count above no longer holds: with a drag live the list has exactly as many `listitem`s as
       toolbars. **By ear, expect** nothing to be read for a placeholder at all, in browse mode
-      included; where a drop would land is said only by the drag's own announcements. Not yet
-      re-checked in a real Chromium or with NVDA.
+      included; where a drop would land is said only by the drag's own announcements.
+      **Heard 2026-10-06 (NVDA, the real side panel, focus mode):** nothing was read for a
+      placeholder or an end zone across one keyboard drag; see that listening session.
+      **Still open:** browse mode, which is the half the change is about.
 - [ ] **AC-14 · pointer reordering is unchanged** — drag a row by its body with the mouse.
 - [x] **E-6 · a group row mid-drag** — a tab row unmounts the instant it is picked up; a group row
       does not. Pick up a **group** and press an arrow before hovering anything.
