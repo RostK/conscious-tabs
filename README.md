@@ -15,7 +15,9 @@ and from there **floats on top** of your other applications in a small always-on
 - **Search** every open tab by title or URL across all windows.
 - **Multi-select** with `Ctrl`/`Cmd`-click (or the checkbox), then close, group, or move the
   selection to a new window in one action.
-- **Drag and drop** to reorder tabs and groups, or move them between windows.
+- **Drag and drop** to reorder tabs and groups, or move them between windows. From the keyboard too:
+  `Space` on a row's Reorder control picks it up, the arrow keys move it, `Space` drops it and
+  `Escape` puts it back, and a screen reader is told each place it passes.
 - **Undo** closed tabs from a snackbar (restores via the browser's session history).
 - **Audio at a glance** — a speaker badge marks every tab making noise. Mute one from its own row,
   or silence them all from the toolbar.

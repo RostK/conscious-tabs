@@ -39,7 +39,7 @@ What you can do
 
 • Tidy in bulk — Ctrl/⌘-click (or the checkbox) to select several tabs, then close, group, or move them to a new window in one action.
 
-• Drag and drop — reorder tabs and groups, or move them between windows.
+• Drag and drop — reorder tabs and groups, or move them between windows. It works from the keyboard too: Space picks a row up, the arrow keys move it, Space drops it and Escape puts it back, and a screen reader is told each place it passes.
 
 • Quiet the noise — see at a glance which tabs are playing sound. Mute one from its own row, or silence them all from the toolbar.
 

@@ -1,6 +1,6 @@
 # Privacy Policy — Conscious Tabs
 
-**Effective date:** 30 July 2026
+**Effective date:** 6 October 2026
 
 Conscious Tabs is a browser extension that helps you find, organise, and close
 your open tabs from the browser side panel. This policy explains what the
