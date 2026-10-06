@@ -159,9 +159,11 @@ export const WindowListItem: FC<{
     <>
       {!single && (
         <Dropzone>
-          {/* Around the header only. The placeholder below is itself a
-              listitem (TabGrid), so wrapping the whole Dropzone body would
-              nest one inside another and fire aria-required-parent. */}
+          {/* Around the header only. The placeholder below is not part of
+              this row: it marks where a drop would land, and is out of the
+              accessibility tree (`decorative` on `TabGrid`). It was a
+              listitem at first, and wrapping the whole Dropzone body would
+              then have nested one item inside another. */}
           <Box role="listitem">
             <WindowDisplay
               label={toolbarName(index, flatTabs.length, !!window.focused)}
