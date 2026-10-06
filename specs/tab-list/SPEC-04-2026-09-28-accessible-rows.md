@@ -895,6 +895,13 @@ Neither changes what is built. Both fix text that contradicted a decision alread
 - **E-8 and DEC-3** describe the entry point as `TabDisplay`'s `autoFocus`. SPEC-05 group A removed `autoFocus` before this spec was built. The entry point is `↓` from the search field, landing on the active tab's first control. DEC-3's decision stands: the active tab's row is where the keyboard enters, and re-entry lands on the first control.
 - **E-17, the note under AM-2 in §13.2, and PI-8** say a search-result group row's body click collapses the real group with nothing to show for it. That was true when written. `GroupDisplay` now takes a `collapsible` flag and returns early when it is false, which `GroupListItem` passes in search results (commit `81886bf`, already on `main`). The side effect is gone, so PI-8 is closed.
 
+### 13.6 From the review of the pull request — 2026-10-03
+
+Neither amends a criterion. One records which of two allowed forms was built, the other a difference that was looked at and kept.
+
+- **AC-31: what a drag inserts is out of the accessibility tree.** AC-31 allows a `listitem` or removal from the tree, and E-14 says the same. It was built as a `listitem` first. Review found that this made every drop placeholder, and the zone at the end of each window, an empty item with no name for the length of a drag, in a list whose size changed with each arrow press. They are `aria-hidden` now and carry no role. Where a drop would land is said by the drag's announcements (AC-15), which is the only place it was ever said. Not yet heard with a screen reader on this build.
+- **AC-3 and AM-3: two totals, known and accepted.** A tab row's "n of N" counts tab rows, as AM-3 says. The list's own size is the number of `listitem`s, which also counts group and window rows. A screen reader that announces a list's size could therefore say "list with 27 items" where the rows say "of 25". NVDA announced neither the size nor a position for this list (§13.3, and again on 2026-10-02), which is why AM-3 exists, so it was not heard. The alternatives were put to the user on 2026-10-03: saying "tab n of N", which adds a word to every row, and numbering every row, which makes a window row's "25 tabs" disagree with "of 27". AM-3 stands as written. Revisit if a screen reader that does announce the size is tested.
+
 ## 14. Traceability
 
 | AC                                | Where it lands                                                                                       |
