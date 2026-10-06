@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Conscious Tabs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A quieter way to handle tab overload. Find, tidy, group, mute, and close every open tab — from the side panel or floating on top.",
   "permissions": ["sidePanel", "tabs", "tabGroups", "sessions", "favicon"],
   "side_panel": {
