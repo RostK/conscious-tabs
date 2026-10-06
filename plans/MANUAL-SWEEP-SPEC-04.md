@@ -353,6 +353,7 @@ left the panel (finding 1).
      panel's own document, so it does not see this.
    - **Not known:** whether an extension can take focus back into its side panel at all, and
      whether `main` does the same. The drag code was moved in `52c34a5`, not changed.
+   - **Recorded against the criterion** in SPEC-04 §13.7: AC-13 is not met in this case.
 2. **"pressed" after each pick-up.** dnd-kit sets `aria-pressed` on the handle a drag starts from.
    Since `96aef2b` (AM-5) the row stays mounted with focus on that handle, so NVDA reports the
    change. It was not heard on 2026-10-02 because focus had fallen to the document by then.
@@ -361,6 +362,8 @@ left the panel (finding 1).
    the last tab of window 1. The zone that says it is a window's header row (`in-window`), and here
    that was most likely Window 2's, the row below; the transcript cannot show which. "End of
    window." leaves the same thing out. With one window there is nothing to tell apart.
+   **Not new, and wrongly listed as found:** the plan already has it under "Known and left"
+   (`PLAN-SPEC-04-accessible-rows.md`). What is new is that it was heard, and where.
 
 Findings 2 and 3 are questions of how it sounds. A candidate wording is to be heard before it is
 built, as the row names were in §B.
@@ -447,8 +450,9 @@ again, so what was found on 2026-10-02 and fixed in `96aef2b` is not heard any m
 **Heard again:** "pressed" after the pick-up (finding 2 of the first run).
 
 **New, and not decided:** in browse mode every row's toolbar is read with "clickable". NVDA says
-that of an element with a click listener, which here is most likely the row's own, the one that
-makes a click on the row's body switch tabs. It is not heard in focus mode.
+that of an element with a click listener, and the toolbar has one: `onClick` in `TabDisplay.tsx`,
+which is what makes a click on the row's body switch tabs. It predates #26. It is not heard in
+focus mode.
 
 **Verdict, 2026-10-06, the user's: good enough.** Nothing heard in either run today is urgent, and
 the listening stops here for now.
