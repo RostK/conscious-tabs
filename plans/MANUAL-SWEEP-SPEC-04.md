@@ -541,7 +541,20 @@ the listening stops here for now.
       **Passed 2026-10-06, second run (NVDA, browse mode, `480cbf2`):** with a placeholder between
       two rows, NVDA read from one row straight to the next, down and back up. The end zone of a
       window was not walked in browse mode.
-- [ ] **AC-14 · pointer reordering is unchanged** — drag a row by its body with the mouse.
+- [x] **AC-14 · pointer reordering is unchanged** — drag a row by its body with the mouse.
+      **Mechanics pass 2026-10-06 (Chromium, harness, 400 × 640, real mouse input, `main` at
+      `d775cc7`):** a row dragged by its body went to the top of its window; one dropped on a row
+      in a group joined the group ("Reading" went from 4 tabs to 5); one was reordered inside the
+      group. Each drag called `tabs.move`, and `tabs.group` where it joined a group, and none
+      called `tabs.update`, so a drag is not also a click. A click on a row's body called
+      `tabs.update` and `windows.update`. Close, Select and a group's chevron worked by mouse.
+      The same drag and the same click worked under `?host=float` and `?host=anchor`. The
+      harness's `tabs.update` does nothing, so a switch was seen as a call, not as a tab changing.
+      **Passed 2026-10-06 in real Chrome, by the user, on the unpacked build of `480cbf2`:** a
+      drag to reorder and a drag into a group, each followed in Chrome's own tab strip; a drag
+      leaving the current tab alone; a click switching tabs; Close; real favicons in the rows; and
+      one drag and one click each in the float and in the full view. Reported as "all good";
+      nothing was transcribed, and the Chrome version was not noted.
 - [x] **E-6 · a group row mid-drag** — a tab row unmounts the instant it is picked up; a group row
       does not. Pick up a **group** and press an arrow before hovering anything.
       **Passed 2026-10-02 (Chromium):** picking up "Reading" said "Group Reading, where it
