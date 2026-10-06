@@ -27,33 +27,27 @@ Productivity
 ## Detailed description
 
 ```
-A quieter way to handle tab overload.
-
-Conscious Tabs lives in your browser's side panel and mirrors every open tab — grouped by window and by Chrome tab group — so you can find, switch, tidy, and close them without hunting through a crowded tab strip. It's built to be calm and out of the way: no noise, no urgency, just your tabs, organised.
+Every open tab in your browser's side panel, grouped by window and tab group. Find, switch, tidy and close tabs without hunting through a crowded tab strip.
 
 What you can do
 
-• See the tab you're on — a pinned panel at the top keeps your current tab one click from close, mute, pin, duplicate, hard-reload, or move to a new window.
+• Current tab — close, mute, pin, duplicate, reload or move it, from a panel pinned at the top.
+• Search — filter all tabs by title or URL, across every window.
+• Bulk actions — select several tabs, then close, group or move them at once.
+• Drag and drop — reorder tabs and groups, or move them between windows.
+• Sound — see which tabs are playing audio, and mute one or all.
+• Undo — bring back a tab you just closed.
+• Float on top — pop it into a small always-on-top window that stays visible over your other apps.
 
-• Search everything — filter every open tab by title or URL across all your windows, instantly.
+Accessibility
 
-• Tidy in bulk — Ctrl/⌘-click (or the checkbox) to select several tabs, then close, group, or move them to a new window in one action.
-
-• Drag and drop — reorder tabs and groups, or move them between windows. It works from the keyboard too: Space picks a row up, the arrow keys move it, Space drops it and Escape puts it back, and a screen reader is told each place it passes.
-
-• Quiet the noise — see at a glance which tabs are playing sound. Mute one from its own row, or silence them all from the toolbar.
-
-• Undo closes — bring a tab back from a snackbar, restored via your browser's session history.
-
-• Float it on top — open Conscious Tabs in a tab, then float it into a small always-on-top window that stays visible over your other apps. Triage your tabs without switching back to the browser, and get your full browser width back while you do it.
-
-• Reach it all from the keyboard — press Ctrl+Shift+K (Command+Shift+K on a Mac) to open it with the cursor already in the search box, then one Down arrow to land on the tab you're on and Up to come back to the box. Rebind it at chrome://extensions/shortcuts. From there Tab steps between rows, the arrow keys reach the controls on the row you're on, and every button announces the tab, group, or window it acts on rather than just "Close". F6 — Chrome's own key for cycling browser panes — moves focus between the page and the panel in both directions, so the whole round trip stays on the keyboard.
-
-• Fits your browser — follows your system light / dark theme and sits natively in the side panel.
+• Keyboard — Ctrl+Shift+K (⌘+Shift+K on a Mac) opens it with the cursor in search. Tab moves between rows, Left and Right between a row's buttons.
+• Reordering — Space picks a tab up, the arrow keys move it, Space drops it.
+• Screen readers — every row and button says what it is and what it acts on ("Close Gmail", not just "Close"), and moves are announced. Tested with NVDA.
 
 Private by design
 
-Conscious Tabs works entirely on your machine. It doesn't collect, transmit, or sell any of your data — your tabs never leave your browser.
+Everything runs on your machine. Nothing is collected or sent anywhere.
 ```
 
 ## Single purpose
