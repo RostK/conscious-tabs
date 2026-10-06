@@ -450,7 +450,14 @@ again, so what was found on 2026-10-02 and fixed in `96aef2b` is not heard any m
 that of an element with a click listener, which here is most likely the row's own, the one that
 makes a click on the row's body switch tabs. It is not heard in focus mode.
 
-**Still to run:** everything the 2026-10-02 session left, and the three findings of the first run.
+**Verdict, 2026-10-06, the user's: good enough.** Nothing heard in either run today is urgent, and
+the listening stops here for now.
+
+- **Left as written, not scheduled:** the three findings of the first run (focus in a web page
+  after the current tab is dropped into another window, "pressed" after a pick-up, "Start of
+  window." not naming its window), "clickable" in browse mode, and whether a row's name should
+  follow a drop.
+- **Not run, and not claimed:** everything the 2026-10-02 session left. Those items stay unticked.
 
 ## C. The other two surfaces, and the narrow one  *(T-10)*
 
