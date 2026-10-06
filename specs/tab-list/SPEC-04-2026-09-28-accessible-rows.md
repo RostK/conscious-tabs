@@ -899,8 +899,18 @@ Neither changes what is built. Both fix text that contradicted a decision alread
 
 Neither amends a criterion. One records which of two allowed forms was built, the other a difference that was looked at and kept.
 
-- **AC-31: what a drag inserts is out of the accessibility tree.** AC-31 allows a `listitem` or removal from the tree, and E-14 says the same. It was built as a `listitem` first. Review found that this made every drop placeholder, and the zone at the end of each window, an empty item with no name for the length of a drag, in a list whose size changed with each arrow press. They are `aria-hidden` now and carry no role. Where a drop would land is said by the drag's announcements (AC-15), which is the only place it was ever said. Not yet heard with a screen reader on this build.
+- **AC-31: what a drag inserts is out of the accessibility tree.** AC-31 allows a `listitem` or removal from the tree, and E-14 says the same. It was built as a `listitem` first. Review found that this made every drop placeholder, and the zone at the end of each window, an empty item with no name for the length of a drag, in a list whose size changed with each arrow press. They are `aria-hidden` now and carry no role. Where a drop would land is said by the drag's announcements (AC-15), which is the only place it was ever said. Heard with NVDA on 2026-10-06, in focus mode and in browse mode: nothing is read for a placeholder (`plans/MANUAL-SWEEP-SPEC-04.md`, the two listening sessions of that day). A window's end zone was not walked in browse mode.
 - **AC-3 and AM-3: two totals, known and accepted.** A tab row's "n of N" counts tab rows, as AM-3 says. The list's own size is the number of `listitem`s, which also counts group and window rows. A screen reader that announces a list's size could therefore say "list with 27 items" where the rows say "of 25". NVDA announced neither the size nor a position for this list (§13.3, and again on 2026-10-02), which is why AM-3 exists, so it was not heard. The alternatives were put to the user on 2026-10-03: saying "tab n of N", which adds a word to every row, and numbering every row, which makes a window row's "25 tabs" disagree with "of 27". AM-3 stands as written. Revisit if a screen reader that does announce the size is tested.
+
+### 13.7 From the listening of 2026-10-06
+
+Amends nothing. It records one case in which a Must is not met, so that AC-13 is not read as holding everywhere.
+
+- **AC-13: not met when the window's current tab is dropped into another window.** AC-13 says focus returns to the control a keyboard drag started from. It does after a drop within a window, a drop into a group, and a cancel; those were measured in a browser on 2026-10-02 and heard with NVDA. It does not when the tab dragged is the current tab of the window the panel is in and the drop takes it to another window: NVDA said "unknown" and then read the page of the neighbouring tab, so focus was in a web page and not on Reorder (`plans/MANUAL-SWEEP-SPEC-04.md`, first session of 2026-10-06, finding 1).
+  - **Why, read from the code and not measured:** Chrome makes the neighbouring tab current and gives its page the focus. The moved row's handle takes focus inside the panel's document as it is rebuilt, and `settleFocus` in `DnD/useRowDrag.ts` asks only whether anything in that document holds focus. Neither can see that the panel itself has lost it.
+  - **Why no test shows it:** AC-13 is verified by asserting `document.activeElement`, which is right inside the panel's document in this case too.
+  - **Not known:** whether an extension can take focus back into its side panel. If it cannot, AC-13 needs an amendment that leaves this case out; if it can, this entry is where the fix starts.
+  - **Known and left.** The user judged it not urgent on 2026-10-06. The tab is moved correctly; what is lost is the keyboard's place.
 
 ## 14. Traceability
 
@@ -918,7 +928,7 @@ Neither amends a criterion. One records which of two allowed forms was built, th
 | AC-28, AC-29                      | `Tab/TabDisplay.tsx`, `TabsGroup/GroupDisplay.tsx`, `Window/WindowDisplay.tsx` — the row elements    |
 | AC-33                             | `TabsGroup/GroupListItem.tsx` and `Window/WindowDisplay.tsx` — only where a chevron is rendered     |
 | AC-30                             | `Tab/TabDisplay.tsx` and `TabsGroup/GroupListItem.tsx` — DOM order of the secondary action only     |
-| AC-31                             | `Tabs.tsx`, `elements/TabGrid.tsx`, `DnD/DropPlaceholder.tsx`                                          |
+| AC-31                             | `Tabs.tsx`, `elements/TabGrid.tsx`, `DnD/DropPlaceholder.tsx`, `Window/WindowDropzone.tsx`                                          |
 | AC-32                             | The primary-action button on each row kind; `GroupListItem.tsx` + `SearchView/index.tsx` for the search-result carve-out. The handlers themselves are unchanged |
 | AC-34, AC-35, AC-36, AC-37        | `elements/rowControls.ts` — pinned, not rewritten                                                    |
 

@@ -353,6 +353,7 @@ left the panel (finding 1).
      panel's own document, so it does not see this.
    - **Not known:** whether an extension can take focus back into its side panel at all, and
      whether `main` does the same. The drag code was moved in `52c34a5`, not changed.
+   - **Recorded against the criterion** in SPEC-04 §13.7: AC-13 is not met in this case.
 2. **"pressed" after each pick-up.** dnd-kit sets `aria-pressed` on the handle a drag starts from.
    Since `96aef2b` (AM-5) the row stays mounted with focus on that handle, so NVDA reports the
    change. It was not heard on 2026-10-02 because focus had fallen to the document by then.
@@ -361,6 +362,8 @@ left the panel (finding 1).
    the last tab of window 1. The zone that says it is a window's header row (`in-window`), and here
    that was most likely Window 2's, the row below; the transcript cannot show which. "End of
    window." leaves the same thing out. With one window there is nothing to tell apart.
+   **Not new, and wrongly listed as found:** the plan already has it under "Known and left"
+   (`PLAN-SPEC-04-accessible-rows.md`). What is new is that it was heard, and where.
 
 Findings 2 and 3 are questions of how it sounds. A candidate wording is to be heard before it is
 built, as the row names were in §B.
@@ -371,6 +374,94 @@ second tab with the same title. Not confirmed with the tester.
 
 **Still to run:** the same drag read in browse mode, for AC-31; a drop that stays in its window,
 heard to the end, for the half of Part 2 above; then everything the 2026-10-02 session left.
+
+## Listening session — 2026-10-06, second run: browse mode
+
+Run by the user later the same day, after #26 had merged, to hear what the first run did not.
+
+- **Setup:** `accessible-rows` at `480cbf2`, which is the tree `main` has after the merge. The NVDA
+  and Chrome versions were again not noted.
+- **Tabs:** 13 tab rows in one window, with a group of book tabs from row 3 on. The tab dragged was
+  row 2, the window's current tab.
+- **What was done:** the tab was picked up and moved down three places, which put the placeholder
+  between rows 4 and 5. Then browse mode (`NVDA+Space`), down from row 3 to row 5 and back up to
+  row 3, focus mode again, and Space to drop.
+- **Recording:** from the Speech Viewer. `…` marks where NVDA was reading another application.
+
+```
+Reorder where am i  draggable  Space picks up, arrows move, Space drops, Escape cancels.
+Picked up where am i.
+pressed
+Before Computer Coding Games in Scratch for Kids By Carol Vorderman, in its group.
+Before Computer Coding Python Games for Kids By Carol Vorderman, in its group.
+Before Oxford History of Board Games By David Parlett, in its group.
+out of tool bar  Computer Coding Games in Scratch for Kids By Carol Vorderman, www.worldofbooks.com, 3 of 13  tool bar  clickable    button    Switch
+button    Select Computer Coding Games in Scratch for Kids By Carol Vorderman
+button    Close Computer Coding Games in Scratch for Kids By Carol Vorderman  draggable    Reorder Computer Coding Games in
+draggable    Scratch for Kids By Carol Vorderman
+out of tool bar  Computer Coding Python Games for Kids By Carol Vorderman, www.worldofbooks.com, 4 of 13  tool bar  clickable    button    Switch
+button    Select Computer Coding Python Games for Kids By Carol Vorderman
+button    Close Computer Coding Python Games for Kids By Carol Vorderman  draggable    Reorder Computer Coding Python Games
+draggable    for Kids By Carol Vorderman
+out of tool bar  Oxford History of Board Games By David Parlett, www.worldofbooks.com, 5 of 13  tool bar  clickable    button    Switch
+out of tool bar  Computer Coding Python Games for Kids By Carol Vorderman, www.worldofbooks.com, 4 of 13  tool bar  clickable    draggable    for Kids By Carol Vorderman
+button    Close Computer Coding Python Games for Kids By Carol Vorderman  draggable    Reorder Computer Coding Python Games
+button    Select Computer Coding Python Games for Kids By Carol Vorderman
+button    Switch
+out of tool bar  Computer Coding Games in Scratch for Kids By Carol Vorderman, www.worldofbooks.com, 3 of 13  tool bar  clickable    draggable    Scratch for Kids By Carol Vorderman
+button    Close Computer Coding Games in Scratch for Kids By Carol Vorderman  draggable    Reorder Computer Coding Games in
+button    Select Computer Coding Games in Scratch for Kids By Carol Vorderman
+button    Switch
+Computer Coding Games in Scratch for Kids By Carol Vorderman, www.worldofbooks.com, 3 of 13  tool bar
+Switch  button
+…
+Moved where am i before Oxford History of Board Games By David Parlett, in its group.
+where am i, rostk.github.io, current tab, 4 of 13  tool bar
+Reorder where am i  draggable  Space picks up, arrows move, Space drops, Escape cancels.
+```
+
+**The placeholder, in browse mode. Nothing was read for one. AC-31 / E-14 passes.**
+
+- The placeholder stood between rows 4 and 5. Going down, NVDA went from row 4's Reorder straight
+  to "out of tool bar" and row 5. Going up, it went from row 5 straight to row 4's Reorder. There
+  was no "list item", no "blank" and no empty line either way.
+- **Not walked in browse mode:** the empty zone at the end of a window, the picked-up row's own
+  controls (the row is collapsed during a drag, not removed), and the drag overlay (E-7).
+
+**A keyboard drag survives browse mode, and the way back moves focus.**
+
+- NVDA kept the arrows while it was in browse mode, and the drag did not move.
+- Going back to focus mode put focus on the control under NVDA's cursor, which was row 3's Switch,
+  not on the handle. That is the two focus-mode lines before the `…`.
+- Space then dropped the drag and did not switch tabs: the moved row still said "current tab".
+  Focus was on its Reorder control afterwards.
+
+**After the drop, which the first run could not hear.** "Moved …" was followed by the row's name
+with its new place, "4 of 13", and by Reorder. "main landmark" and "Open tabs, list" were not read
+again, so what was found on 2026-10-02 and fixed in `96aef2b` is not heard any more.
+
+- This was not the plain case. The drop took the tab into a group, which rebuilds the row, and
+  focus had been on another row since the return from browse mode. Either is a reason for NVDA to
+  say the toolbar's name.
+- **No verdict yet** on whether the row's name should follow a drop. It is the only thing that
+  says where the row now is.
+- Left to Close was not pressed this time.
+
+**Heard again:** "pressed" after the pick-up (finding 2 of the first run).
+
+**New, and not decided:** in browse mode every row's toolbar is read with "clickable". NVDA says
+that of an element with a click listener, and the toolbar has one: `onClick` in `TabDisplay.tsx`,
+which is what makes a click on the row's body switch tabs. It predates #26. It is not heard in
+focus mode.
+
+**Verdict, 2026-10-06, the user's: good enough.** Nothing heard in either run today is urgent, and
+the listening stops here for now.
+
+- **Left as written, not scheduled:** the three findings of the first run (focus in a web page
+  after the current tab is dropped into another window, "pressed" after a pick-up, "Start of
+  window." not naming its window), "clickable" in browse mode, and whether a row's name should
+  follow a drop.
+- **Not run, and not claimed:** everything the 2026-10-02 session left. Those items stay unticked.
 
 ## C. The other two surfaces, and the narrow one  *(T-10)*
 
@@ -433,7 +524,7 @@ heard to the end, for the half of Part 2 above; then everything the 2026-10-02 s
       lost focus to the body until `084f456`; with it, focus is on the handle of the row in its new
       place. A drop onto a **collapsed window** leaves no row to focus, and focus goes to the
       search field (second run, above).
-- [ ] **AC-31 / E-14 · a real placeholder, mid-drag** — with a drag live and a `DropPlaceholder`
+- [x] **AC-31 / E-14 · a real placeholder, mid-drag** — with a drag live and a `DropPlaceholder`
       visible between two rows, confirm the list still reads as a list and nothing announces a
       stray container. The unit test mounts a placeholder structurally; this is the real drag.
       **Structure passes 2026-10-02 (Chromium), real drag:** with a drag live there were two more
@@ -447,6 +538,9 @@ heard to the end, for the half of Part 2 above; then everything the 2026-10-02 s
       **Heard 2026-10-06 (NVDA, the real side panel, focus mode):** nothing was read for a
       placeholder or an end zone across one keyboard drag; see that listening session.
       **Still open:** browse mode, which is the half the change is about.
+      **Passed 2026-10-06, second run (NVDA, browse mode, `480cbf2`):** with a placeholder between
+      two rows, NVDA read from one row straight to the next, down and back up. The end zone of a
+      window was not walked in browse mode.
 - [ ] **AC-14 · pointer reordering is unchanged** — drag a row by its body with the mouse.
 - [x] **E-6 · a group row mid-drag** — a tab row unmounts the instant it is picked up; a group row
       does not. Pick up a **group** and press an arrow before hovering anything.
