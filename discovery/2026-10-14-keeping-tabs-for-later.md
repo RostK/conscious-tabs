@@ -82,6 +82,8 @@ that needs them.
    demand evidence says they need; a window's existing groups become separate saved groups rather
    than one kept window; and it rests on Chrome's saved groups, which lost one writer's every group
    in 2023. Good as a zero-permission first step, not as the whole answer.
+   _Narrowed by SPEC-06:_ it must close the window the tabs are already in. Moving a group into a
+   new window to close it there flashes that window on screen (SPEC-06 P1).
 
 ## Ruled out
 
@@ -191,6 +193,20 @@ proof that the approach draws people — only that nobody objects to the storage
   idea. Q1 confirms that `sessions.restore()` keeps groups whole, so for a window closed recently,
   Recently closed restores it better than any bookmark folder can. Bookmarks are for keeping a
   window for longer than Chrome's 25 entries last.
+
+## Learned since, from SPEC-06
+
+SPEC-06 (closing a tab group, approved 2026-10-14) ran two more probes in real Chrome. What they
+found that bears on keeping tabs:
+
+- **A deleted group leaves one closed-tab entry per tab** in Recently closed, and restoring them
+  brings the group back with its title and colour (SPEC-06 P4, C-12). No phantom window appears.
+- **So one large group can fill the list.** Chrome keeps 25 entries; deleting a 24-tab group pushes
+  out nearly everything else. A Recently closed list has to decide how it shows that.
+- **`sessions.restore()` can reject and still restore.** Restoring a closed window rejected with
+  `Invalid session id`, and the window came back anyway (SPEC-06 P5, C-10). A Restore button must
+  survive that without reporting a failure that did not happen, or restoring twice.
+- **Idea 7 is narrowed** to closing the window the tabs are in; see the idea.
 
 ## Recommendation
 
