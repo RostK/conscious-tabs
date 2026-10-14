@@ -15,6 +15,7 @@ in plans, not here.
 | SPEC-04 | 2026-09-28 | Accessible rows (`nested-interactive`) | `tab-list` | approved (2026-09-29, amended 2026-09-29 and 2026-09-30) | —                            | [tab-list/SPEC-04-2026-09-28-accessible-rows.md](tab-list/SPEC-04-2026-09-28-accessible-rows.md)                         |
 | SPEC-05 | 2026-09-29 | Keyboard access to what Chrome cannot do | `ui-shell` | approved (2026-09-29)    | — (supersedes SPEC-01 NG-10) | [ui-shell/SPEC-05-2026-09-29-keyboard-access.md](ui-shell/SPEC-05-2026-09-29-keyboard-access.md)                         |
 | SPEC-06 | 2026-10-14 | Closing a tab group                   | `tab-list` | approved (2026-10-14) | —                            | [tab-list/SPEC-06-2026-10-14-closing-a-tab-group.md](tab-list/SPEC-06-2026-10-14-closing-a-tab-group.md)                 |
+| SPEC-07 | 2026-10-14 | Recently closed, and tabs on your other devices | `tab-list` | draft (clarifications closed 2026-10-14; approval waits on the PI-1 probe, Q-A and Q-B) | —                            | [tab-list/SPEC-07-2026-10-14-recently-closed-and-other-devices.md](tab-list/SPEC-07-2026-10-14-recently-closed-and-other-devices.md) |
 
 ## Status values
 
