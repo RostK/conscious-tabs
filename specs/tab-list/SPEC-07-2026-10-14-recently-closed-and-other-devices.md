@@ -903,8 +903,8 @@ All ten clarifications were answered by the user on 2026-10-14 (DEC-8…DEC-17),
 `[NEEDS CLARIFICATION]` remains. As SPEC-06 did with its probe, this spec stayed `draft` until the
 measurements that decide its criteria were recorded. **They are**: the probe,
 `discovery/probes/spec-07-probe.js` (commit `a4332b5`), ran in real Chrome on 2026-10-14 (§16), and
-the user decided on its results the same day (AM-2…AM-4). **Nothing blocks approval now; the spec
-is ready for the user to approve.**
+the user decided on its results the same day (AM-2…AM-4). **The user approved the spec on
+2026-10-14.**
 
 | Q       | Question                                                                                                           | Result (§16)                                                                                | Decided                                                                            |
 | ------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
