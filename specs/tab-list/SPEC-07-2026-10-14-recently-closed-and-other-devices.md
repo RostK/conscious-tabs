@@ -5,7 +5,7 @@
 | **Spec ID**    | SPEC-07                                                                                                                                                                                                                          |
 | **Date**       | 2026-10-14                                                                                                                                                                                                                       |
 | **Module**     | `tab-list` (`src/lib/Tabs/undo/`, `src/lib/Tabs/actions.ts`, `src/lib/Tabs/elements/`) — with edges into `ui-shell` (`src/lib/surfaces.ts`, `src/lib/ControlBar/`, `src/App.tsx`) and `views` (`src/views/`)                    |
-| **Status**     | **draft** — all ten clarifications answered by the user on 2026-10-14 (DEC-8…DEC-17, §14). **Approval is blocked on the PI-1 probe** (§13): Q-A, the unit of `lastModified`, and Q-B, the "closed together" threshold, decide AC-8, AC-10 and AC-28 and have not been measured. Then the user's approval. Never plan against it before both. |
+| **Status**     | **draft** — all ten clarifications answered by the user on 2026-10-14 (DEC-8…DEC-17, §14). Amended once since (AM-1, §17: the side panel keeps its user after a restore into another window). **Approval is blocked on the PI-1 probe** (§13): Q-A, the unit of `lastModified`, and Q-B, the "closed together" threshold, decide AC-8, AC-10 and AC-28 and have not been measured. Then the user's approval. Never plan against it before both. |
 | **Supersedes** | —                                                                                                                                                                                                                                |
 | **Evidence**   | `discovery/2026-10-14-keeping-tabs-for-later.md` (ideas 1 and 2, Q1–Q4, "Learned since, from SPEC-06"); `discovery/probes/sessions-probe.js`; SPEC-06 C-10, C-12, P4, P5.                                                         |
 
@@ -74,7 +74,7 @@ of that.
 
 ```mermaid
 flowchart LR
-  L["Recently closed row:<br/>Restore"] --> R["sessions.restore(id)"]
+  L["Recently closed row:<br/>Restore (landing: §1.5)"] --> R["sessions.restore(id)"]
   U["Undo prompt:<br/>UNDO (entries picked<br/>at prompt time, C-13)"] --> R
   H["Chrome: Ctrl+Shift+T,<br/>History menu"] --> R
   R -->|resolves| OK["entry gone from<br/>getRecentlyClosed"]
@@ -92,6 +92,28 @@ Three things can restore the same entry — this list, the Undo prompt, and Chro
 of this extension's surfaces can be live at once (SPEC-01 AC-19, AC-42). The rule this spec adds is
 that **an entry is restored at most once, and a failure is reported only when the entry is still
 there afterwards** (AC-14…AC-17).
+
+### 1.5 Where the user lands after a restore  *(AM-1, DEC-18)*
+
+`chrome.sidePanel.open()` must be the first call in a live user gesture (SPEC-05 C-8;
+`bringPanelAlong`, `surfaces.ts:17-42`). Switch can bring the panel along because its target window
+is known before the click. **A restored item's window is known only after `sessions.restore()`
+resolves**, when the gesture is spent — so a restore that lands in another window cannot bring the
+panel along in the same press. The side panel therefore keeps its user in their window and offers a
+second, ordinary press to go there.
+
+```mermaid
+flowchart TD
+  P["Restore pressed"] --> H{"surface?"}
+  H -->|anchor tab or float| GO["go to it: tab active,<br/>its window focused (AC-19)"]
+  H -->|side panel| W{"where did it land?<br/>(restored Session)"}
+  W -->|panel's own window| GO2["go to it: tab active<br/>(AC-19)"]
+  W -->|another window| BACK["focus + active tab handed back<br/>to the panel's window, as UNDO does;<br/>the other window flashes (AC-59)"]
+  W -->|"unknown (C-7)"| BACK2["handed back; row removed;<br/>'restored' said without where (AC-66)"]
+  BACK --> ROW["row stays, now 'Go to restored window';<br/>focus stays on it; announced (AC-60…AC-62)"]
+  ROW -->|pressed| SW["Switch: bringPanelAlong(windowId) first,<br/>then tab active, window focused (AC-63)"]
+  ROW -->|"leave view / panel closes /<br/>restored tabs all closed"| GONE["row removed (AC-64)"]
+```
 
 ---
 
@@ -161,7 +183,8 @@ Priority uses MoSCoW. **Real Chrome only** marks a criterion that no unit test, 
 harness pass can prove (§1.3). "The view" is the one view holding both lists (DEC-8); "the
 open-tab list" is today's `TabsView` / `SearchView`; "an entry" is one item of Chrome's
 recently-closed list; "a run" is entries shown as one row under AC-8; "a device tab" is one tab of
-one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers and are in §5.12.
+one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers and are in §5.12; AC-59…AC-67 came with
+AM-1 and are in §5.13.
 
 ### 5.1 Reaching it
 
@@ -266,7 +289,9 @@ one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers a
   whose id now rejects and which is no longer listed produces no error (AC-14). Manual — anchor tab
   and float both showing the view, press Restore on the same entry in each.
 - **AC-16** _(Must)_ WHEN an entry is restored by any means, the system SHALL remove it from the
-  list on every live surface.
+  list on every live surface. _(Amended by AM-1: on the side panel that restored it, a restore that
+  landed in another window leaves a "Go to restored window" row in its place — AC-60. That row is
+  not an entry and is not restorable.)_
   **Verify:** unit — via AC-9's `onChanged`; manual — the AC-15 two-surface case.
 - **AC-17** _(Must)_ WHEN UNDO is pressed on a prompt some of whose entries are no longer in
   Chrome's recently-closed list (restored from this list, from another surface, or by Chrome), the
@@ -282,21 +307,23 @@ one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers a
   merge window, duration and choice of surface SHALL be unchanged (NG-5).
   **Verify:** unit — `SyncPrompt.test.tsx`'s merge and surface tests pass unmodified; a restore from
   the list produces no snackbar other than AC-14's.
-- **AC-19** _(Must)_ WHEN a restore or an open completes, the system SHALL take the user to it, as
-  a row's Switch does (`activateTab`): the restored or opened tab SHALL be active and its window
-  focused — for a closed window or a run, the window Chrome restored into, with whichever tab
-  Chrome made active; the system SHALL NOT hand focus back to the window the user was in, as UNDO
-  does. The action SHALL NOT close the side panel or the float it was started from, and SHALL NOT
-  open the side panel in another window (DEC-11).
-  **Verify:** unit (shim) — after a tab restore and after an Open, no `windows.update({ focused })`
-  or `tabs.update({ active })` targets the previous window or tab; after an Open, the new tab is
-  created active in `resolveUserWindow()`'s window and that window is focused; no `sidePanel.*`
-  call and no `window.close()`. Manual, **real Chrome only** — the AC-46 sweep, from each surface.
-  _(From the anchor tab, an item restored or opened into the anchor's own window hides the manager
-  behind it, as Switch does today — accepted. The side panel is not brought along: where a restore
-  lands is known only after `restore()` has been awaited, by which time the gesture
-  `sidePanel.open()` needs is spent — SPEC-06 C-7, `surfaces.ts:17-36` — and C-7 here says the
-  call may not even report the window.)_
+- **AC-19** _(Must — amended by AM-1)_ WHEN a restore or an open completes **on the anchor tab or
+  the float**, or **on the side panel with the item in the panel's own window**, the system SHALL
+  take the user to it, as a row's Switch does (`activateTab`): the restored or opened tab SHALL be
+  active and its window focused — for a closed window or a run, the window Chrome restored into,
+  with whichever tab Chrome made active — and the system SHALL NOT hand focus back to the window
+  the user was in. WHEN it completes on the side panel with the item in **another** window, AC-59
+  applies instead. No restore or open SHALL close the side panel or the float it was started from
+  (DEC-11, DEC-18).
+  **Verify:** unit (shim) — under `anchor` and `float`, and under `panel` with the restored
+  `Session`'s window equal to the panel's: after a tab restore and after an Open, no
+  `windows.update({ focused })` or `tabs.update({ active })` targets the previous window or tab;
+  after an Open, the new tab is created active in `resolveUserWindow()`'s window and that window
+  is focused; no `window.close()`. Manual, **real Chrome only** — the AC-46 sweep, from each
+  surface. _(From the anchor tab, an item restored or opened into the anchor's own window hides the
+  manager behind it, as Switch does today — accepted, E-28. From the side panel an Open always
+  lands in the panel's own window, because `resolveUserWindow()` answers the panel's window there
+  (`surfaces.ts:87-91`), so AC-59 concerns Restore only.)_
 - **AC-20** _(Must)_ The system SHALL leave a restored tab in the window Chrome restores it into,
   and SHALL NOT move it afterwards.
   **Verify:** unit — no `tabs.move` after a restore. Manual, **real Chrome only** — a closed tab
@@ -412,7 +439,8 @@ one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers a
   **Verify:** unit — names for a titled tab entry, an untitled one, a window entry, a run, a tab
   inside an expanded run, a device and a device tab; none empty; a bare "Restore" or "Open" only on
   a row's primary control, inside a toolbar whose name begins with the title.
-- **AC-38** _(Must)_ WHEN the focused row disappears because its entry was restored or vanished,
+- **AC-38** _(Must)_ _(Amended by AM-1: does not apply where AC-60 keeps the row; AC-61 does.)_
+  WHEN the focused row disappears because its entry was restored or vanished,
   keyboard focus SHALL land on the first control of the row that now follows; IF there is none,
   THEN on the previous row's first control; IF the list is empty, THEN on the way back to the open
   tabs, or the search field — never on `document.body` and never on a removed node (SPEC-06 AC-13,
@@ -437,8 +465,9 @@ one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers a
   reach `implemented`, on all three surfaces, in focus mode and in browse mode, covering: a tab
   entry, a window entry, a run and a tab inside it (AC-8), a device and a device tab, including one
   that "Can't be opened from here" (AC-25); the Restore and Open names (AC-37, DEC-16); the AC-39
-  and AC-58 announcements; AC-38's focus landing; the way in and out (AC-1, AC-57); and both empty
-  states. NVDA version,
+  and AC-58 announcements; AC-38's focus landing; the way in and out (AC-1, AC-57); on the side
+  panel, a restore into another window — the "Go to restored window" control, its announcement
+  (AC-60…AC-62) and where focus is after the flash (AC-61, Q-K); and both empty states. NVDA version,
   Chrome version, surface, date, tester, and what was said.
   **Verify:** a result block here, in the style of SPEC-04 AC-27. _(Memory: a wording fix that read
   well was removed after ten minutes with NVDA.)_
@@ -471,7 +500,9 @@ one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers a
   (C-1), and of a 24-tab group delete as one run and as one tab of it (C-5, C-6, AC-8); a restore
   after quitting and reopening Chrome (C-3); a restore while the Undo prompt is up for the same
   close (AC-17); the same entry restored from two live surfaces (AC-15); where the user lands from
-  each surface, including a restore into the anchor tab's own window (AC-19); stopping
+  each surface, including a restore into the anchor tab's own window (AC-19); from the side panel,
+  a closed window restored (AC-59…AC-63: the flash, focus back, the Go row, the panel opening in the
+  restored window on Go) and the restored window closed before Go is pressed (AC-64, AC-65); stopping
   the float (AC-7); a device tab opened here; and the devices empty state on a profile without Sync.
   Each with Chrome version, OS, date and result.
   **Verify:** the result block.
@@ -558,6 +589,75 @@ one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers a
   nothing. _(An explicit control that changes nothing visible near focus is otherwise silent —
   WCAG 4.1.3.)_
 
+### 5.13 The side panel keeps its user  *(AM-1, DEC-18 — AC-59…AC-67)*
+
+"Another window" means: for a tab entry, the restored tab's window is not the panel's; for a closed
+window, always (Chrome restores it as a new window, C-1); for a run, any of its restored tabs is
+outside the panel's window. "The restored item" is then that window, that tab, or the newest
+restored tab of the run that is outside the panel's window. Where it landed is read from the
+`Session` that `sessions.restore()` resolves with — discovery Q1 used `restored.window.id`
+successfully (`sessions-probe.js`, `q1`).
+
+- **AC-59** _(Must)_ WHERE the surface is the side panel, WHEN a restore completes with the item in
+  another window, the system SHALL hand focus and the active tab back to the panel's window as
+  UNDO does (`restore.ts:33-39`), and SHALL NOT open the side panel in the other window. The
+  restored window coming to the front for a moment and then losing focus is the accepted cost, as
+  it already is for UNDO (C-9).
+  **Verify:** unit (shim) — host `panel`, panel window 1 with active tab 10; restore resolves with
+  `window.id: 7`; assert `windows.update(1, { focused: true })` and `tabs.update(10, { active: true })`
+  after the restore, and no `sidePanel.open`. Manual, **real Chrome only** — restore a closed window
+  from the panel; it appears, focus returns to the panel's window, and the panel is still open there.
+- **AC-60** _(Must)_ In the case of AC-59, the entry's row SHALL NOT disappear: it SHALL become a
+  row for the restored item whose primary control is a "Go to restored window" control, and it
+  SHALL have no Restore control. The wording is settled by ear in AC-42, per DEC-16 and SPEC-04
+  AC-6 — the row's name leads with the item ("Window, 5 tabs", or the tab's title).
+  **Verify:** unit — after AC-59's case, the row is still in the list, its toolbar name leads with
+  the item, its primary control is the Go control, and no Restore control remains on it.
+- **AC-61** _(Must)_ In the case of AC-59, keyboard focus SHALL stay on that row, on its Go
+  control, if it was on the row's Restore when Restore was pressed; AC-38 SHALL NOT move it.
+  **Verify:** unit — focus Restore, press it, resolve the restore into another window; assert
+  `document.activeElement` is the Go control. Manual, **real Chrome only** — with NVDA, after the
+  flash, the Go control is what is focused and heard (Q-K).
+- **AC-62** _(Must)_ In the case of AC-59, the announcement (AC-39) SHALL also say that the item is
+  in another window, in fixed words and counts only — "Window restored, N tabs, in another window",
+  "Tab restored, in another window", "N tabs restored, in another window" — and SHALL NOT name the
+  window, a title or a URL.
+  **Verify:** unit — the live region's text for each of the three kinds, with a hostile title.
+- **AC-63** _(Must)_ WHEN the user activates "Go to restored window", the system SHALL perform an
+  ordinary Switch to the restored item: open the side panel in the item's window first, from that
+  press's gesture, with no `await`, no `.then()` and no other `chrome.*` call before it
+  (`bringPanelAlong`, SPEC-05 C-8, AC-36); then make the restored tab — for a window, its active
+  tab — active and its window focused; and then remove the row (DEC-18).
+  **Verify:** unit — `chrome.sidePanel.open`'s `mock.invocationCallOrder` is lower than every other
+  `chrome.*` mock's in the handler, with the restored window's id; then `tabs.update(…, { active:
+  true })` and `windows.update(…, { focused: true })`; the row is gone. Manual, **real Chrome only**
+  — press it: the restored window comes to the front with the side panel open in it.
+- **AC-64** _(Must)_ The "Go to restored window" row SHALL stay WHILE the view is shown in that
+  panel and any of the restored item's tabs is still open, and SHALL be removed WHEN it is used,
+  WHEN the user leaves the view, WHEN that panel document closes, or WHEN every restored tab of the
+  item has closed; it SHALL have no timeout (DEC-18).
+  **Verify:** unit (fake timers) — the row survives 10 minutes untouched; it is removed after use,
+  after leaving and re-entering the view, and after `tabs.onRemoved` / `windows.onRemoved` for
+  every restored tab; with focus on it when it is removed by an event, AC-38 places focus.
+- **AC-65** _(Must)_ IF the restored item is gone, or the Switch rejects, when the user activates
+  "Go to restored window", THEN the system SHALL show "Couldn't switch to tab", as `run()` does for
+  Switch today (`actions.ts:36-41`), remove the row, and place focus per AC-38.
+  **Verify:** unit — close the restored window in the shim, then press Go before the removal event
+  lands; assert the snackbar, the row removed, and focus placed.
+- **AC-66** _(Must)_ WHERE the surface is the side panel, IF the system cannot tell where a
+  restored item landed — the restore rejected yet restored (C-7, AC-14), or the resolved `Session`
+  carries no window — THEN it SHALL hand focus and the active tab back as AC-59 does, SHALL remove
+  the row as for any restored entry (AC-16, AC-38), SHALL offer no Go control, and SHALL announce
+  the restore without saying where ("Window restored, N tabs").
+  **Verify:** unit — restore rejects and the entry is gone: no Go row, focus handed back, the
+  announcement without "in another window"; restore resolves with no `window` and no `tab`: the
+  same.
+- **AC-67** _(Must)_ A "Go to restored window" row SHALL exist only in the panel document where
+  Restore was pressed, in memory only: other live surfaces SHALL simply drop the entry (AC-16), and
+  nothing about the row or the restored window SHALL be stored (AC-47).
+  **Verify:** unit — two surfaces mounted, restore from the panel into another window: the Go row
+  is in the panel only; `manifest.test.ts`'s source scan passes unmodified.
+
 ---
 
 ## 6. Edge cases
@@ -591,6 +691,16 @@ one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers a
 | **E-26** | One tab of a run is restored alone                                                                                   | It leaves the run; the row's count drops by one, and a run of one becomes a single entry (AC-8, AC-16). Whether that tab comes back inside its group is unmeasured (PI-1, Q-H); not a requirement either way.                                                                              |
 | **E-27** | The search text matches one tab of a closed window or a run                                                          | The whole window or run is shown, with its full count, and Restore restores all of it (AC-35).                                                                                                                                                                                              |
 | **E-28** | A restore or open from the anchor tab lands in the anchor's own window                                               | The restored tab becomes active and the manager is hidden behind it, as Switch does (AC-19, DEC-11). Accepted.                                                                                                                                                                               |
+| **E-29** | From the side panel, a closed window is restored                                                                     | Chrome restores it as a new window, which comes to the front; focus and the active tab go back to the panel's window; the row becomes "Go to restored window", focused, and the restore is announced as in another window (AC-59…AC-62). Accepted cost: the flash (C-9), as UNDO. |
+| **E-30** | From the side panel, a closed tab or run comes back in another window (its source window, C-5)                      | As E-29. A run's Go goes to the newest of its restored tabs outside the panel's window (§5.13).                                                                                                                                                                                             |
+| **E-31** | From the side panel, the item comes back in the panel's own window                                                   | Go to it, as on the other surfaces (AC-19). No Go row.                                                                                                                                                                                                                                      |
+| **E-32** | The restored window is closed before "Go to restored window" is pressed                                             | The row is removed when its last restored tab closes (AC-64), focus per AC-38; Chrome adds a new recently-closed entry, which appears in the list (AC-9). A press that races the close says "Couldn't switch to tab" (AC-65).                                                                                 |
+| **E-33** | The side panel is closed, or its window closes, while a Go row is shown                                              | The row goes with that document; nothing was stored (AC-64, AC-67). The restored window stays open; reopening the panel shows the view without the row.                                                                                                                                |
+| **E-34** | The user leaves the view, or goes to the restored window by other means, before pressing Go                          | Leaving the view removes the row (AC-64). Going there by Chrome's own UI does not: the row stays in the panel left behind until it is used, the view is left, or the item's tabs close — pressing it then is a harmless Switch.                                                                   |
+| **E-35** | A restored tab is moved to yet another window before Go is pressed                                                   | Go switches to the tab where it is now, opening the panel in that window (AC-63).                                                                                                                                                                                                          |
+| **E-36** | Several items restored from the panel into other windows, one after another                                          | Each leaves its own Go row (AC-60); each behaves independently.                                                                                                                                                                                                                             |
+| **E-37** | Search text is typed while a Go row is shown                                                                          | The row stays visible whatever the filter: it is the result of the user's last action, not an entry (AC-64).                                                                                                                                                                              |
+| **E-38** | From the side panel, the restore rejects yet restores (C-7)                                                          | Where it landed is unknown: focus handed back, the row removed, no Go control, "Window restored, N tabs" said without where (AC-66).                                                                                                                                                       |
 | **E-25** | A closed tab was in a now-shared group, or the group was shared                                                       | Restore is Chrome's; nothing here reads `shared`. Not a requirement either way.                                                                                                                                                                                                              |
 
 ---
@@ -646,7 +756,7 @@ one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers a
 | `tab-list` — `actions.ts`                             | `run()` is the failure path for Open (AC-26) and the model for "Couldn't restore …" (AC-14).                                                                                                                                                              |
 | `tab-list` — `elements/` (`TabFavicon`, `favicon.ts`, `rowControls.ts`, `RowList`) | Reused for the new rows: icons (AC-43), the row walk (AC-36), the list (SPEC-04 AC-3).                                                                                                                                         |
 | `tab-list` — `useTabsStructure.ts`                    | Unchanged; AC-34 keeps the open-tab counts free of closed and device rows.                                                                                                                                                                                 |
-| `ui-shell` — `surfaces.ts`                            | `isOwnPage` filters both lists (AC-6, AC-22); `resolveUserWindow` decides where Open lands (AC-23, AC-24, DEC-11). The panel is not brought along after a restore (AC-19).                                                     |
+| `ui-shell` — `surfaces.ts`                            | `isOwnPage` filters both lists (AC-6, AC-22); `resolveUserWindow` decides where Open lands (AC-23, AC-24, DEC-11). `bringPanelAlong` is the first call of "Go to restored window" (AC-63), never of Restore itself (AC-59, DEC-18).                                                     |
 | `ui-shell` — `ControlBar/`, `App.tsx`                 | The one labelled control that shows and leaves the view (AC-1, DEC-8); the live region for AC-39 and AC-58; the one search field that filters whichever view is shown (AC-35, DEC-9), SPEC-05 AC-40's Up and AC-57's Down.                                                                                                                                                             |
 | shared — `src/lib/browserStore.ts`                    | Its four rules (generation counter, `undefined` before first load, failed read changes nothing, listeners only while subscribed) are what AC-9, AC-30 and AC-33 ask of the new lists.                                                                       |
 | `views` — `TabsView`, `SearchView`                    | The view replaces them while shown (DEC-8); `SearchView` is unchanged (DEC-9, AC-34), and the view applies the same match rule (AC-35).                                                                                                                           |
@@ -717,8 +827,9 @@ one window of one device. AC-57…AC-58 were added with the 2026-10-14 answers a
 All ten clarifications were answered by the user on 2026-10-14 and are recorded as DEC-8…DEC-17
 (§14). No `[NEEDS CLARIFICATION]` remains. **As SPEC-06 did with its probe, this spec stays `draft`
 until the measurements that decide its criteria are recorded here**, then goes to the user for
-approval. The probe is not written yet. It belongs beside `discovery/probes/sessions-probe.js` and
-runs in real Chrome, because the harness cannot answer any of this (§1.3).
+approval. The probe is `discovery/probes/spec-07-probe.js` (commit `a4332b5`), run in real Chrome
+because the harness cannot answer any of this (§1.3); it has not been run yet. It was written
+before AM-1, so **Q-K is not in it** — Q-K is a by-ear check in the panel, made in the AC-42 pass.
 
 | Q       | Question                                                                                                                                        | Decides                                                       | Blocks approval |
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------- |
@@ -732,6 +843,7 @@ runs in real Chrome, because the harness cannot answer any of this (§1.3).
 | Q-H     | Restored alone, does one tab of a deleted group come back inside its group (E-26)?                                                               | Recorded; not a requirement                                   | No              |
 | Q-I     | Is `getDevices`' tab order the other device's tab-strip order (A-3)?                                                                            | Recorded; AC-21 shows Chrome's order either way               | No              |
 | Q-J     | Does restoring an ordinary closed window ever reject yet restore (SPEC-06 PI-6)?                                                                 | Recorded; AC-14 and AC-17 already handle both outcomes        | No              |
+| Q-K     | From the side panel, after a restore into another window and focus handed back to the panel's window, does keyboard focus return to the side panel document and its Go control, or to the page (AC-61)? | Recorded; AC-61 and AC-42 are checked against it before `implemented`. A "page" answer reopens DEC-18 | No |
 
 **What blocks approval, exactly:** Q-A and Q-B, measured in real Chrome with Chrome version, OS,
 date and tester, recorded in §16; then AC-8's threshold, AC-10 and AC-28 confirmed or amended in
@@ -752,13 +864,14 @@ manual sweep (AC-46) but does not block approval.
 | **DEC-8** (was NC-1) | **One view holds both lists, Recently closed first, and replaces the open-tab list while shown; one labelled control, present on all three surfaces, shows it and leaves it** (AC-1). It keeps closed and device rows out of the open list's counts, selection, ranges and drag (AC-34, AC-40), and leaves room for idea 4 (PI-7). Consequence: Down from the search field must enter the view as it enters the list (AC-57). Answered by the user, 2026-10-14. |
 | **DEC-9** (was NC-2) | **The one search field filters whichever view is shown; open-tab search is unchanged** (AC-35, AC-34). Read as one field with one text, so text typed in the view is still there on return (AC-3). A closed window or a run matched by one of its tabs shows, and restores, its full count — SPEC-06 DEC-11's lesson. Answered 2026-10-14. |
 | **DEC-10** (was NC-3) | **Consecutive closed-tab entries closed together are one row, "N tabs, closed together", with one Restore (oldest first, which regroups a deleted group — C-5), expandable so each tab can be restored alone** (AC-8). Never "group", never a group's name (C-2, A-5). It matches how the Undo prompt already treats a burst of closes as one closure. **The 1 s "together" threshold is provisional: Q-B of the PI-1 probe confirms or replaces it, and approval waits on it** (§13). Answered 2026-10-14. |
-| **DEC-11** (was NC-4) | **Restore and Open take the user to the item**, as a row's Switch does: the tab active, its window focused (AC-19). Open lands in `resolveUserWindow()`'s window (AC-23), or a new window if there is none (AC-24). UNDO keeps handing focus back (`restore.ts`), unchanged. Two consequences recorded rather than asked: from the anchor tab, an item landing in the anchor's window hides the manager, as Switch does (E-28); and the side panel is not brought along, because the restore's window is known only after the gesture is spent (AC-19's note). Answered 2026-10-14. |
+| **DEC-11** (was NC-4; refined by DEC-18, AM-1) | **Restore and Open take the user to the item**, as a row's Switch does: the tab active, its window focused (AC-19). Open lands in `resolveUserWindow()`'s window (AC-23), or a new window if there is none (AC-24). UNDO keeps handing focus back (`restore.ts`), unchanged. Two consequences recorded rather than asked: from the anchor tab, an item landing in the anchor's window hides the manager, as Switch does (E-28); and the side panel is not brought along, because the restore's window is known only after the gesture is spent (AC-19's note). Answered 2026-10-14. |
 | **DEC-12** (was NC-5) | **Devices refresh when the view is shown, when its surface becomes visible or focused again while showing it, and on an explicit Refresh control; no polling** (AC-27). An explicit Refresh is announced (AC-58), added so the control is not silent. Answered 2026-10-14. |
 | **DEC-13** (was NC-6) | **Only `http:` and `https:` device tabs can be opened; every other tab is listed with "Can't be opened from here" and no Open control** (AC-25). A web page is what "the tab on my phone" means; `file:` names another machine's disk; `chrome://` differs per device; listing them keeps the device's count honest. Answered 2026-10-14. |
 | **DEC-14** (was NC-7) | **UNDO restores only the entries still in Chrome's list, says nothing about spent ones, and reports a failure only for an entry still listed after a rejection** (AC-17). The merge window, duration and surface choice are untouched (SPEC-01 AC-42, NG-5). Takes PI-3. Answered 2026-10-14. |
 | **DEC-15** (was NC-8) | **Device tabs open one at a time in this spec; "Open all" is deferred** (AC-29), to be revisited after Q-G of the PI-1 probe says whether `sessions.restore` accepts device sessions. Answered 2026-10-14. |
 | **DEC-16** (was NC-9) | **SPEC-04 AC-6's rule names Restore and Open**: a bare "Restore" / "Open" where it is the row's primary control, the title leading the row's name; a subject where it is not — "Restore window, N tabs", "Restore N tabs" (AC-37). The final wording is settled by ear in the NVDA pass (AC-42). The brief's "Restore <title>" wording is dropped. Answered 2026-10-14. |
 | **DEC-17** (was NC-10) | **The Web Store's Privacy practices tab declares "Web history", handled on the device only, with Limited Use certified; no permission changes** (AC-51). `PRIVACY.md`, `store-assets/privacy-policy.html` and `store-listing.md` (including "Data usage") say that the extension reads and shows the user's open tabs, recently closed tabs and windows, and other devices' tabs on this device, and never transmits, stores or shares them (AC-50). **Evidence**, from Google's [User Data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq): FAQ 3 — disclosure is required "even when data is processed or stored locally on a user's device and is not transmitted"; FAQ 2 — "handle" means "collecting, transmitting, using, or sharing user data", with web browsing activity as an example; FAQ 14 — a privacy policy is required even for local-only products. [Limited Use](https://developer.chrome.com/docs/webstore/program-policies/limited-use) permits web browsing activity only for a prominently described, user-facing feature, so the listing describes the feature (AC-50). **Inference, not a citation:** that these lists fall under the "Web history" category; the category's official definition could not be retrieved. **Finding, not widened into scope:** by FAQ 3 the existing open-tab list, which reads every open tab's title and URL on the device, arguably already required this disclosure; this spec makes the declaration and the wording changes, nothing more. Answered 2026-10-14. |
+| **DEC-18** (AM-1) | **On the side panel, a restore that lands in another window keeps the user in the panel's window, and offers "Go to restored window" as a second, ordinary press** (AC-59…AC-67). On the anchor tab and the float, and on the panel when the item lands in the panel's own window, DEC-11 stands unchanged (AC-19). Why: `sidePanel.open()` must be the first call in a live gesture (SPEC-05 C-8), and a restore's landing window is known only after `sessions.restore()` resolves, when the gesture is spent — so the press that restores cannot also bring the panel along, and going to the window without it would leave the user in a window with no manager. The Go press knows the window id before it starts, so it is an ordinary Switch with `bringPanelAlong` first (AC-63). **Chosen here, not asked:** the Go row lasts while the view is shown and the item's tabs are open, with **no timeout** — a timer would remove a control from under a keyboard or screen-reader user who is still reading (WCAG 2.2.1), and leaving the view is a clear, user-made end (AC-64); a press on a vanished item fails out loud and removes the row (AC-65); where the landing window cannot be known (C-7), the panel keeps its user and offers no Go control (AC-66). Decided by the user, 2026-10-14. |
 
 ## 15. Traceability
 
@@ -776,6 +889,7 @@ manual sweep (AC-46) but does not block approval.
 | AC-45 … AC-51              | `manifest.json`, `src/test/manifest.test.ts`, `PRIVACY.md`, `store-assets/privacy-policy.html`, `store-listing.md`, `README.md`; result block here |
 | AC-52 … AC-55              | The new rows' rendering and names                                                                                |
 | AC-56                      | Existing test suites                                                                                             |
+| AC-59 … AC-67              | The restore action's side-panel branch; `restore.ts` (hand-back), `surfaces.ts` (`bringPanelAlong`), `actions.ts` (`activateTab`, `run`); the view's row list; result blocks here |
 
 ## 16. Measurement log
 
@@ -812,3 +926,9 @@ Web Store policy text quoted in DEC-17 was read by the coordinator's research, n
 
 No real-Chrome measurement was made for this draft; Q-A and Q-B (§13) are the ones approval waits on. C-1…C-7 are cited from the discovery and
 SPEC-06; PI-1 lists what is still to measure.
+
+## 17. Amendments
+
+| #        | Date       | Change |
+| -------- | ---------- | ------ |
+| **AM-1** | 2026-10-14 | **The side panel keeps its user after a restore into another window** (DEC-18), from the user. Refines DEC-11 (was NC-4 A, "go to it") without replacing it: the anchor tab, the float, and the side panel when the item lands in the panel's own window still go to it. AC-19 narrowed to those cases; AC-16 and AC-38 carry notes on the Go row; AC-59…AC-67 added (§5.13); §1.5 and its diagram added; E-29…E-38 added; AC-42 and AC-46 cover the new behaviour; Q-K added to §13 (non-blocking). Status unchanged: `draft`, approval waiting on Q-A and Q-B. |
