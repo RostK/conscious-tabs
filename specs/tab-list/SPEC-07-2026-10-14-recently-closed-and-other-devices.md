@@ -165,6 +165,8 @@ flowchart TD
 - **NG-10** Incognito windows and tabs, open or closed. The manager does not list them (SPEC-03
   E-4).
 - **NG-11** Chrome's saved tab groups (SPEC-06 NG-1). No API lists them.
+- **NG-12** A "show all tabs" toggle on a window or run that a search has opened to its matches.
+  Seeing the non-matching tabs takes clearing the search (AC-35, DEC-21); PI-8 keeps the idea.
 
 ## 4. User stories
 
@@ -277,7 +279,8 @@ AM-1 and are in §5.13; AC-68…AC-70 came with AM-2…AM-4 and are in §5.14.
   **Verify:** unit — with a fixed clock: fixtures 30 s, 2 h, 1 day and 3 days old show the clock
   time, "Yesterday, …" and a date; a fixture value of `1791970309` is read as 2026-10-14, not as
   1970. _(Was a relative time. A list that says "5 min ago" on one row and "at 10:31" on the next
-  reads as two clocks; the run label (AC-8) needs a clock time, so every row uses one.)_
+  reads as two clocks; the run label (AC-8) needs a clock time, so every row uses one. Confirmed
+  by the user, 2026-10-14.)_
 - **AC-11** _(Should)_ The Recently closed list SHALL say, in fixed words, that Chrome keeps only
   its most recent entries, giving the number from `chrome.sessions.MAX_SESSION_RESULTS` rather
   than a literal.
@@ -434,20 +437,20 @@ AM-1 and are in §5.13; AC-68…AC-70 came with AM-2…AM-4 and are in §5.14.
 - **AC-35** _(Must — amended by AM-4)_ WHILE the view is shown, the search field SHALL filter both
   its lists by the rule `SearchView` uses for open tabs — a case-insensitive substring of a tab's
   title or URL — and WHILE the open-tab list is shown, search SHALL behave exactly as today
-  (DEC-9). A closed window or a run SHALL be shown WHEN any of its tabs matches, **expanded**, with
-  all its tabs in order and the matching ones highlighted (AC-70); its name SHALL still carry its
-  **full** tab count, its main Restore SHALL still restore the whole item, and each matching tab
-  SHALL be restorable alone (AC-8, AC-13). A device SHALL be shown WHEN any of its tabs matches,
-  with only its matching tabs (device tabs are opened one at a time, AC-29) (DEC-21).
+  (DEC-9). A closed window or a run SHALL be shown WHEN any of its tabs matches, with its full tab
+  count and its match count ("Window, 6 tabs, closed at 10:31 · 2 match"), opened to show **only
+  its matching tabs**, each restorable alone; its main Restore SHALL still restore the whole item,
+  hidden tabs included, and SHALL say so (AC-70). A device SHALL be shown WHEN any of its tabs
+  matches, with only its matching tabs. Seeing an item's other tabs takes clearing the search
+  (NG-12) (DEC-21).
   **Verify:** unit — in the view, with "doc" typed: a single tab entry matching by title and one
-  matching by URL are shown, a non-matching entry is not; a 5-tab closed window with 1 match is
-  shown expanded, named with "5 tabs", its matching tab highlighted and the other 4 shown plain,
-  its main Restore restores the window and the matching tab's Restore restores that tab only; a
-  24-tab run with 2 matches is shown expanded the same way; a device with 3 tabs, 1 matching, shows
-  that 1; a device with no match is absent; clearing the text collapses the expanded rows back to
-  how they were; `SearchView`'s existing tests pass unmodified. _(SPEC-06 DEC-11 / E-4 is the
-  lesson: a row that acts on what it does not show must say so. Here it shows it, and points at
-  what matched.)_
+  matching by URL are shown, a non-matching entry is not; a 6-tab closed window with 2 matches
+  shows "6 tabs" and "2 match", and only those 2 tabs; its main Restore restores the window, and
+  each shown tab's Restore restores that tab only; a 24-tab run with 2 matches is shown the same
+  way; a device with 3 tabs, 1 matching, shows that 1; a device with no match is absent; clearing
+  the text returns every row to how it was before the search; `SearchView`'s existing tests pass
+  unmodified. _(SPEC-06 DEC-11 / E-4 is the lesson: a row that acts on what it does not show must
+  say so — here in its counts and in its main Restore's name.)_
 
 ### 5.7 Accessibility
 
@@ -494,7 +497,8 @@ AM-1 and are in §5.13; AC-68…AC-70 came with AM-2…AM-4 and are in §5.14.
 - **AC-42** _(Must)_ A manual **NVDA + Chrome** pass SHALL be recorded in this file before it may
   reach `implemented`, on all three surfaces, in focus mode and in browse mode, covering: a tab
   entry, a window entry and a tab inside it (AC-13), a run and a tab inside it, and how a run's
-  time label is read (AC-8), a search with a highlighted match (AC-35, AC-70), a device and a device tab, including one
+  time label is read (AC-8), a search that opens a window or run to its matching tabs — the parent's
+  counts, the main Restore's whole-item name, and whether the children need a mark (AC-35, AC-70), a device and a device tab, including one
   that "Can't be opened from here" (AC-25); the Restore and Open names (AC-37, DEC-16); the AC-39
   and AC-58 announcements; AC-38's focus landing; the way in and out (AC-1, AC-57); on the side
   panel, a restore into another window — the "Go to restored window" control, its announcement
@@ -712,13 +716,19 @@ successfully (`sessions-probe.js`, `q1`).
   **Verify:** unit — panel host; restore tab 2 of an expanded 3-tab closed window, landing in
   window 7: a Go row sits where tab 2 was, between tabs 1 and 3; with the parent gone after the
   re-read, the Go row is at the parent's position; focus is on the Go control both times.
-- **AC-70** _(Must)_ A tab highlighted as a search match (AC-35) SHALL be marked by more than
-  colour — a visible mark or weight that survives forced colours — and its row toolbar's name SHALL
-  say that it matches, in fixed words; the parent row's name SHALL carry how many of its tabs match
-  ("5 tabs, 1 matches search" — wording settled by ear in AC-42).
-  **Verify:** unit — the matching tab's toolbar name contains the fixed "matches" words and the
-  others' do not; the parent's name carries the match count; the mark is present in a
-  `forced-colors: active` render (harness). _(WCAG 1.4.1 Use of Colour, 4.1.2.)_
+- **AC-70** _(Must — amended by AM-4)_ WHILE a search has opened a closed window or a run to its
+  matching tabs (AC-35), the parent row SHALL show and be named with both its full tab count and
+  its match count, and its main Restore SHALL be named for the whole item, hidden tabs included —
+  "Restore whole window, 6 tabs", "Restore all 24 tabs"; the matching tabs it shows SHALL carry no
+  per-tab "matches" mark, visible or in their names (DEC-21). The wording is settled by ear in
+  AC-42.
+  **Verify:** unit — with a search matching 2 of a 6-tab window: the parent's toolbar name and
+  visible text carry "6 tabs" and "2 match"; its main Restore's name says it restores the whole
+  window and carries "6"; neither shown tab's name nor text contains a "match" word; with the
+  search cleared, the main Restore's name is the ordinary one (AC-37). _(Every tab shown is a
+  match, so a per-tab mark would say the same word on every row and tell the listener nothing; the
+  count on the parent, heard once on entering the row, says it all. WCAG 1.4.1 is met because no
+  meaning is carried by colour at all.)_
 
 ---
 
@@ -751,7 +761,7 @@ successfully (`sessions-probe.js`, `q1`).
 | **E-23** | An entry is restored while it holds focus                                                                            | AC-38.                                                                                                                                                                                                                                                                                      |
 | **E-24** | A dev build loaded unpacked on one device and the store build on another                                             | Extension ids differ (A-1): the other device's pages are `chrome-extension://<other id>` and are not own pages here; they are not `http(s)`, so they are listed and not openable (AC-25).                                                                                                 |
 | **E-26** | One tab of a run is restored alone | It comes back inside its group, with title and colour, in its original window if that is still open (C-19). The row is redrawn from Chrome's list: its count drops by one, and a row of one becomes a single entry (AC-68, AC-16). |
-| **E-27** | The search text matches one tab of a closed window or a run | The window or run is shown expanded, all its tabs in order, the matching ones highlighted, with its full count; the main Restore restores all of it and the matching tab can be restored alone (AC-35, AC-70, DEC-21). |
+| **E-27** | The search text matches some tabs of a closed window or a run | Shown with its full count and its match count, opened to only the matching tabs, each restorable alone; the main Restore, named for the whole item, restores all of it, hidden tabs included (AC-35, AC-70, DEC-21). Seeing the other tabs takes clearing the search (NG-12). |
 | **E-28** | A restore or open from the anchor tab lands in the anchor's own window                                               | The restored tab becomes active and the manager is hidden behind it, as Switch does (AC-19, DEC-11). Accepted.                                                                                                                                                                               |
 | **E-29** | From the side panel, a closed window is restored                                                                     | Chrome restores it as a new window, which comes to the front; focus and the active tab go back to the panel's window; the row becomes "Go to restored window", focused, and the restore is announced as in another window (AC-59…AC-62). Accepted cost: the flash (C-9), as UNDO. |
 | **E-30** | From the side panel, a closed tab or run comes back in another window — its source window (C-5, C-19), or a new window when that has closed (C-17) | As E-29. A run's Go goes to the newest of its restored tabs outside the panel's window (§5.13). |
@@ -767,7 +777,7 @@ successfully (`sessions-probe.js`, `q1`).
 | **E-40** | A row's entries cross a minute boundary (10:30:59–10:31:01) | "3 tabs closed between 10:30 and 10:31" (AC-8). |
 | **E-41** | Entries from before a restart, or from another day | Clock time with the day, "Yesterday, 10:31" or the date (AC-10, C-3). |
 | **E-42** | One tab of a closed window is restored alone | It comes back alone in a new window (C-18). The window row is redrawn from Chrome's list — with the remaining tabs, or gone (AC-68; unmeasured which, C-18). On the side panel, a Go row takes the tab's place (AC-69). |
-| **E-43** | A window or run expanded by a search, then the search is cleared | It goes back to collapsed, as it was before the search; an expansion the user made themselves is kept (AC-35). |
+| **E-43** | A window or run opened to its matches by a search, then the search is cleared | It returns to how it was before the search — collapsed, or expanded with all its tabs if the user had expanded it; the main Restore takes its ordinary name again (AC-35, AC-70). |
 | **E-25** | A closed tab was in a now-shared group, or the group was shared                                                       | Restore is Chrome's; nothing here reads `shared`. Not a requirement either way.                                                                                                                                                                                                              |
 
 ---
@@ -883,6 +893,8 @@ successfully (`sessions-probe.js`, `q1`).
 - **PI-7** This view is where idea 4's kept windows would naturally appear, by name, beside
   Recently closed; worth keeping its structure open to a third section.
 
+- **PI-8** A "show all tabs" control on a window or run that a search has opened to its matches (NG-12),
+  if the NVDA pass or use shows that clearing the search to see them costs too much.
 ---
 
 ## 13. The PI-1 probe — settled
@@ -933,9 +945,9 @@ looks like after one of its tabs is restored (C-18), which AC-68 handles either 
 | **DEC-16** (was NC-9) | **SPEC-04 AC-6's rule names Restore and Open**: a bare "Restore" / "Open" where it is the row's primary control, the title leading the row's name; a subject where it is not — "Restore window, N tabs", "Restore N tabs" (AC-37). The final wording is settled by ear in the NVDA pass (AC-42). The brief's "Restore <title>" wording is dropped. Answered 2026-10-14. |
 | **DEC-17** (was NC-10) | **The Web Store's Privacy practices tab declares "Web history", handled on the device only, with Limited Use certified; no permission changes** (AC-51). `PRIVACY.md`, `store-assets/privacy-policy.html` and `store-listing.md` (including "Data usage") say that the extension reads and shows the user's open tabs, recently closed tabs and windows, and other devices' tabs on this device, and never transmits, stores or shares them (AC-50). **Evidence**, from Google's [User Data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq): FAQ 3 — disclosure is required "even when data is processed or stored locally on a user's device and is not transmitted"; FAQ 2 — "handle" means "collecting, transmitting, using, or sharing user data", with web browsing activity as an example; FAQ 14 — a privacy policy is required even for local-only products. [Limited Use](https://developer.chrome.com/docs/webstore/program-policies/limited-use) permits web browsing activity only for a prominently described, user-facing feature, so the listing describes the feature (AC-50). **Inference, not a citation:** that these lists fall under the "Web history" category; the category's official definition could not be retrieved. **Finding, not widened into scope:** by FAQ 3 the existing open-tab list, which reads every open tab's title and URL on the device, arguably already required this disclosure; this spec makes the declaration and the wording changes, nothing more. Answered 2026-10-14. |
 | **DEC-18** (AM-1) | **On the side panel, a restore that lands in another window keeps the user in the panel's window, and offers "Go to restored window" as a second, ordinary press** (AC-59…AC-67). On the anchor tab and the float, and on the panel when the item lands in the panel's own window, DEC-11 stands unchanged (AC-19). Why: `sidePanel.open()` must be the first call in a live gesture (SPEC-05 C-8), and a restore's landing window is known only after `sessions.restore()` resolves, when the gesture is spent — so the press that restores cannot also bring the panel along, and going to the window without it would leave the user in a window with no manager. The Go press knows the window id before it starts, so it is an ordinary Switch with `bringPanelAlong` first (AC-63). **Chosen here, not asked:** the Go row lasts while the view is shown and the item's tabs are open, with **no timeout** — a timer would remove a control from under a keyboard or screen-reader user who is still reading (WCAG 2.2.1), and leaving the view is a clear, user-made end (AC-64); a press on a vanished item fails out loud and removes the row (AC-65); where the landing window cannot be known (C-7), the panel keeps its user and offers no Go control (AC-66). Decided by the user, 2026-10-14. |
-| **DEC-19** (AM-2) | **Consecutive closed-tab entries whose `lastModified` values are each within 1 s of their neighbour's form one row, labelled by count and local clock time — "24 tabs closed at 10:31"** (AC-8). Never "together", never "group" (C-16). Replaces DEC-10: Q-B showed no threshold tells one action from two quick hand closes (C-15), so the label claims only what is always true, the time; a mismatch costs nothing, because the row expands with per-tab Restore. **Chosen here, not asked:** the time is to the minute, in the browser's locale; a row whose oldest and newest entries fall in different minutes says "between 10:30 and 10:31", so the label is never false; a row not from today carries the day; no cap on chaining, because Chrome's 25 entries bound a row to 25 entries and 24 s (C-6); and every entry, not only rows of several, shows clock time (AC-10, was relative) so the list reads one clock. Decided by the user, 2026-10-14. |
+| **DEC-19** (AM-2) | **Consecutive closed-tab entries whose `lastModified` values are each within 1 s of their neighbour's form one row, labelled by count and local clock time — "24 tabs closed at 10:31"** (AC-8). Never "together", never "group" (C-16). Replaces DEC-10: Q-B showed no threshold tells one action from two quick hand closes (C-15), so the label claims only what is always true, the time; a mismatch costs nothing, because the row expands with per-tab Restore. **Chosen here, not asked:** the time is to the minute, in the browser's locale; a row whose oldest and newest entries fall in different minutes says "between 10:30 and 10:31", so the label is never false; a row not from today carries the day; no cap on chaining, because Chrome's 25 entries bound a row to 25 entries and 24 s (C-6); and every entry, not only rows of several, shows clock time (AC-10, was relative) so the list reads one clock. Decided by the user, 2026-10-14. Clock time everywhere (AC-10) confirmed by the user, 2026-10-14. |
 | **DEC-20** (AM-3) | **A closed window's row expands with per-tab Restore, as runs do; its main Restore still brings the whole window back** (AC-13). Replaces DEC-2 on Q-F's result (C-18). A single tab comes back in a new window, so on the side panel it takes the AM-1 Go row (AC-69); naming follows DEC-16. After a single-tab restore the row shows what Chrome's list then holds (AC-68), because what Chrome keeps of the window entry is unmeasured. Decided by the user, 2026-10-14. |
-| **DEC-21** (AM-4) | **A closed window or run matched by one of its tabs is shown expanded, all its tabs in order, the matching ones highlighted, with its full count; the main Restore restores the whole item and each matching tab can be restored alone** (AC-35, AC-70). Refines DEC-9's "whole matches", which the user did not accept: showing the whole item hid what matched. **Chosen here, not asked:** "expanded to the matching tabs" is read as all tabs shown with the matches highlighted (a highlight among only matches would mark nothing); the highlight is more than colour and is in the row's name (AC-70, WCAG 1.4.1); a device keeps showing only its matching tabs, since device tabs are opened one at a time; clearing the search collapses what the search expanded and keeps what the user expanded (E-43). Decided by the user, 2026-10-14. |
+| **DEC-21** (AM-4) | **A closed window or run matched by one or more of its tabs is shown with its full count and its match count, opened to only its matching tabs, each restorable alone; its main Restore restores the whole item and is named so** (AC-35, AC-70). Refines DEC-9's "whole matches", which the user did not accept. **Corrected by the user, 2026-10-14:** a first reading here showed all of an item's tabs with the matches highlighted; the user meant only the matching tabs. **Chosen here, not asked:** no per-tab "matches" mark, because every visible child is a match and the mark would repeat on every row — the parent's match count, heard once on entering it, carries the information, and the NVDA pass (AC-42) checks that reading; the main Restore is named for the whole item while tabs are hidden ("Restore whole window, 6 tabs", "Restore all 24 tabs"), because the non-matching tabs are not visible; a device shows only its matching tabs; clearing the search returns rows to how they were (E-43); no "show all" toggle (NG-12, PI-8). Decided by the user, 2026-10-14. |
 
 ## 15. Traceability
 
@@ -947,7 +959,7 @@ looks like after one of its tabs is restored (C-18), which AC-68 handles either 
 | AC-17, AC-18               | `undo/SyncPrompt.tsx`, `undo/restore.ts`                                                                         |
 | AC-21 … AC-29              | A devices store and its rows; `actions.ts` (`run`), `surfaces.ts` (`resolveUserWindow`, `isOwnPage`)              |
 | AC-30 … AC-33              | Both stores and the view's empty and error states                                                                |
-| AC-34, AC-35, AC-70        | `App.tsx` (match count), `views/SearchView`, selection (`SelectionContext`), the view's match rule and highlight |
+| AC-34, AC-35, AC-70        | `App.tsx` (match count), `views/SearchView`, selection (`SelectionContext`), the view's match rule, and the parent's counts and names |
 | AC-36 … AC-42, AC-58       | `elements/rowControls.ts`, `RowList`, `rows.a11y.test.tsx`, `App.tsx` (live region); result block here           |
 | AC-43, AC-44               | `elements/favicon.ts`, `TabFavicon.tsx`; result block here                                                       |
 | AC-45 … AC-51              | `manifest.json`, `src/test/manifest.test.ts`, `PRIVACY.md`, `store-assets/privacy-policy.html`, `store-listing.md`, `README.md`; result block here |
@@ -1017,4 +1029,4 @@ C-1…C-7 are cited from the discovery and SPEC-06; C-14…C-20 are this run.
 | **AM-1** | 2026-10-14 | **The side panel keeps its user after a restore into another window** (DEC-18), from the user. Refines DEC-11 (was NC-4 A, "go to it") without replacing it: the anchor tab, the float, and the side panel when the item lands in the panel's own window still go to it. AC-19 narrowed to those cases; AC-16 and AC-38 carry notes on the Go row; AC-59…AC-67 added (§5.13); §1.5 and its diagram added; E-29…E-38 added; AC-42 and AC-46 cover the new behaviour; Q-K added to §13 (non-blocking). Status unchanged: `draft`, approval waiting on Q-A and Q-B. |
 | **AM-2** | 2026-10-14 | **Runs are grouped by close time**, from the user, on Q-A and Q-B (C-14, C-15). DEC-19 replaces DEC-10: one row per chain of closed-tab entries each within 1 s of the next, labelled "N tabs closed at 10:31" (or "between 10:30 and 10:31"), never "together", never "group". AC-8 rewritten; AC-10 changed from relative to clock time, read in seconds (DEC-19); AC-28 reads seconds. E-1 updated; E-39…E-41 added. |
 | **AM-3** | 2026-10-14 | **A closed window's row expands with per-tab Restore**, from the user, on Q-F (C-18). DEC-20 replaces DEC-2. AC-13 rewritten; AC-68 (re-read after a single-tab restore) and AC-69 (its Go row on the side panel) added; §5.13's "another window" covers a window's single tab and a tab whose window has closed (C-17). E-11, E-26, E-30 updated; E-42 added. |
-| **AM-4** | 2026-10-14 | **A search match inside a window or run is shown expanded and highlighted**, from the user, refining AC-35's "whole matches" (DEC-21). AC-35 rewritten; AC-70 (highlight beyond colour, in the name) added; E-27 updated; E-43 added. The user also confirmed AC-3's one shared search text, AC-57 and AC-58. §13 settled; C-14…C-20 and the probe run (§16) recorded; A-2, A-5, A-7 resolved. Status: ready for the user's approval. |
+| **AM-4** | 2026-10-14 | **A search match inside a window or run opens it to only its matching tabs**, from the user, refining AC-35's "whole matches" (DEC-21). AC-35 rewritten; AC-70 (the parent's full and match counts, the main Restore named for the whole item, no per-tab mark) added; E-27 updated; E-43 added. The user also confirmed AC-3's one shared search text, AC-57 and AC-58. §13 settled; C-14…C-20 and the probe run (§16) recorded; A-2, A-5, A-7 resolved. Status: ready for the user's approval. **Corrected the same day by the user:** "opened to the matching tabs" means only those tabs are shown, not all tabs with the matches highlighted, which was this spec's first reading; AC-35, AC-70, DEC-21, E-27 and E-43 changed, NG-12 and PI-8 added. Clock time everywhere (AC-10) confirmed. |
