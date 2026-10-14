@@ -1,7 +1,6 @@
 # Discovery — keeping tabs for later
 
-**Date:** 2026-10-14 · **Status:** open — Q1, Q3 and Q4 answered, Q2 owed · **Feeds:** a spec,
-once the open questions below are answered
+**Date:** 2026-10-14 · **Status:** done — Q1–Q4 answered · **Feeds:** a spec for ideas 1 and 2
 
 Not a spec. This records an exploration: what people use session savers for, how much of that
 Chrome's own APIs can carry without the extension storing anything, and what is still unknown.
@@ -57,8 +56,8 @@ that needs them.
 ## Ideas, cheapest first
 
 1. **Recently closed.** A section listing the windows and tabs Chrome remembers closing, each with
-   Restore. No new permission. It turns the one-step Undo into a short history and covers most
-   mistakes — not a full crash.
+   Restore. No new permission. It turns the one-step Undo into a short history, and Q2 found it
+   survives quitting Chrome, so it is insurance as well as undo — up to the last 25 entries.
 2. **On your other devices.** What is open on the phone or the laptop, from `getDevices`. No new
    permission or warning.
 3. **Sleep a window.** `tabs.discard` on every tab in it: the memory comes back, nothing moves.
@@ -100,7 +99,7 @@ page's DevTools console. The harness cannot answer them: its `chrome.*` is a dem
 | #   | Question                                                                                             | Why it matters                                                                              | Answer                                                                                                                                     |
 | --- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Q1  | Does `sessions.restore()` bring a window back with its pinned tab and its tab group (title, colour)? | If yes, Recently closed keeps the arrangement for free; bookmarks would be the lossy option | **Yes** — pinned tab, group, title and colour all came back (Chrome 155, 2026-10-14). See below                                            |
-| Q2  | Do recently-closed windows survive quitting and reopening Chrome?                                    | Decides whether idea 1 is insurance or only an undo                                         | pending — part A left a closed window behind; the restart check is still owed                                                              |
+| Q2  | Do recently-closed windows survive quitting and reopening Chrome?                                    | Decides whether idea 1 is insurance or only an undo                                         | **Yes** — the closed probe window was still in Recently closed after quitting and reopening Chrome. One restart, one profile               |
 | Q3  | When an extension removes a group's tabs, does Chrome keep it as a saved group, or delete it?        | Today's "close group" may be quietly deleting saved groups — or keeping them                | **Deleted** — "CT probe 3" is in neither ⋮ → Tab groups nor the bookmarks bar; "CT probe 1", closed with its window, is in both. See below |
 | Q4  | Does `getDevices()` return anything on an ordinary signed-in profile?                                | Idea 2 is only worth a section if it is usually populated                                   | **Yes** — two other devices, 3 windows, 71 tabs. One profile, so "usually" is not proven                                                   |
 
