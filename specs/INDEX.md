@@ -14,7 +14,7 @@ in plans, not here.
 | SPEC-03 | 2026-09-24 | Favicons from the browser's own store | `tab-list` | implemented (2026-09-24) | — (supersedes SPEC-01 AC-22) | [tab-list/SPEC-03-2026-09-24-local-favicons.md](tab-list/SPEC-03-2026-09-24-local-favicons.md)                           |
 | SPEC-04 | 2026-09-28 | Accessible rows (`nested-interactive`) | `tab-list` | approved (2026-09-29, amended 2026-09-29 and 2026-09-30) | —                            | [tab-list/SPEC-04-2026-09-28-accessible-rows.md](tab-list/SPEC-04-2026-09-28-accessible-rows.md)                         |
 | SPEC-05 | 2026-09-29 | Keyboard access to what Chrome cannot do | `ui-shell` | approved (2026-09-29)    | — (supersedes SPEC-01 NG-10) | [ui-shell/SPEC-05-2026-09-29-keyboard-access.md](ui-shell/SPEC-05-2026-09-29-keyboard-access.md)                         |
-| SPEC-06 | 2026-10-14 | Closing a tab group                   | `tab-list` | draft — ready for approval | —                            | [tab-list/SPEC-06-2026-10-14-closing-a-tab-group.md](tab-list/SPEC-06-2026-10-14-closing-a-tab-group.md)                 |
+| SPEC-06 | 2026-10-14 | Closing a tab group                   | `tab-list` | approved (2026-10-14) | —                            | [tab-list/SPEC-06-2026-10-14-closing-a-tab-group.md](tab-list/SPEC-06-2026-10-14-closing-a-tab-group.md)                 |
 
 ## Status values
 

@@ -5,7 +5,7 @@
 | **Spec ID**    | SPEC-06                                                                                                                                                                                                                                 |
 | **Date**       | 2026-10-14                                                                                                                                                                                                                              |
 | **Module**     | `tab-list` (`src/lib/Tabs/TabsGroup/`, `src/lib/Tabs/actions.ts`, `src/lib/Tabs/undo/`) — with edges into `ui-shell` (`src/lib/surfaces.ts`) and `views` (`src/views/SearchView/`)                                                    |
-| **Status**     | **draft — ready for approval** (2026-10-14). All nine clarifications are closed (§13). NC-6 was settled by two probe runs in real Chrome (§1.6, §15). **Option B ships**: the X stays a delete and is named so. Close group is blocked on Chrome (C-10). Approval is the user's to give. |
+| **Status**     | **approved 2026-10-14** by the user, with one amendment (AM-1, §17): Delete confirms on search-result group rows only. **Option B ships**: the X deletes and is named so; Close group is blocked on Chrome (C-10). All clarifications closed (§13). |
 | **Supersedes** | —                                                                                                                                                                                                                                       |
 
 ---
@@ -65,7 +65,7 @@ own probes, `discovery/probes/close-group-probe.js` and `discovery/probes/close-
 The first guess was that the group X skips Undo. **It does not.** `SyncPrompt` subscribes to
 `chrome.tabs.onRemoved` globally (`SyncPrompt.tsx:145`), filtered only by `wasListedTab`
 (`:135`, defined at `useTabsStructure.ts:190`). Any removal of listed tabs — this one included —
-raises "N tabs closed · UNDO", and UNDO calls `restoreSessions` (`src/lib/Tabs/undo/restore.ts:175-198`):
+raises "N tabs closed · UNDO", and UNDO calls `restoreSessions` (`src/lib/Tabs/undo/restore.ts:17-40`):
 `chrome.sessions.restore` per entry, oldest first, then focus back to `resolveUserWindow()`.
 
 What the group X does bypass is `run()` in `src/lib/Tabs/actions.ts:9-15`, which every other close
@@ -201,7 +201,7 @@ unchanged; nothing offers Close group. P4 passed, so Delete does not confirm (DE
 
 Each is one testable statement. Ids are stable — never renumber; append `AC-N+1` for new ones.
 Priority uses MoSCoW. **Real Chrome only** marks a criterion that no unit test, jsdom run or
-harness pass can prove (C-8). AC-27…AC-30 were added after the rest and sit where they belong.
+harness pass can prove (C-8). AC-27…AC-31 were added after the rest and sit where they belong.
 
 **Option B ships (DEC-6, §13.1).** The criteria in §5.2…§5.9 apply. **AC-1…AC-5, AC-10, AC-17,
 AC-18 and AC-22 do not apply under B**: they describe Close group, or the ⋮ menu item option A
@@ -217,10 +217,11 @@ section numbers are unchanged.)
   them when the action runs, own pages excluded — in search results too, where the row shows fewer
   (AC-29, E-4, E-10); manual, **real Chrome only** — the group is absent from ⋮ → Tab groups
   afterwards (C-1).
-- **AC-7** _(Must)_ WHEN the user activates Delete group, the system SHALL NOT ask for
-  confirmation; UNDO is the way back (DEC-8 — P4 passed, C-12).
-  **Verify:** unit — activate Delete group and assert `tabs.remove` is called with no dialog
-  rendered. _(Had P4 failed, this criterion required a confirmation naming the group and its count,
+- **AC-7** _(Must)_ WHEN the user activates Delete group on a group row **outside search
+  results**, the system SHALL NOT ask for confirmation; UNDO is the way back (DEC-8 — P4 passed,
+  C-12). On a search-result row, AC-31 applies instead.
+  **Verify:** unit — activate Delete group in the tab list and assert `tabs.remove` is called with
+  no dialog rendered. _(Had P4 failed, this criterion required a confirmation naming the group and its count,
   defaulting to the non-destructive choice. If a later Chrome stops regrouping on Undo, that is the
   form to return to.)_
 
@@ -359,6 +360,15 @@ section numbers are unchanged.)
   (DEC-11).
   **Verify:** unit — in `SearchView` with a filter matching 2 of a 5-tab group, the X is named
   `Delete group Reading, 5 tabs` and the action reaches all 5 tabs. Manual — AC-24's search item.
+- **AC-31** _(Must)_ WHEN the user activates Delete group on a group row **in search results**, the
+  system SHALL ask for confirmation before deleting; the confirmation SHALL name the group (or
+  "untitled group") and its **full** tab count, counted as in AC-29, and SHALL default to the
+  non-destructive choice. IF the user declines, THEN nothing SHALL be closed (DEC-15, AM-1).
+  **Verify:** unit — in `SearchView` with a filter matching 2 of a 5-tab group, activate the X;
+  assert a dialog naming "Reading" and "5 tabs", focus on the non-destructive choice, and no
+  `tabs.remove` until the destructive choice is taken; decline and assert nothing was removed and
+  focus returns to the X. Manual — AC-24's search item. _(Names built as text — AC-24 of SPEC-04,
+  E-18.)_
 
 ### 5.10 Close group — blocked on Chrome  *(not applicable under option B)*
 
@@ -430,11 +440,11 @@ Rows marked _(Close only)_ do not arise under option B and are kept for a revisi
 | **E-1**  | The group is every listed tab of its window                                                          | Deleting it closes the window, **as it does today**: Chrome closes a window whose last tab closes. If the side panel lives there, it closes with it, and its Undo prompt goes with it; another visible surface may still raise one. UNDO then restores the tabs per their closed entries. AC-12, AC-15.        |
 | **E-2**  | The window holds the group and the anchor tab, nothing else                                          | The anchor tab stays, ungrouped (AC-8), so the window stays open. Not E-1.                                                                                                                                                                                                                                       |
 | **E-3**  | The anchor tab is inside the group                                                                   | `group.tabs` never contains it (filtered at `useTabsStructure.ts:165`), but Chrome's group does. AC-8: it stays open and leaves the group, so the group is really deleted. Today's X leaves it **in** the group, so the Chrome group outlives the delete, unseen in the list.                                    |
-| **E-4**  | A group row in search results (SPEC-04 E-3, E-17)                                                    | It carries the X and the ⋮ menu too, but its `group.tabs` holds only the **matching** tabs (`getTabsTree` filters before grouping, `useTabsStructure.ts:46-48`). Today's X there removes the matches and leaves the rest of the group open. **Decided (DEC-11): the delete acts on the whole group**, and the X's name carries the full count (AC-29). **Consequence, accepted:** under option B the X is a one-press Delete with no confirmation (DEC-8), so from a search row it removes tabs the row does not show; its name says how many before it is pressed, and UNDO brings them all back grouped (C-12). |
+| **E-4**  | A group row in search results (SPEC-04 E-3, E-17)                                                    | It carries the X and the ⋮ menu too, but its `group.tabs` holds only the **matching** tabs (`getTabsTree` filters before grouping, `useTabsStructure.ts:46-48`). Today's X there removes the matches and leaves the rest of the group open. **Decided (DEC-11): the delete acts on the whole group**, and the X's name carries the full count (AC-29). **Because that removes tabs the row does not show, Delete confirms here and only here (DEC-15, AC-31)**, naming the group and its full count; elsewhere it does not (DEC-8). UNDO still brings them all back grouped (C-12). |
 | **E-5**  | Untitled group                                                                                        | Today the X is named `Close every tab in group` and the toolbar `Untitled, group, N tabs`; Chrome calls it by its count ("4 tabs"). **Decided (DEC-7):** `Delete untitled group, N tabs`. AC-19, AC-20.                                                                                                       |
 | **E-6**  | A collapsed group                                                                                     | Delete works the same. Whether UNDO restores it collapsed is unmeasured — AC-24. Not a requirement either way.                                                                                                                                                                                                  |
 | **E-7**  | The group holds its window's active tab                                                               | Chrome must make another tab active in that window; which one is Chrome's choice and is not overridden. AC-11 exempts this case.                                                                                                                                                                              |
-| **E-8**  | A shared tab group (`TabGroup.shared`, Chrome 137+ per the brief)                                     | What Delete means for collaborators is unknown and is not researched here; the installed `@types/chrome` 0.0.263 does not declare `shared`. **Decided (DEC-13):** Delete is not offered — under B, the row has no X (AC-28). The selection toolbar's Close can still remove all of its tabs (NG-8); see §16 item 3. |
+| **E-8**  | A shared tab group (`TabGroup.shared`, Chrome 137+ per the brief)                                     | What Delete means for collaborators is unknown and is not researched here; the installed `@types/chrome` 0.0.263 does not declare `shared`. **Decided (DEC-13):** Delete is not offered — under B, the row has no X (AC-28). The selection toolbar's Close can still remove all of its tabs (NG-8); see §17, open point 2. |
 | **E-9**  | A Chrome version or setting that does not save groups                                                 | Delete behaves the same; there is simply no saved group to remove. Not detectable (NG-5).                                                                                                                                                                                                                       |
 | **E-10** | The group changes between render and action (a tab added or removed)                                  | Delete acts on the group's tabs as Chrome reports them when the action runs, own pages excluded, not on a stale render, so a tab added a moment ago is not left behind holding the group open.                                                                                                                  |
 | **E-11** | _(Close only)_ A close that fails half-way                                                            | AC-10 (§5.10). Possible stops: window created but move refused; moved but placeholder not removed; moved but window not closed; move back refused.                                                                                                                                                              |
@@ -444,7 +454,7 @@ Rows marked _(Close only)_ do not arise under option B and are kept for a revisi
 | **E-15** | _(Close only)_ The user presses Ctrl+Shift+T after a Close                                            | Chrome would reopen the temporary window, so the group would come back in a **new window** (C-3).                                                                                                                                                                                                             |
 | **E-16** | _(Close only)_ Chrome's History → Recently closed after a Close                                       | Would show a closed window the user never opened. P3: with the placeholder removed, it holds only the group's tabs.                                                                                                                                                                                          |
 | **E-17** | _(Close only)_ Chrome's own reopen of a saved group, next to this extension's UNDO                     | Reopening from ⋮ → Tab groups is Chrome's (NG-1). P6 found the saved group listed once, as open, after a restore.                                                                                                                                                                                             |
-| **E-18** | A title containing markup, quotes or a right-to-left override                                         | Names are built as text (SPEC-04 AC-24).                                                                                                                                                                                                                                                                      |
+| **E-18** | A title containing markup, quotes or a right-to-left override                                         | Names and the search-row confirmation's text are built as text (SPEC-04 AC-24).                                                                                                                                                                                                                                                                      |
 | **E-19** | `shared` is `undefined` — a Chrome older than shared groups, or typings that do not declare it (0.0.263 does not) | Treated as **not shared**: the X is offered as for any group (AC-28). Only `shared === true` withholds it. |
 | **E-20** | After Delete and UNDO, is the group a saved group again?                                              | Unmeasured. Chrome 155 saves a group as it is made (C-1), so the restored group may reappear under ⋮ → Tab groups as a new saved group. Not a requirement either way; noted so it is not reported as a defect.                                                                                                 |
 
@@ -467,8 +477,9 @@ Rows marked _(Close only)_ do not arise under option B and are kept for a revisi
 ## 8. Non-functional requirements
 
 - **NFR-1 Accessibility.** WCAG 2.1 **4.1.2 Name, Role, Value** (AC-19…AC-21), **2.4.3 Focus
-  Order** (AC-13). **3.3.4 Error Prevention** is met by reversal rather than confirmation: UNDO
-  restores the group whole (AC-7, AC-16, C-12).
+  Order** (AC-13). **3.3.4 Error Prevention** is met by reversal — UNDO restores the group whole (AC-7, AC-16,
+  C-12) — and, on search rows, where the delete reaches tabs not shown, by confirmation too
+  (AC-31).
 - **NFR-2 No visible side effects.** No window shown, no focus moved, no panel closed, beyond what
   the user asked for (AC-11, AC-12).
 - **NFR-3 Privacy.** No storage, no new permission (AC-25).
@@ -479,13 +490,13 @@ Rows marked _(Close only)_ do not arise under option B and are kept for a revisi
 
 | Area                                                  | Impact                                                                                                                                                                                                                                                                  |
 | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tab-list` — `TabsGroup/GroupListItem.tsx`            | The X's name (AC-19, AC-29) and its handler: through `run()` (AC-9), on the group as Chrome has it (E-10), protecting own pages (AC-8), once (AC-27), absent for shared groups (AC-28). The ⋮ menu is unchanged (AC-30).                                                 |
+| `tab-list` — `TabsGroup/GroupListItem.tsx`            | The X's name (AC-19, AC-29) and its handler: through `run()` (AC-9), on the group as Chrome has it (E-10), protecting own pages (AC-8), once (AC-27), absent for shared groups (AC-28), confirming on search rows (AC-31). The ⋮ menu is unchanged (AC-30).                                                 |
 | `tab-list` — `TabsGroup/GroupDisplay.tsx`             | The toolbar name stays; AC-21 checks the X's name against it. The control count is unchanged, so SPEC-04 AC-22's 88.3px chip reservation holds — except on a shared group, which has no X (AC-28) and so reserves more than it needs.                                     |
 | `tab-list` — `actions.ts`                             | `run()` is where "Couldn't delete group" comes from (AC-9).                                                                                                                                                                                                             |
-| `tab-list` — `undo/` (`SyncPrompt.tsx`, `restore.ts`) | No change required: a delete is already counted and restored correctly per C-12. AC-15 and AC-16 pin that. §16 item 2 is a separate possible defect in window Undo.                                                                                                       |
+| `tab-list` — `undo/` (`SyncPrompt.tsx`, `restore.ts`) | No change required: a delete is already counted and restored correctly per C-12. AC-15 and AC-16 pin that. PI-6 is a separate, low-priority check of window Undo.                                                                                                       |
 | `tab-list` — `useTabsStructure.ts`                    | The whole group's tab count for a search row's name (AC-29), from the unfiltered snapshot.                                                                                                                                                                              |
 | `ui-shell` — `surfaces.ts`                            | `isOwnPage` decides what AC-8 protects; `bringPanelAlong` must not be reached (AC-12).                                                                                                                                                                                  |
-| `views` — `SearchView`                                | Search-result group rows carry the X with a filtered `group.tabs`; the delete reaches the whole group and the name carries its full count (E-4, AC-29).                                                                                                                  |
+| `views` — `SearchView`                                | Search-result group rows carry the X with a filtered `group.tabs`; the delete reaches the whole group, the name carries its full count, and it confirms first (E-4, AC-29, AC-31).                                                                                                                  |
 | `tab-list` — `selection/SelectionToolbar.tsx`         | Unchanged (NG-8, AC-26).                                                                                                                                                                                                                                                |
 | SPEC-04                                               | AC-6, AC-29 constrain the names. The strings pinned in `GroupDisplay.test.tsx` change (AC-19). E-15 is untouched under B, because the ⋮ menu gains no item that removes its own row. Nothing is superseded.                                                               |
 | SPEC-05                                               | E-8's "never on a detached or removed node" is extended to a deleted group (AC-13).                                                                                                                                                                                     |
@@ -510,7 +521,7 @@ Rows marked _(Close only)_ do not arise under option B and are kept for a revisi
 ## 11. Untrusted inputs
 
 - **A group's title is user-controlled and arbitrary**, and is interpolated into the X's name, the
-  menu button's name and the toolbar's name. Text only, never markup, never an id or a selector
+  menu button's name, the toolbar's name and the search-row confirmation (AC-31). Text only, never markup, never an id or a selector
   (SPEC-04 AC-24, E-18).
 - **A tab's URL decides what is protected** (`isOwnPage`). It is compared against
   `chrome.runtime.getURL("")` by prefix; a page cannot make its URL begin with this extension's
@@ -525,17 +536,20 @@ Rows marked _(Close only)_ do not arise under option B and are kept for a revisi
   through `run()` as well. They swallow failures the same way the X does. Out of scope here only
   because they are not closes.
 - **PI-3** Multi-select close is out of scope (NG-8). A later spec could treat a fully selected
-  group as a group — including withholding it when the group is shared (§16 item 3).
+  group as a group — including withholding it when the group is shared (§17, open point 2).
 - **PI-4** Apply AC-13's focus rule to tab rows and window rows, and to "Ungroup all tabs", which
   also removes the focused group row. Closing a focused tab row today drops focus to the document,
   by the same mechanism; no spec names a target for it.
 - **PI-5** _Closed 2026-10-14: P4 passed (C-12) — today's Undo already regroups a deleted group, so
   there is nothing to regroup from memory._
-- **PI-6** Check the Undo of a **window** close against C-10 (3). If `sessions.restore` of a window
-  session rejects while succeeding in ordinary use too, then `restoreSessions` would show "Couldn't
-  restore those tabs" after restoring them (`SyncPrompt.tsx:99-107`), and its loop would stop at
-  that entry and skip any older ones in the same burst (`restore.ts:185-190`). Only the
-  temporary-window case was measured here; the window row's X was not.
+- **PI-6** _Low priority._ Check that Undo of an ordinary **window** close is unaffected by
+  C-10 (3). It probably is: discovery Q1 restored an ordinary closed window with
+  `chrome.sessions.restore(session.window.sessionId)` and used `restored.window.id` with no
+  rejection (`discovery/probes/sessions-probe.js`, `q1`, on `discovery/keeping-tabs-for-later`), and
+  the discovery records Q1 as answered yes. The rejection was seen only for the temporary window
+  the extension created and moved a group into. Were it ever seen for an ordinary window,
+  `restoreSessions` would stop at that entry (`restore.ts:27-31`) and the prompt would report a
+  failure (`SyncPrompt.tsx:101`) after a restore that worked.
 - **PI-7** If Close group is revisited: first try `windows.create({ state: "minimized" })` with
   `focused` **omitted** (C-10's untested variant), watched for a flash and checked for focus; then
   check whether a group restored by `sessions.restore` can be moved back into its original window
@@ -561,6 +575,7 @@ Rows marked _(Close only)_ do not arise under option B and are kept for a revisi
 | **DEC-12** (was NC-8) | **Focus goes to the next row's first control, else the previous row's, else the search field** (AC-13). Answered 2026-10-14. |
 | **DEC-13** (was NC-9) | **Delete is not offered for shared groups** (AC-28); under B that means no X on a shared group's row. The extension cannot confirm that `tabs.remove` does not delete the group for every collaborator, so it does not offer the action that might. `shared` undefined counts as not shared (E-19). Answered 2026-10-14. |
 | **DEC-14** (was NC-6) | **Close group is blocked on Chrome, not abandoned.** The probe answered NC-6 on 2026-10-14 (§1.6, §15). Its criteria are kept in §5.10 and its reasons in C-10. Revisiting needs a new probe of C-10's untested variant and of moving a restored group home (PI-7), then a superseding spec or an amendment here. |
+| **DEC-15** (AM-1) | **Delete confirms on search-result group rows, and only there** (AC-31). A search row shows only the matching tabs, but its X deletes the whole group (DEC-11), so the press reaches tabs the user cannot see; the full count in the name (AC-29) says so, and a confirmation makes sure it was heard. Everywhere else the row shows every tab it deletes, UNDO restores the group whole (C-12), and DEC-8 stands. Decided by the user at approval, 2026-10-14. |
 
 ### 13.1 What the probe settled
 
@@ -589,7 +604,7 @@ Field names are the probe's JSON; "lookFor" lines are its questions for the pers
 | AC-24                      | A result block in this file                                                                              |
 | AC-25, AC-26, AC-30        | `src/test/manifest.test.ts`; existing window-row and selection-toolbar tests; the ⋮ menu                |
 | AC-28                      | `TabsGroup/GroupListItem.tsx` — the X, keyed on `group.shared`                                           |
-| AC-29                      | `TabsGroup/GroupListItem.tsx`, `views/SearchView/index.tsx`, `useTabsStructure.ts` (the unfiltered count) |
+| AC-29, AC-31               | `TabsGroup/GroupListItem.tsx`, `views/SearchView/index.tsx`, `useTabsStructure.ts` (the unfiltered count) |
 | AC-1 … AC-5, AC-10, AC-17, AC-18, AC-22 | Not applicable under B (§5.10)                                                             |
 
 ## 15. Measurement log
@@ -601,7 +616,7 @@ same as `main`):
   button name), `:157` (X name), `:336-341` (menu items).
 - `actions.ts:9-15` (`run`), `:20-24` (`closeTabs`, `closeWindow`).
 - `SyncPrompt.tsx:131-138` (`handleRemove`, `wasListedTab`), `:145` (global `onRemoved`);
-  `restore.ts:175-198`.
+  `restore.ts:17-40` (`restoreSessions`; the restore loop at `:27-31`).
 - `useTabsStructure.ts:46-48` (filter applied before grouping), `:165` (own pages and the float's
   window excluded), `:190` (`wasListedTab`).
 - `GroupDisplay.tsx:36-39` (toolbar name, "Untitled" fallback); `GroupDisplay.test.tsx:278`, `:495`,
@@ -643,22 +658,31 @@ at once.
 
 ---
 
-## 16. Before approving — worth a look
+## 16. Before approving — resolved at approval, 2026-10-14
 
-Not open questions; things the approver should see before saying yes.
+The five points put to the approver, and what became of each:
 
-1. **US-1 is not served.** The spec's original motivation — the X should *close*, not delete — is
-   blocked on Chrome. What ships is honesty (the X says "Delete group") plus the fixes that come
-   with it (AC-8, AC-9, AC-13, AC-28, AC-29). G-2 is recorded as not met.
-2. **A possible existing defect in window Undo** (PI-6). The window row's X closes a window, and its
-   Undo restores a window session. If C-10 (3) holds there too, the user sees "Couldn't restore
-   those tabs" after the tabs came back, and older entries in the same burst are skipped. Measured
-   only for the temporary window; not part of this spec.
-3. **Shared groups lose the X, but not the delete.** AC-28 removes the X from a shared group's row,
-   yet selecting all of its tabs and pressing the selection toolbar's Close still runs `tabs.remove`
-   on them (NG-8 keeps that unchanged). The protection is partial.
-4. **Search-row delete is one press, with no confirmation, of tabs the row does not show** (E-4).
-   The name says the full count and UNDO restores the group whole; the approver may still prefer a
-   confirmation on search rows only.
-5. **Untitled names sit close to the toolbar's**: `Delete untitled group, 3 tabs` against
-   `Untitled, group, 3 tabs`. Distinct as AC-21 requires; AC-23's NVDA pass is where to judge it.
+1. **US-1 is not served** — the X still deletes. Accepted: what ships is the honest name and the
+   fixes that come with it. G-2 stays recorded as not met; DEC-14 and PI-7 keep the way back.
+2. **Window Undo** — withdrawn as a suspected defect. Discovery Q1 restored an ordinary closed
+   window without a rejection; the rejection was seen only for the extension's temporary window.
+   PI-6 keeps it as a low-priority check.
+3. **Shared groups lose the X, not the delete** — accepted as known; carried in §17.
+4. **Search-row delete with no confirmation** — **changed**: Delete now confirms on search rows
+   (AM-1, DEC-15, AC-31).
+5. **Untitled names close to the toolbar's** — left to AC-23's NVDA pass.
+
+## 17. Approval and amendments
+
+| #        | Date       | Change |
+| -------- | ---------- | ------ |
+| **AM-1** | 2026-10-14 | **Approved by the user, with one change: Delete confirms on search-result group rows only.** Adds AC-31 and DEC-15; narrows AC-7 to rows outside search results; E-4 and NFR-1 updated. DEC-8 stands everywhere else. |
+
+At approval, one correction to text that had not been checked, and one open point carried forward:
+
+- **Corrected.** `restore.ts` was cited as `:175-198` and `:185-190`. Those numbers came from two
+  files read as one listing. `restoreSessions` is `restore.ts:17-40`, its loop `:27-31`. PI-6
+  was reworded at the same time (§16 item 2).
+- **Open point 1, carried.** The plan should note that §5.10's criteria are not to be built.
+- **Open point 2, carried.** A shared group's tabs can still all be removed through the selection
+  toolbar's Close (NG-8); AC-28 protects the row's X only. PI-3 is where to close that gap.
