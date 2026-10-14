@@ -9,7 +9,8 @@
  *
  * It opens and closes a few small windows of example.com tabs, then prints a
  * JSON summary — copy that back. Every probe tab carries `ct-probe` in its URL
- * so nothing is confused with your own tabs.
+ * so nothing is confused with your own tabs. Q1 leaves a saved tab group,
+ * "CT probe 1", behind in ⋮ → Tab groups: right-click it there → Delete group.
  *
  * Q2 needs a browser restart, so it runs in two parts:
  *   1. paste this file — part A runs with the others and leaves a closed window behind;

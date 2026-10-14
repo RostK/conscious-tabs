@@ -1,6 +1,6 @@
 # Discovery — keeping tabs for later
 
-**Date:** 2026-10-14 · **Status:** open — Q1 and Q4 answered, Q2 and Q3 owed · **Feeds:** a spec,
+**Date:** 2026-10-14 · **Status:** open — Q1, Q3 and Q4 answered, Q2 owed · **Feeds:** a spec,
 once the open questions below are answered
 
 Not a spec. This records an exploration: what people use session savers for, how much of that
@@ -76,32 +76,58 @@ that needs them.
    is one article. Also an optional permission.
 6. **Export a window.** A Netscape bookmarks `.html` (every browser imports it) or Markdown. Copy as
    links goes to the clipboard and needs no `clipboardWrite`.
+7. **Keep as a Chrome tab group** — added after Q3. Gather the window's ungrouped tabs into a named
+   group, then close the window with `windows.remove`. Chrome keeps the group, title and colour, on
+   the bookmarks bar and under ⋮ → Tab groups, synced — with no new permission. Its limits: no API
+   lists saved groups or reopens one, so kept windows could not be shown in the panel, which the
+   demand evidence says they need; a window's existing groups become separate saved groups rather
+   than one kept window; and it rests on Chrome's saved groups, which lost one writer's every group
+   in 2023. Good as a zero-permission first step, not as the whole answer.
 
 ## Ruled out
 
 - **Automatic snapshots into bookmarks**, as crash insurance. Overwriting a "Last session" folder
   every few minutes churns the bookmarks and Sync. Crash recovery stays with Chrome, plus idea 1.
 - **`storage`-backed sessions.** Workable, and it ends the claim that the extension keeps nothing.
-- **Driving Chrome's saved tab groups.** As far as is known, no API saves or hides a group. Q3
-  checks whether removing a group's tabs deletes the saved group.
+- **Driving Chrome's saved tab groups directly.** No API lists, saves, hides or reopens a saved
+  group. Q3 found the one lever there is — close the window, not the tabs — which is idea 7.
 
 ## Open questions
 
 Answered by [`probes/sessions-probe.js`](probes/sessions-probe.js), pasted into the extension
 page's DevTools console. The harness cannot answer them: its `chrome.*` is a demo-data shim.
 
-| #   | Question                                                                                             | Why it matters                                                                              | Answer                                                                                          |
-| --- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Q1  | Does `sessions.restore()` bring a window back with its pinned tab and its tab group (title, colour)? | If yes, Recently closed keeps the arrangement for free; bookmarks would be the lossy option | **Yes** — pinned tab, group, title and colour all came back (Chrome 155, 2026-10-14). See below |
-| Q2  | Do recently-closed windows survive quitting and reopening Chrome?                                    | Decides whether idea 1 is insurance or only an undo                                         | pending — part A left a closed window behind; the restart check is still owed                   |
-| Q3  | When an extension removes a group's tabs, does Chrome keep it as a saved group, or delete it?        | Today's "close group" may be quietly deleting saved groups — or keeping them                | pending — needs a look at ⋮ → Tab groups for "CT probe 3"                                       |
-| Q4  | Does `getDevices()` return anything on an ordinary signed-in profile?                                | Idea 2 is only worth a section if it is usually populated                                   | **Yes** — two other devices, 3 windows, 71 tabs. One profile, so "usually" is not proven        |
+| #   | Question                                                                                             | Why it matters                                                                              | Answer                                                                                                                                     |
+| --- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Q1  | Does `sessions.restore()` bring a window back with its pinned tab and its tab group (title, colour)? | If yes, Recently closed keeps the arrangement for free; bookmarks would be the lossy option | **Yes** — pinned tab, group, title and colour all came back (Chrome 155, 2026-10-14). See below                                            |
+| Q2  | Do recently-closed windows survive quitting and reopening Chrome?                                    | Decides whether idea 1 is insurance or only an undo                                         | pending — part A left a closed window behind; the restart check is still owed                                                              |
+| Q3  | When an extension removes a group's tabs, does Chrome keep it as a saved group, or delete it?        | Today's "close group" may be quietly deleting saved groups — or keeping them                | **Deleted** — "CT probe 3" is in neither ⋮ → Tab groups nor the bookmarks bar; "CT probe 1", closed with its window, is in both. See below |
+| Q4  | Does `getDevices()` return anything on an ordinary signed-in profile?                                | Idea 2 is only worth a section if it is usually populated                                   | **Yes** — two other devices, 3 windows, 71 tabs. One profile, so "usually" is not proven                                                   |
 
 **Q1 has a catch.** Before restoring, the closed window's session reported `groupId: 0` on all
 three tabs — the pinned, ungrouped one included. Chrome restores the structure correctly, but the
 session record does not describe it, so a Recently closed list cannot show which tabs were grouped,
 or what the group was called, until the window is back. The list can show a window's tabs and
 count; not its groups.
+
+**Q3: how a group is closed decides whether Chrome keeps it.** Closing the _window_
+(`windows.remove`) left "CT probe 1" as a saved group, with its title and colour, on the bookmarks
+bar and under ⋮ → Tab groups. Removing the group's _tabs_ (`tabs.remove`) left nothing — the
+group is gone. (Strictly, the probe cannot tell "deleted" from "never saved", but the same menu
+lists unnamed groups like "4 tabs", so Chrome 155 saves groups as they are made.)
+
+Two consequences:
+
+- **Today's group close button deletes the saved group.** "Close every tab in group"
+  (`src/lib/Tabs/TabsGroup/GroupListItem.tsx`, `handleDelete`) calls `tabs.remove` on the group's
+  tabs, so it does what Chrome calls _Delete group_, not _Close group_ — which in Chrome hides the
+  group and keeps it. Someone who knows Chrome's menu would expect the second. Not part of this
+  discovery's scope, but worth deciding on its own.
+- **A seventh idea, with no permission at all** — see "Keep as a Chrome tab group" below.
+
+The same screenshot shows the cost of Chrome's approach: this profile has about thirty saved
+groups, most of them unnamed ("4 tabs", "2 tabs", "1 tab"). That is the never-revisited pile the
+demand evidence describes, in Chrome's own UI, and it argues for naming whatever gets kept.
 
 ## Demand evidence
 
