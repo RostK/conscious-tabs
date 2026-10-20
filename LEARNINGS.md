@@ -171,6 +171,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   the same tick passes whatever the observer would have done. Evidence:
   `src/lib/Tabs/elements/RowList.tsx` (`touchesRows`), `RowList.test.tsx` ("renumbers for rows").
 
+- 2026-10-20 — **A harness click is too fast to show a bug that lands mid-press.** The computer
+  tool's click sends mousedown and mouseup within a millisecond, so a re-render ~20 ms into the
+  press never comes between them and the click "works". To see it: add a capture-phase `mousedown`
+  listener that makes the change (here: set every window in `chrome.windows.getAll()`'s array to
+  `focused: false` — the harness hands out its live array — and fire `onFocusChanged(-1)`),
+  dispatch a `mousedown`, wait 150 ms, and ask `elementFromPoint` whether the same row is still
+  under the pointer. Evidence: the window-collapse fix in `src/views/TabsView/index.tsx`.
+
 ## What Doesn't Work
 
 - 2026-07-30 — `.gitignore` patterns `*.local` and `.env*.local` do **not** match a bare
@@ -540,6 +548,17 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   its test in `src/App.drop.test.tsx`, which drives `App`'s real `DndContext` and so held through
   the move without an edit. Evidence: `src/lib/Tabs/DnD/useRowDrag.ts`.
 
+- 2026-10-20 (follows the note above) — **Removing the key did not finish the job: the
+  `useEffect` that synced open state from `window.focused` still collapsed windows mid-click.**
+  `window.focused` goes false for *every* browsing window while the float, or another app, has
+  focus — and pressing on the float is what gives it focus. The section shut ~20 ms into the press
+  (10 ms store debounce plus the `getAll`), the row went with it, and the release landed on
+  whatever slid up: "clicking a tab inside a window doesn't work most of the time". Open state now
+  follows the *last browsing window that had focus*, held in `TabsView` and moved only when
+  another browsing window takes it; `WindowListItem` takes it as `current`. Don't read
+  `window.focused` for layout. Evidence: `src/views/TabsView/index.tsx` (`currentId`),
+  `src/lib/Tabs/Window/WindowListItem.tsx`, `TabsView.test.tsx` ("which window is open").
+
 ## Decisions
 
 - 2026-07-30 — Favicons render by pointing `<img src>` at `tab.favIconUrl`, which is
@@ -773,6 +792,21 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   that logged each write to an array, since `console.log` is silenced during that call.
   Evidence: `src/App.drop.test.tsx` (the `DndContext` wrapper).
 
+- 2026-10-20 — **`chrome.tabs.group({ tabIds })` with no `createProperties.windowId` makes the
+  group in the *caller's* window, not the tabs'.** From the side panel that is the panel's window,
+  so tabs selected in another window were dragged across into it; from the float it is the
+  float's own Picture-in-Picture window (see Open Questions). Always pass the window: `groupTabs`
+  uses the window of `selected[0]`. Any other chrome.* call that defaults to "the current window"
+  (`tabs.create` is one) has the same hazard from the float. Evidence: `src/lib/Tabs/actions.ts`
+  (`groupTabs`).
+
+- 2026-10-20 — **A `vi.fn` that returns a rejected promise can never produce an unhandled
+  rejection.** Vitest's spy records how each returned promise settles, which attaches a handler,
+  so a test asserting "no unhandled rejection" against `mockRejectedValue` passes with or without
+  the `.catch` it is meant to pin — and even a `process.on("unhandledRejection")` listener sees
+  nothing. Put a plain function in the slot instead and record its calls by hand. Evidence:
+  `src/lib/Tabs/selection/SelectionContext.test.tsx`.
+
 ## Recurring Errors & Fixes
 
 - 2026-09-23 — **`npm test` passing does not mean the branch builds.** Test files live
@@ -900,6 +934,10 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   only when a test count changed. Before committing in a long session, run `git log` against the
   last commit this session made.
 
+- 2026-10-20 — Fixed two reported bugs on `specs/recently-closed-and-devices`: tab clicks lost
+  mid-press (window sections collapsing on focus loss) and Group doing nothing (no window passed
+  to `tabs.group`). Both were invisible in the harness and are not yet checked in real Chrome.
+
 ## Open Questions
 
 - 2026-07-30 — Where is `store-assets/privacy-policy.html` actually deployed? The Chrome
@@ -924,3 +962,8 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   implementation before relying on the float's search field.
 - 2026-09-22 (closes the note above) — Verified by hand: search works inside the float. Nothing
   from the 2026-09-22 research session is open any more. See What Works.
+- 2026-10-20 — Unmeasured: does Chrome *refuse* `tabs.group` without a window from the float
+  ("not supported in this window"), or put the group somewhere else? Inferred from Chromium's
+  source, not from a run. The fix passes the window either way, but the reasoning in
+  `groupTabs`'s comment rests on it. Also unchecked: whether "New tab" in the control bar
+  (`chrome.tabs.create` with no `windowId`) misbehaves from the float the same way.
