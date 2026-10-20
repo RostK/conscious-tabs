@@ -158,3 +158,64 @@ describe("while the first queries are still in flight", () => {
     expect(await screen.findByText("An ordinary page")).toBeInTheDocument();
   });
 });
+
+/**
+ * Only the window the user is browsing in is open — and focus leaving every
+ * browsing window does not count as browsing in none of them.
+ *
+ * It did. Pressing on the float focuses the float's own window, and pressing
+ * on the side panel while Chrome is in the background focuses Chrome; either
+ * way the list heard "no window is focused" ~20ms into the press and shut the
+ * section being clicked. The row went with it, the release landed on whatever
+ * slid up into its place, and the tab never switched.
+ */
+describe("which window is open", () => {
+  const window = (id: number, focused: boolean) =>
+    ({ id, alwaysOnTop: false, type: "normal", focused }) as Partial<
+      chrome.windows.Window
+    >;
+  const tabs = [
+    tab({ id: 1, windowId: 1, title: "In window one" }),
+    tab({ id: 2, windowId: 2, title: "In window two" }),
+  ];
+  const focusMoves = async (
+    stub: ReturnType<typeof installChrome>,
+    windows: Partial<chrome.windows.Window>[],
+    to: number,
+  ) => {
+    stub.windows.getAll.mockResolvedValue(windows as chrome.windows.Window[]);
+    stub.windows.onFocusChanged.fire(to as never);
+    // Past the store's debounce and its read.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  };
+
+  it("keeps the last browsed window open while focus is outside them all", async () => {
+    const stub = installChrome({
+      windows: [window(1, true), window(2, false)],
+      tabs,
+    });
+    renderView();
+    expect(await screen.findByText("In window one")).toBeInTheDocument();
+
+    await focusMoves(stub, [window(1, false), window(2, false)], -1);
+
+    expect(screen.getByText("In window one")).toBeInTheDocument();
+    expect(
+      screen.getByRole("toolbar", { name: /^Window 1, 1 tab, current window/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("follows focus to another browsing window", async () => {
+    const stub = installChrome({
+      windows: [window(1, true), window(2, false)],
+      tabs,
+    });
+    renderView();
+    expect(await screen.findByText("In window one")).toBeInTheDocument();
+
+    await focusMoves(stub, [window(1, false), window(2, true)], 2);
+
+    expect(await screen.findByText("In window two")).toBeInTheDocument();
+    expect(screen.queryByText("In window one")).toBeNull();
+  });
+});

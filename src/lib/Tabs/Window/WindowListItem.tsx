@@ -55,7 +55,13 @@ export const WindowListItem: FC<{
   single: boolean;
   /** Zero-based place among the rendered windows; names the row (D-7). */
   index: number;
-}> = ({ single, window, tabsStructure, index }) => {
+  /**
+   * The window the user last browsed in — open, and named the current one.
+   * Not `window.focused`, which goes false for every window while the float
+   * or another app has focus; see TabsView.
+   */
+  current: boolean;
+}> = ({ single, window, tabsStructure, index, current }) => {
   // flatMap, not a reduce that spreads: spreading the accumulator copies
   // everything gathered so far on every item, which is quadratic in the number
   // of rows for a result that is the same list either way.
@@ -64,13 +70,13 @@ export const WindowListItem: FC<{
       tabsStructure.flatMap((item) => (item.type === "group" ? item.tabs : item)),
     [tabsStructure],
   );
-  const [isOpen, setIsOpen] = useState(window.focused);
+  const [isOpen, setIsOpen] = useState(current);
   const handleOpen = useCallback(() => {
     setIsOpen((state) => !state);
   }, []);
   useEffect(() => {
-    setIsOpen(window.focused);
-  }, [window.focused]);
+    setIsOpen(current);
+  }, [current]);
 
   const { selected, dispatch } = useContext(SelectionContext);
 
@@ -166,7 +172,7 @@ export const WindowListItem: FC<{
               then have nested one item inside another. */}
           <Box role="listitem">
             <WindowDisplay
-              label={toolbarName(index, flatTabs.length, !!window.focused)}
+              label={toolbarName(index, flatTabs.length, current)}
               pre={pre}
               tabs={flatTabs}
               isOpen={isOpen}
