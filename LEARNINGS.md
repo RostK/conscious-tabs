@@ -179,6 +179,13 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   dispatch a `mousedown`, wait 150 ms, and ask `elementFromPoint` whether the same row is still
   under the pointer. Evidence: the window-collapse fix in `src/views/TabsView/index.tsx`.
 
+- 2026-10-20 — **A test that asserts nothing changed after an event must wait for the event to be
+  read, not for a fixed time.** "Keeps the last browsed window open" slept 50 ms after firing
+  `onFocusChanged`; with the fix reverted it still passed at 0 ms, because it was asserting before
+  the store had looked. Wait on a positive signal — here the `windows.getAll` call count rising —
+  then one macrotask (`await act(() => new Promise(r => setTimeout(r, 0)))`) for the answer to
+  render. Evidence: `src/views/TabsView/TabsView.test.tsx` (`focusMoves`).
+
 ## What Doesn't Work
 
 - 2026-07-30 — `.gitignore` patterns `*.local` and `.env*.local` do **not** match a bare
@@ -807,6 +814,12 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   nothing. Put a plain function in the slot instead and record its calls by hand. Evidence:
   `src/lib/Tabs/selection/SelectionContext.test.tsx`.
 
+- 2026-10-20 — **While an MUI `Dialog` closes, the page under it stays out of role queries.**
+  The modal keeps `aria-hidden` on its siblings until the exit transition ends, so straight after
+  OK, `queryByRole("button", { name: "Group" })` is null whether or not the toolbar is still there.
+  Assert absence with `{ hidden: true }`, and presence with `findByRole` so it waits for the page
+  to be handed back. Evidence: `src/lib/Tabs/selection/SelectionToolbar.test.tsx`.
+
 ## Recurring Errors & Fixes
 
 - 2026-09-23 — **`npm test` passing does not mean the branch builds.** Test files live
@@ -937,6 +950,11 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
 - 2026-10-20 — Fixed two reported bugs on `specs/recently-closed-and-devices`: tab clicks lost
   mid-press (window sections collapsing on focus loss) and Group doing nothing (no window passed
   to `tabs.group`). Both were invisible in the harness and are not yet checked in real Chrome.
+
+- 2026-10-20 — PR #32 (follow-up to #31 from its self-review): one rendered window is always
+  current, and the focus and Group tests now fail without their fixes. Checked by hand in real
+  Chrome — float opened with Chrome in the background, focusing a window holding only the full
+  view, closing the current window, and #31's tab click and Group — all four passed.
 
 ## Open Questions
 
