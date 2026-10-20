@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import { FC } from "react";
+import { FC, useState } from "react";
 
 import { WindowListItem } from "../../lib/Tabs";
 import { RowList } from "../../lib/Tabs/elements/RowList.tsx";
@@ -16,6 +16,30 @@ export const TabsView: FC = () => {
   const windows = (allWindows ?? []).filter((window) =>
     tabsStructure.some(({ windowId }) => windowId === window.id),
   );
+
+  // The window the user last browsed in, kept while focus is somewhere else.
+  // Reading `window.focused` straight collapsed every window the moment focus
+  // left them all — and the click that leaves them is a click on this list:
+  // on the float, which is a window of its own, or on the panel while Chrome
+  // was in the background. The section shut ~20ms into the press, the row
+  // went with it, and the release landed on whatever slid up underneath, so
+  // the tab never switched. Only a browsing window taking focus moves this.
+  //
+  // Read from the windows this list renders, not all of them: a window
+  // holding nothing but our own full-view tab is filtered out above, and
+  // focusing it made the current window one with no section to open.
+  const focusedId = windows.find(({ focused }) => focused)?.id;
+  const [currentId, setCurrentId] = useState(focusedId);
+  if (focusedId !== undefined && focusedId !== currentId) {
+    setCurrentId(focusedId);
+  }
+  // One window is always current while there are any. The remembered one can
+  // be gone (closed with no browsing window taking focus after it), and
+  // nothing may be focused yet at all (the float opened with Chrome in the
+  // background); either way every section used to render shut.
+  const shownId = windows.some(({ id }) => id === currentId)
+    ? currentId
+    : windows[0]?.id;
 
   // AC-18. Reachable in ordinary use once this extension's own pages are
   // filtered out: close everything but the anchor tab and there is genuinely
@@ -57,9 +81,10 @@ export const TabsView: FC = () => {
           // and in the float every tab click does exactly that, so the rows
           // were destroyed and rebuilt under the pointer, taking the
           // hover-revealed close and select controls with them. Syncing isOpen
-          // from window.focused is WindowListItem's own useEffect's job.
+          // from `current` is WindowListItem's own useEffect's job.
           key={"w" + window.id}
           window={window}
+          current={window.id === shownId}
           tabsStructure={tabsStructure.filter(
             ({ windowId }) => window.id === windowId,
           )}

@@ -19,8 +19,16 @@ export type SelectionAction = { noBroadcast?: boolean } & (
   | { type: "clear" }
 );
 
+/**
+ * Tells the other open surfaces, if there are any. With only one open, Chrome
+ * rejects the send ("Receiving end does not exist") — the ordinary case, not
+ * a failure, and left uncaught it put an error in the console on every tick
+ * of a checkbox.
+ */
 const broadcast = (payload: number[]): void => {
-  void chrome.runtime.sendMessage({ type: "selection", payload });
+  void chrome.runtime
+    .sendMessage({ type: "selection", payload })
+    .catch(() => undefined);
 };
 
 const updateSelected = (

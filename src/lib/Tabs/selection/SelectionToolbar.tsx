@@ -17,7 +17,7 @@ import {
 } from "react";
 
 import { bringPanelAlong } from "../../surfaces.ts";
-import { closeTabs } from "../actions.ts";
+import { closeTabs, groupTabs } from "../actions.ts";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
 import { useTabsStructure } from "../useTabsStructure.ts";
 import { GroupForm } from "./GroupForm.tsx";
@@ -75,18 +75,17 @@ export const SelectionToolbar: FC = () => {
   }, [dispatch, selected]);
   const handleNewGroup = useCallback(
     async ({ title, color }: { title?: string; color: string }) => {
-      try {
-        const newTabId = await chrome.tabs.group({ tabIds: selected });
-        await chrome.tabGroups.update(newTabId, {
-          title: title,
-          color: color as chrome.tabGroups.ColorEnum,
-        });
-        dispatch({ type: "clear" });
-      } catch (e) {
-        /* empty */
-      }
+      // The window of `selected[0]`, the tab "Window" below builds its new
+      // window from. A selection spread across windows gathers there.
+      const windowId = flatTabs[0]?.windowId;
+      if (windowId === undefined) return;
+      const grouped = await groupTabs(selected, windowId, {
+        title,
+        color: color as chrome.tabGroups.ColorEnum,
+      });
+      if (grouped) dispatch({ type: "clear" });
     },
-    [dispatch, selected],
+    [dispatch, flatTabs, selected],
   );
   const handleNewWindow = useCallback(async () => {
     try {
