@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { SelectionProvider } from "../../lib/Tabs/selection";
@@ -178,15 +178,30 @@ describe("which window is open", () => {
     tab({ id: 1, windowId: 1, title: "In window one" }),
     tab({ id: 2, windowId: 2, title: "In window two" }),
   ];
+  /**
+   * Fires a focus change and waits for the list to have *read* it.
+   *
+   * Waited for by the read it causes, not by a sleep. "Keeps … open" asserts
+   * that nothing changed, which passes just as well before the change has
+   * been looked at — with the fix reverted it passed at a 0ms sleep. A slow
+   * runner turned a fixed wait into a silent pass, not a red test. The
+   * macrotask after the read lets its answer reach the store and the render.
+   */
   const focusMoves = async (
     stub: ReturnType<typeof installChrome>,
     windows: Partial<chrome.windows.Window>[],
-    to: number,
+    event: { fire: (...args: never[]) => void },
+    payload: number,
   ) => {
+    const reads = stub.windows.getAll.mock.calls.length;
     stub.windows.getAll.mockResolvedValue(windows as chrome.windows.Window[]);
-    stub.windows.onFocusChanged.fire(to as never);
-    // Past the store's debounce and its read.
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    event.fire(payload as never);
+    await waitFor(() => {
+      expect(stub.windows.getAll.mock.calls.length).toBeGreaterThan(reads);
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
   };
 
   it("keeps the last browsed window open while focus is outside them all", async () => {
@@ -197,7 +212,12 @@ describe("which window is open", () => {
     renderView();
     expect(await screen.findByText("In window one")).toBeInTheDocument();
 
-    await focusMoves(stub, [window(1, false), window(2, false)], -1);
+    await focusMoves(
+      stub,
+      [window(1, false), window(2, false)],
+      stub.windows.onFocusChanged,
+      -1,
+    );
 
     expect(screen.getByText("In window one")).toBeInTheDocument();
     expect(
@@ -213,9 +233,70 @@ describe("which window is open", () => {
     renderView();
     expect(await screen.findByText("In window one")).toBeInTheDocument();
 
-    await focusMoves(stub, [window(1, false), window(2, true)], 2);
+    await focusMoves(
+      stub,
+      [window(1, false), window(2, true)],
+      stub.windows.onFocusChanged,
+      2,
+    );
 
-    expect(await screen.findByText("In window two")).toBeInTheDocument();
+    expect(screen.getByText("In window two")).toBeInTheDocument();
     expect(screen.queryByText("In window one")).toBeNull();
+  });
+
+  // The float opened while Chrome was in the background: no window focused
+  // yet, and every section used to render shut.
+  it("opens the first window when none has been focused yet", async () => {
+    installChrome({ windows: [window(1, false), window(2, false)], tabs });
+    renderView();
+
+    expect(await screen.findByText("In window one")).toBeInTheDocument();
+    expect(screen.queryByText("In window two")).toBeNull();
+  });
+
+  // The full-view tab alone in a window: that window is filtered out of the
+  // list, so taking it as current left no section open.
+  it("stays on the last browsed window when focus goes to one holding only this page", async () => {
+    const ours = tab({
+      id: 3,
+      windowId: 3,
+      title: "Conscious Tabs",
+      url: `${EXTENSION_ORIGIN}index.html?host=anchor`,
+    });
+    const stub = installChrome({
+      windows: [window(1, false), window(2, true), window(3, false)],
+      tabs: [...tabs, ours],
+    });
+    renderView();
+    expect(await screen.findByText("In window two")).toBeInTheDocument();
+
+    await focusMoves(
+      stub,
+      [window(1, false), window(2, false), window(3, true)],
+      stub.windows.onFocusChanged,
+      3,
+    );
+
+    expect(screen.getByText("In window two")).toBeInTheDocument();
+    expect(screen.queryByText("In window one")).toBeNull();
+  });
+
+  it("opens another window when the current one closes", async () => {
+    const stub = installChrome({
+      windows: [window(1, true), window(2, false), window(3, false)],
+      tabs: [...tabs, tab({ id: 3, windowId: 3, title: "In window three" })],
+    });
+    renderView();
+    expect(await screen.findByText("In window one")).toBeInTheDocument();
+
+    await focusMoves(
+      stub,
+      [window(2, false), window(3, false)],
+      stub.windows.onRemoved,
+      1,
+    );
+
+    expect(screen.getByText("In window two")).toBeInTheDocument();
+    expect(screen.queryByText("In window three")).toBeNull();
   });
 });

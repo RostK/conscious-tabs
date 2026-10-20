@@ -24,11 +24,22 @@ export const TabsView: FC = () => {
   // was in the background. The section shut ~20ms into the press, the row
   // went with it, and the release landed on whatever slid up underneath, so
   // the tab never switched. Only a browsing window taking focus moves this.
-  const focusedId = allWindows?.find(({ focused }) => focused)?.id;
+  //
+  // Read from the windows this list renders, not all of them: a window
+  // holding nothing but our own full-view tab is filtered out above, and
+  // focusing it made the current window one with no section to open.
+  const focusedId = windows.find(({ focused }) => focused)?.id;
   const [currentId, setCurrentId] = useState(focusedId);
   if (focusedId !== undefined && focusedId !== currentId) {
     setCurrentId(focusedId);
   }
+  // One window is always current while there are any. The remembered one can
+  // be gone (closed with no browsing window taking focus after it), and
+  // nothing may be focused yet at all (the float opened with Chrome in the
+  // background); either way every section used to render shut.
+  const shownId = windows.some(({ id }) => id === currentId)
+    ? currentId
+    : windows[0]?.id;
 
   // AC-18. Reachable in ordinary use once this extension's own pages are
   // filtered out: close everything but the anchor tab and there is genuinely
@@ -73,7 +84,7 @@ export const TabsView: FC = () => {
           // from `current` is WindowListItem's own useEffect's job.
           key={"w" + window.id}
           window={window}
-          current={window.id === currentId}
+          current={window.id === shownId}
           tabsStructure={tabsStructure.filter(
             ({ windowId }) => window.id === windowId,
           )}
