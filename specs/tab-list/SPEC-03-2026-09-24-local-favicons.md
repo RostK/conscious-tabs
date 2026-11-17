@@ -5,7 +5,7 @@
 | **Spec ID**    | SPEC-03                                                                                                                       |
 | **Date**       | 2026-09-24                                                                                                                    |
 | **Module**     | `tab-list` (`src/lib/Tabs/elements/TabFavicon.tsx`, `src/lib/Tabs/elements/TabAvatarsDisplay.tsx`, `src/lib/Tabs/AudioTabs/`) |
-| **Status**     | **implemented 2026-09-24** — AC-4 confirmed against a real browser by RostK                                                   |
+| **Status**     | **implemented 2026-09-24** — AC-4 confirmed against a real browser by RostK; AC-11 amended 2026-11-17 (AM-1)                  |
 | **Supersedes** | —                                                                                                                             |
 
 ---
@@ -142,20 +142,33 @@ Store reviews permission changes. That is the trade this spec asks for, not a de
 - **AC-11** _(Must)_ The audio badge, selection checkbox and drag affordances that overlay or sit
   beside the favicon SHALL be unchanged in position and behaviour.
   **Verify:** unit — existing `TabDisplay` tests continue to pass unmodified.
+  **Amended 2026-11-17 (AM-1).** This guarded the favicon change against moving the overlays; it
+  was never meant to fix the selection checkbox's position for good, and the position it fixed had
+  two defects: the checkbox covered 20 of the favicon's 26px, and a group row's checkbox sat in
+  flow, leaving a 37px gap before the name. The audio badge and drag affordances stay as before.
+  The selection checkbox — on tab, group and window rows alike — SHALL sit at the row's left edge:
+  - WHILE nothing is selected, it SHALL take no width and SHALL overlay the favicon (the chevron
+    on a group or window row) when revealed, as it did before this amendment.
+  - WHILE at least one tab is selected, every row SHALL widen its left padding by a column that
+    holds the checkbox, so that no checkbox covers a favicon or chevron.
+  - In both states, a group's name SHALL start at the same x as the tab titles around it.
+    **Verify:** unit — `App.test.tsx` "selection mode" and `GroupListItem.test.tsx` "where a group
+    row's checkbox sits"; manual — positions measured in the layout harness at 400px, recorded in
+    the commit that made the change.
 
 ---
 
 ## 6. Edge cases
 
-| #       | Case                                  | Expected                                                                                                              |
-| ------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **E-1** | Tab with no `url` yet                 | Globe. No request with an empty `pageUrl` (AC-3).                                                                     |
-| **E-2** | `chrome://` page                      | Chrome's stored icon if it has one, else the globe (AC-10, AC-9).                                                     |
-| **E-3** | A page never visited in this profile  | Chrome answers with its default icon; accepted, and not distinguishable from a real one.                              |
-| **E-4** | Incognito window                      | Out of scope — the manager does not list incognito tabs.                                                              |
-| **E-5** | `data:` or `blob:` url                | Long key, no stored icon; globe. Must not throw on encoding.                                                          |
-| **E-6** | A url containing `&` or `#`           | Encoded, so the endpoint reads one `pageUrl`. A naive concatenation truncates the key here.                           |
-| **E-7** | The permission is missing at runtime  | The endpoint 404s and `onError` fires — the globe. Degrades to today's fallback, not a crash.                         |
+| #       | Case                                  | Expected                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **E-1** | Tab with no `url` yet                 | Globe. No request with an empty `pageUrl` (AC-3).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **E-2** | `chrome://` page                      | Chrome's stored icon if it has one, else the globe (AC-10, AC-9).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **E-3** | A page never visited in this profile  | Chrome answers with its default icon; accepted, and not distinguishable from a real one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **E-4** | Incognito window                      | Out of scope — the manager does not list incognito tabs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **E-5** | `data:` or `blob:` url                | Long key, no stored icon; globe. Must not throw on encoding.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **E-6** | A url containing `&` or `#`           | Encoded, so the endpoint reads one `pageUrl`. A naive concatenation truncates the key here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **E-7** | The permission is missing at runtime  | The endpoint 404s and `onError` fires — the globe. Degrades to today's fallback, not a crash.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | **E-8** | Favicon changes while the tab is open | ~~Accepted staleness: the key is the url, so the image is not re-requested.~~ **Corrected 2026-09-29** — the acceptance was reasoned about the rare case (a site changing its icon) and shipped the common one: a tab that has just navigated asks for an icon Chrome has not catalogued yet, gets the default globe, and the browser caches that answer against a page URL which never changes again. The row then keeps the globe for as long as it is open. The request now carries a hash of the tab's own `favIconUrl` as a change token, so acquiring the real icon is a different request. That URL is still never fetched — it is a signal, not a source (AC-4 holds). |
 
 ---
@@ -218,9 +231,10 @@ _None. The one real trade — a fifth permission — is stated in 1.2 and accept
 
 ## 14. Traceability
 
-| AC                 | Where it lands                                                   |
-| ------------------ | ---------------------------------------------------------------- |
-| AC-1, AC-2, AC-3   | `TabFavicon.tsx`, `TabAvatarsDisplay.tsx`, `AudioTabs/index.tsx` |
-| AC-4, AC-5         | Manual verification against a real browser                       |
-| AC-6, AC-7, AC-8   | `manifest.json` + the four documents                             |
-| AC-9, AC-10, AC-11 | `TabFavicon.tsx`, existing `TabDisplay` tests                    |
+| AC                 | Where it lands                                                     |
+| ------------------ | ------------------------------------------------------------------ |
+| AC-1, AC-2, AC-3   | `TabFavicon.tsx`, `TabAvatarsDisplay.tsx`, `AudioTabs/index.tsx`   |
+| AC-4, AC-5         | Manual verification against a real browser                         |
+| AC-6, AC-7, AC-8   | `manifest.json` + the four documents                               |
+| AC-9, AC-10, AC-11 | `TabFavicon.tsx`, existing `TabDisplay` tests                      |
+| AC-11 (AM-1)       | `rowControls.ts` (`rowCheckboxSx`, `selectionGutterSx`), `App.tsx` |
