@@ -116,6 +116,54 @@ describe("where the caret goes when a surface opens", () => {
   });
 });
 
+/**
+ * Selection mode: once anything is selected, every row opens a column for its
+ * checkbox, so the ticked ones stop covering favicons and chevrons. The rows
+ * react to an attribute in CSS rather than to a prop, so nothing re-renders
+ * them — which makes the attribute the one thing to pin.
+ *
+ * `fireEvent`, not `userEvent`: the checkbox is `pointer-events: none` until a
+ * row is hovered, and user-event refuses to click through that.
+ */
+describe("selection mode", () => {
+  const rowNamed = (title: string) =>
+    screen
+      .getByRole("button", { name: `Select ${title}` })
+      .closest('[role="toolbar"]') as HTMLElement;
+
+  it("is marked on the list and the header only while something is selected", async () => {
+    await mountApp();
+    const main = screen.getByRole("main");
+    const header = screen.getByRole("banner");
+
+    expect(main).not.toHaveAttribute("data-selecting");
+    expect(header).not.toHaveAttribute("data-selecting");
+
+    fireEvent.click(screen.getByRole("button", { name: "Select First tab" }));
+
+    expect(main).toHaveAttribute("data-selecting");
+    expect(header).toHaveAttribute("data-selecting");
+
+    fireEvent.click(screen.getByRole("button", { name: "Deselect First tab" }));
+
+    expect(main).not.toHaveAttribute("data-selecting");
+    expect(header).not.toHaveAttribute("data-selecting");
+  });
+
+  // On a row that is not itself selected: the column is the list's, not the
+  // ticked row's, or the checkboxes would not line up.
+  it("widens every row's left edge by the checkbox column, and only then", async () => {
+    await mountApp();
+    const other = rowNamed("Third tab");
+    const atRest = getComputedStyle(other).paddingLeft;
+
+    fireEvent.click(screen.getByRole("button", { name: "Select First tab" }));
+
+    expect(atRest).toBe("16px");
+    expect(getComputedStyle(other).paddingLeft).toBe("32px");
+  });
+});
+
 describe("one Down from the field", () => {
   // AC-14. Landing on the tab the user is already looking at is what the old
   // autofocus was for; it survives, one key press later and without the race.
