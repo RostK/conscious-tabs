@@ -19,6 +19,7 @@ import { closeWindow } from "../actions.ts";
 import { DropPlaceholder, useDropzone } from "../DnD";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import {
+  rowCheckboxSx,
   rowControlProps,
   selectedProps,
 } from "../elements/rowControls.ts";
@@ -148,6 +149,8 @@ export const WindowListItem: FC<{
         onClick={handleSelectButton}
         className="itemAction"
         {...selectedProps(isSelected)}
+        // The tab and group rows' column, for the reason given there.
+        sx={rowCheckboxSx}
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>

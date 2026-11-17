@@ -48,7 +48,10 @@ import {
   dragInstructions,
   useRowDrag,
 } from "./lib/Tabs/DnD";
-import { isPlainArrow } from "./lib/Tabs/elements/rowControls.ts";
+import {
+  isPlainArrow,
+  SELECTING_ATTRIBUTE,
+} from "./lib/Tabs/elements/rowControls.ts";
 import { TabAvatarsDisplay } from "./lib/Tabs/elements/TabAvatarsDisplay.tsx";
 import { SelectionContext, SelectionProvider } from "./lib/Tabs/selection";
 import { TabDisplay } from "./lib/Tabs/Tab/TabDisplay.tsx";
@@ -111,7 +114,13 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 const DROP_FAILED = "That could not be moved there.";
 
 function AppBody() {
-  const { dispatch: dispatchSelected } = useContext(SelectionContext);
+  const { dispatch: dispatchSelected, selected } = useContext(SelectionContext);
+  // Selection mode, for the rows to lay out their checkbox column by. This
+  // component already re-renders on every selection change (it reads the
+  // context), so the attribute costs nothing; reading it in each row would
+  // re-render every row instead. See SELECTING_ATTRIBUTE.
+  const selecting =
+    selected.length > 0 ? { [SELECTING_ATTRIBUTE]: "" } : undefined;
 
   const [search, setSearch] = useState("");
 
@@ -249,6 +258,7 @@ function AppBody() {
     >
       <AppBar
         ref={headerRef}
+        {...selecting}
         position="sticky"
         elevation={0}
         sx={{
@@ -326,7 +336,7 @@ function AppBody() {
       {/* The list is the page's content. Without this the document had
           no main landmark at all, so "skip to content" had nothing to
           skip to and the only way in was from the very top. */}
-      <Box component="main">
+      <Box component="main" {...selecting}>
         {/* Inside the landmark, and mounted whether or not a search is
             running — a live region added at the same moment as its text
             is not reliably read. */}

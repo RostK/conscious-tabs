@@ -12,6 +12,7 @@ import {
   rowControlProps,
   rowControlsSx,
   rowPrimaryProps,
+  selectionGutterSx,
   useRowKeys,
 } from "../elements/rowControls.ts";
 import { TabAvatarsDisplay } from "../elements/TabAvatarsDisplay.tsx";
@@ -60,6 +61,7 @@ export const WindowDisplay: FC<{
           height: 49.5,
           pl: "1.8rem",
         },
+        selectionGutterSx("1.8rem"),
         rowControlsSx,
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}

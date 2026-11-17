@@ -18,12 +18,14 @@ import { activateTab, closeTab, setMuted } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
 import { ItemButton } from "../elements/ItemButton.tsx";
 import {
+  rowCheckboxSx,
   rowControlProps,
   rowControlsSx,
   rowLabelProps,
   rowPrimaryProps,
   rowTailMaskSx,
   selectedProps,
+  selectionGutterSx,
   useRowKeys,
 } from "../elements/rowControls.ts";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
@@ -181,7 +183,12 @@ export const TabDisplay: FC<{
          edge="end", whose -12px margin comes off the total: drag + close is
          57.7, and 94.3 with mute. Rounded up, so the fade finishes before the
          first icon on either kind of row. */
-      sx={[{ pt: 0.2, pb: 0.2 }, rowControlsSx, rowTailMaskSx(noisy ? 96 : 60)]}
+      sx={[
+        { pt: 0.2, pb: 0.2 },
+        selectionGutterSx("16px"),
+        rowControlsSx,
+        rowTailMaskSx(noisy ? 96 : 60),
+      ]}
     >
       {/* The row's primary action: first in DOM order, so it is the toolbar's
           first control and its one tab stop.
@@ -252,14 +259,11 @@ export const TabDisplay: FC<{
           secondary={tab.url?.replace("https://", "")}
         />
       </ButtonBase>
-      {/* Beside the favicon, in the row's left padding — not in its slot.
-          Selection persists, and a persistent checkbox that took the favicon's
-          place would cost the user the one thing that identifies the tab they
-          are about to act on. That is what the original -8 was for; the swap
-          that replaced it only looked acceptable while hovering.
-          The fill is what makes the overlap read as two adjacent controls
-          rather than one on top of the other, so this control keeps it even
-          though the right-hand actions no longer need it.
+      {/* Over the favicon on hover, beside it once anything is selected — see
+          `rowCheckboxSx`. Selection persists, and a persistent checkbox over
+          the favicon would cost the user the one thing that identifies the
+          tab they are about to act on; the selection gutter is what keeps the
+          ticked ones clear of it.
 
           Hidden and revealed by `rowControlsSx` like every other control on
           every other row. It used to carry a second class with its own copy
@@ -276,26 +280,7 @@ export const TabDisplay: FC<{
         {...selectedProps(isSelected)}
         onClick={handleHighlight}
         aria-label={`${isSelected ? "Deselect" : "Select"} ${tab.title || "tab"}`}
-        sx={{
-          position: "absolute",
-          /*
-           * Flush with the row, not eight pixels past it. At -8 the button's
-           * box began outside the viewport — the glyph was fully visible, so
-           * nothing looked wrong, while eight of its thirty-seven pixels were
-           * unclickable, and at the screen edge where a pointer naturally
-           * lands. The icon moves 8px right with it and still sits over the
-           * favicon, which is what the z-index below is for.
-           */
-          left: 0,
-          backgroundColor: "background.paper",
-          // Above the favicon, not behind it. Both are positioned — this one
-          // absolutely, the favicon by the Badge that AudioBadge wraps it in —
-          // so at z-index auto they paint in DOM order, and the badge, coming
-          // later, took the overlap. The fill then stopped dead at the
-          // favicon's edge, and the control read as a flat square jammed
-          // against it rather than a round button sitting over the row.
-          zIndex: 1,
-        }}
+        sx={rowCheckboxSx}
       >
         {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
       </ItemButton>

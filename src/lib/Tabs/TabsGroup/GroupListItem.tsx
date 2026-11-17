@@ -7,7 +7,7 @@ import {
   ExpandMore,
   MoreVert,
 } from "@mui/icons-material";
-import { IconButton, Menu, MenuItem } from "@mui/material";
+import { Box, IconButton, Menu, MenuItem } from "@mui/material";
 import {
   ComponentProps,
   FC,
@@ -25,6 +25,7 @@ import { ItemButton } from "../elements/ItemButton.tsx";
 import {
   dragFocusKey,
   ROW_CHEVRON_NAME,
+  rowCheckboxSx,
   rowControlProps,
   rowPrimaryProps,
   rowWhileDraggedSx,
@@ -235,9 +236,18 @@ export const GroupListItem: FC<
           onClick={handleSelectButton}
           className="itemAction"
           {...selectedProps(isSelected)}
+          // Out of flow, in the same column as every tab row's checkbox: over
+          // the chevron on hover, beside it while selecting. In flow it held
+          // a 37px hole between chevron and name even while invisible.
+          sx={rowCheckboxSx}
         >
           {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}
         </ItemButton>
+        {expanded !== undefined && (
+          // Where there is no chevron, its width stays, so the name still
+          // starts on the tab titles' column rather than 36px left of it.
+          <Box aria-hidden sx={{ width: "36px", flexShrink: 0 }} />
+        )}
       </>
     );
   }, [expanded, group.collapsed, group.title, handleSelectButton, isSelected]);
