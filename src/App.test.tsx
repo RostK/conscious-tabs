@@ -116,6 +116,43 @@ describe("where the caret goes when a surface opens", () => {
   });
 });
 
+/**
+ * Selecting moves nothing. A version that opened a checkbox column on the
+ * first tick, so ticked boxes stopped covering favicons, shifted the whole list
+ * 16px sideways and back — rejected on sight in Chrome (2026-11-17). The ticked
+ * box stays over the favicon instead (`rowCheckboxSx`).
+ *
+ * `fireEvent`, not `userEvent`: the checkbox is `pointer-events: none` until a
+ * row is hovered, and user-event refuses to click through that.
+ */
+describe("selecting a tab", () => {
+  const rowOf = (control: HTMLElement) =>
+    control.closest('[role="toolbar"]') as HTMLElement;
+
+  it("moves no row, ticked or not", async () => {
+    await mountApp();
+    const ticked = rowOf(
+      screen.getByRole("button", { name: "Select First tab" }),
+    );
+    const other = rowOf(
+      screen.getByRole("button", { name: "Select Third tab" }),
+    );
+    const before = [ticked, other].map(
+      (row) => getComputedStyle(row).paddingLeft,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Select First tab" }));
+
+    expect(
+      screen.getByRole("button", { name: "Deselect First tab" }),
+    ).toBeInTheDocument();
+    expect(
+      [ticked, other].map((row) => getComputedStyle(row).paddingLeft),
+    ).toEqual(before);
+    expect(before).toEqual(["16px", "16px"]);
+  });
+});
+
 describe("one Down from the field", () => {
   // AC-14. Landing on the tab the user is already looking at is what the old
   // autofocus was for; it survives, one key press later and without the race.

@@ -247,6 +247,38 @@ export const rowWhileDraggedSx = {
   pointerEvents: "none",
 } as const;
 
+/**
+ * Where every row's select checkbox sits — tab, group and window alike, so the
+ * boxes form one column down the list.
+ *
+ * Over the row's left edge, filled, above whatever is there: the favicon on a
+ * tab row, the chevron on a group or window row. Hovered or ticked, always the
+ * same place, and it takes no width, so selecting never moves anything.
+ *
+ * Tried and rejected (2026-11-17): a column of its own that opened while
+ * anything was selected, so ticked boxes covered nothing. The whole list
+ * jumped 16px sideways on the first tick and back on the last, which was worse
+ * than the covering it fixed. A column reserved all the time was the other
+ * option, at 16px of every title; covering was preferred to that.
+ *
+ * It used to sit in flow on group and window rows, where its `opacity: 0` kept
+ * a 37px hole between the chevron and the name. Absolute, so where it sits in
+ * the markup does not move it: DOM order — and with it the Left/Right walk —
+ * is the row's to decide.
+ */
+export const rowCheckboxSx = {
+  position: "absolute",
+  // Flush with the row, not past it: at -8 the button began outside the
+  // viewport, and eight of its pixels were unclickable at the screen edge.
+  left: 0,
+  // The fill makes the overlap read as a button over the row rather than a
+  // glyph scribbled on the favicon or chevron underneath.
+  backgroundColor: "background.paper",
+  // Above the favicon's badge and the chevron's ButtonBase, both positioned,
+  // which would otherwise paint over it in DOM order.
+  zIndex: 1,
+} as const;
+
 /** Spread onto a control that must stay visible while it is switched on. */
 export const selectedProps = (selected: boolean) =>
   selected ? { "data-selected": true } : {};

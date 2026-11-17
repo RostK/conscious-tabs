@@ -68,3 +68,43 @@ describe("what a group row's click does in each surface", () => {
     ).toBeNull();
   });
 });
+
+/**
+ * The select checkbox used to sit in flow between the chevron and the name.
+ * It is invisible until the row is hovered, but `opacity: 0` keeps its box, so
+ * every group name started 37px right of the tab titles around it, behind a
+ * gap with nothing in it.
+ */
+describe("where a group row's checkbox sits", () => {
+  // By the end of its name: a group with no tabs counts as wholly selected,
+  // so the fixture's button reads "Deselect…".
+  const selectOf = (container: HTMLElement) =>
+    container.querySelector(
+      '[aria-label$="every tab in group Reading"]',
+    ) as HTMLElement;
+
+  it("takes no width, so the name follows the chevron", () => {
+    const { container } = render(<GroupListItem group={group()} />);
+
+    const style = getComputedStyle(selectOf(container));
+
+    expect(style.position).toBe("absolute");
+    expect(style.left).toBe("0px");
+  });
+
+  // Search results have no chevron. Without something in its place the name
+  // would start 36px left of the tab titles instead of 37px right of them.
+  it("keeps the chevron's width where there is no chevron", () => {
+    const listed = render(<GroupListItem group={group()} />);
+    const searched = render(<GroupListItem group={group()} expanded />);
+    const spacer = (container: HTMLElement) =>
+      [
+        ...rowOf(container).querySelectorAll<HTMLElement>(
+          ':scope > [aria-hidden="true"]',
+        ),
+      ].find((element) => getComputedStyle(element).width === "36px");
+
+    expect(spacer(listed.container)).toBeUndefined();
+    expect(spacer(searched.container)).toBeDefined();
+  });
+});

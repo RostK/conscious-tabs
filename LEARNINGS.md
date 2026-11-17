@@ -565,6 +565,14 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   another browsing window takes it; `WindowListItem` takes it as `current`. Don't read
   `window.focused` for layout. Evidence: `src/views/TabsView/index.tsx` (`currentId`),
   `src/lib/Tabs/Window/WindowListItem.tsx`, `TabsView.test.tsx` ("which window is open").
+- 2026-11-17 — **A control hidden with `opacity: 0` still takes its space, so keep it out of
+  flow.** `rowControlsSx` hides row controls with opacity, which is the right call for focus,
+  but the group row's select checkbox sat in flow between chevron and chip, so every group
+  name started 37px right of the tab titles behind an empty gap. Nobody saw it as a checkbox
+  problem, because at rest there was no checkbox to see. Any control that is revealed on
+  hover should be absolutely placed, as `rowCheckboxSx` now does on all three row types.
+  Evidence: `src/lib/Tabs/elements/rowControls.ts` (`rowCheckboxSx`),
+  `GroupListItem.test.tsx` ("where a group row's checkbox sits").
 
 ## Decisions
 
@@ -594,6 +602,16 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   `windows.create` (anti-phishing) — which is why TabFloater ships a native companion app.
   Evidence: `src/lib/ControlBar/index.tsx:23` (existing open-in-tab surface, reuses the
   tab if present).
+- 2026-11-17 — **A ticked checkbox covers the favicon, on purpose; selecting must never move
+  the list.** Tried on PR #34: a 16px checkbox column on every row while anything was
+  selected, so ticked boxes covered nothing. It passed every test and the harness numbers, and
+  was rejected the moment it was loaded in Chrome: the whole list jumped sideways on the first
+  tick and back on the last. A column reserved at all times was the other way out, at 16px of
+  every title, and was turned down too. So the box sits over the favicon (or a group's or
+  window's chevron) with its fill, and `App.test.tsx` "selecting a tab" pins that no row moves.
+  Lesson for layout changes: a mode that changes padding is a reflow, and a static
+  before/after drawing does not show it; describe the transition, not just the two states.
+  Evidence: `rowCheckboxSx`, SPEC-03 AM-1.
 
 ## Tool & Library Notes
 
@@ -819,6 +837,18 @@ new dated note beneath it rather than rewriting it. Architecture and run steps b
   OK, `queryByRole("button", { name: "Group" })` is null whether or not the toolbar is still there.
   Assert absence with `{ hidden: true }`, and presence with `findByRole` so it waits for the page
   to be handed back. Evidence: `src/lib/Tabs/selection/SelectionToolbar.test.tsx`.
+
+- 2026-11-17 — **jsdom applies emotion's ancestor selectors and resolves `calc()`.** A rule
+  written as `[data-x] &` in `sx` does change `getComputedStyle` once the attribute is on an
+  ancestor, so layout *rules* (padding, `position`, `left`) can be unit-tested even though
+  layout *results* cannot. `calc(16px + 16px)` comes back as `"32px"`, not the expression.
+  Evidence: `src/App.test.tsx` ("selecting a tab").
+
+- 2026-11-17 — **The layout harness on the Dev Drive can serve a stale module after quick
+  edits.** Two edits a second apart (a usage, then its import) left Vite serving the file
+  without the import: `ReferenceError` in the console, a blank page, and reloads did not help
+  while `tsc` and the file on disk were fine. Restart it with `--force`. Check the served source
+  (`fetch('/@fs/Z:/…')`) before debugging code that typechecks.
 
 ## Recurring Errors & Fixes
 
