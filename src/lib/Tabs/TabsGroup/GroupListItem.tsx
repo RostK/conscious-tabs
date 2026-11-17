@@ -236,9 +236,9 @@ export const GroupListItem: FC<
           onClick={handleSelectButton}
           className="itemAction"
           {...selectedProps(isSelected)}
-          // Out of flow, in the same column as every tab row's checkbox: over
-          // the chevron on hover, beside it while selecting. In flow it held
-          // a 37px hole between chevron and name even while invisible.
+          // Out of flow, over the chevron, in the same column as every tab
+          // row's checkbox. In flow it held a 37px hole between chevron and
+          // name even while invisible.
           sx={rowCheckboxSx}
         >
           {isSelected ? <CheckBoxOutlined /> : <CheckBoxOutlineBlankOutlined />}

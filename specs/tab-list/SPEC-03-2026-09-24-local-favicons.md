@@ -142,19 +142,16 @@ Store reviews permission changes. That is the trade this spec asks for, not a de
 - **AC-11** _(Must)_ The audio badge, selection checkbox and drag affordances that overlay or sit
   beside the favicon SHALL be unchanged in position and behaviour.
   **Verify:** unit — existing `TabDisplay` tests continue to pass unmodified.
-  **Amended 2026-11-17 (AM-1).** This guarded the favicon change against moving the overlays; it
-  was never meant to fix the selection checkbox's position for good, and the position it fixed had
-  two defects: the checkbox covered 20 of the favicon's 26px, and a group row's checkbox sat in
-  flow, leaving a 37px gap before the name. The audio badge and drag affordances stay as before.
-  The selection checkbox — on tab, group and window rows alike — SHALL sit at the row's left edge:
-  - WHILE nothing is selected, it SHALL take no width and SHALL overlay the favicon (the chevron
-    on a group or window row) when revealed, as it did before this amendment.
-  - WHILE at least one tab is selected, every row SHALL widen its left padding by a column that
-    holds the checkbox, so that no checkbox covers a favicon or chevron.
-  - In both states, a group's name SHALL start at the same x as the tab titles around it.
-    **Verify:** unit — `App.test.tsx` "selection mode" and `GroupListItem.test.tsx` "where a group
-    row's checkbox sits"; manual — positions measured in the layout harness at 400px, recorded in
-    the commit that made the change.
+  **Amended 2026-11-17 (AM-1).** The tab row's selection checkbox keeps this position: over the
+  favicon at the row's left edge, hovered or ticked. Group and window rows SHALL now place theirs
+  the same way, over the chevron, taking no width; in flow, it left a 37px gap before a group's
+  name. A group's name SHALL start at the same x as the tab titles around it, and selecting SHALL
+  NOT move any row.
+  A ticked box covering the favicon is accepted on purpose. A checkbox column that opened while
+  anything was selected avoided it, but shifted the whole list 16px on the first tick and back on
+  the last, and was rejected in Chrome; a column reserved all the time cost every title 16px.
+  **Verify:** unit — `App.test.tsx` "selecting a tab" and `GroupListItem.test.tsx` "where a group
+  row's checkbox sits".
 
 ---
 
@@ -231,10 +228,10 @@ _None. The one real trade — a fifth permission — is stated in 1.2 and accept
 
 ## 14. Traceability
 
-| AC                 | Where it lands                                                     |
-| ------------------ | ------------------------------------------------------------------ |
-| AC-1, AC-2, AC-3   | `TabFavicon.tsx`, `TabAvatarsDisplay.tsx`, `AudioTabs/index.tsx`   |
-| AC-4, AC-5         | Manual verification against a real browser                         |
-| AC-6, AC-7, AC-8   | `manifest.json` + the four documents                               |
-| AC-9, AC-10, AC-11 | `TabFavicon.tsx`, existing `TabDisplay` tests                      |
-| AC-11 (AM-1)       | `rowControls.ts` (`rowCheckboxSx`, `selectionGutterSx`), `App.tsx` |
+| AC                 | Where it lands                                                                |
+| ------------------ | ----------------------------------------------------------------------------- |
+| AC-1, AC-2, AC-3   | `TabFavicon.tsx`, `TabAvatarsDisplay.tsx`, `AudioTabs/index.tsx`              |
+| AC-4, AC-5         | Manual verification against a real browser                                    |
+| AC-6, AC-7, AC-8   | `manifest.json` + the four documents                                          |
+| AC-9, AC-10, AC-11 | `TabFavicon.tsx`, existing `TabDisplay` tests                                 |
+| AC-11 (AM-1)       | `rowControls.ts` (`rowCheckboxSx`), `GroupListItem.tsx`, `WindowListItem.tsx` |

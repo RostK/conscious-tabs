@@ -248,67 +248,35 @@ export const rowWhileDraggedSx = {
 } as const;
 
 /**
- * Marks a container whose rows are in selection mode: at least one tab is
- * selected. `AppBody` puts it on `<main>` and on the header (whose current-tab
- * card lines up with the rows), and rows react to it in CSS — an ancestor
- * selector, not a prop or a context read, so entering or leaving the mode
- * re-renders no row (PLAN-SPEC-04 D-6).
- */
-export const SELECTING_ATTRIBUTE = "data-selecting";
-
-const inSelectionMode = `[${SELECTING_ATTRIBUTE}] &`;
-
-/**
- * How wide the checkbox column is while selecting, added to a row's left
- * padding. The checkbox there is 30.6px (an icon of 20.6 — this theme's 12/14
- * icon scale — plus 5px padding a side), so 16 on top of the 16 rows already
- * pad leaves it a pixel and a half clear of the favicon or chevron.
- */
-const SELECTION_GUTTER = 16;
-
-/**
- * Put on a row (or anything lined up with rows): widens its left padding by the
- * checkbox column while selecting. `rest` is the padding it has otherwise.
- */
-export const selectionGutterSx = (rest: string) => ({
-  [inSelectionMode]: {
-    paddingLeft: `calc(${rest} + ${SELECTION_GUTTER}px)`,
-  },
-});
-
-/**
  * Where every row's select checkbox sits — tab, group and window alike, so the
  * boxes form one column down the list.
  *
- * Two placements, by mode:
+ * Over the row's left edge, filled, above whatever is there: the favicon on a
+ * tab row, the chevron on a group or window row. Hovered or ticked, always the
+ * same place, and it takes no width, so selecting never moves anything.
  *
- * - **Nothing selected:** over the row's left edge, filled, above whatever is
- *   there — the favicon on a tab row, the chevron on a group or window row. It
- *   only shows on hover or focus then, and taking no width means a row at rest
- *   is laid out as if it had no checkbox. It used to sit in flow on group and
- *   window rows, where its `opacity: 0` left a 37px hole between the chevron
- *   and the name.
- * - **Selecting:** in its own column, the gutter `selectionGutterSx` opens.
- *   Ticked boxes stay up, so here they must not cover anything; the fill goes
- *   too, since there is nothing under them to separate from (and on a tinted
- *   group row it read as a white patch).
+ * Tried and rejected (2026-11-17): a column of its own that opened while
+ * anything was selected, so ticked boxes covered nothing. The whole list
+ * jumped 16px sideways on the first tick and back on the last, which was worse
+ * than the covering it fixed. A column reserved all the time was the other
+ * option, at 16px of every title; covering was preferred to that.
  *
- * Absolute either way, so where it sits in the markup does not move it: DOM
- * order — and with it the Left/Right walk — is the row's to decide.
+ * It used to sit in flow on group and window rows, where its `opacity: 0` kept
+ * a 37px hole between the chevron and the name. Absolute, so where it sits in
+ * the markup does not move it: DOM order — and with it the Left/Right walk —
+ * is the row's to decide.
  */
 export const rowCheckboxSx = {
   position: "absolute",
   // Flush with the row, not past it: at -8 the button began outside the
   // viewport, and eight of its pixels were unclickable at the screen edge.
   left: 0,
+  // The fill makes the overlap read as a button over the row rather than a
+  // glyph scribbled on the favicon or chevron underneath.
   backgroundColor: "background.paper",
   // Above the favicon's badge and the chevron's ButtonBase, both positioned,
   // which would otherwise paint over it in DOM order.
   zIndex: 1,
-  [inSelectionMode]: {
-    padding: "5px",
-    backgroundColor: "transparent",
-  },
 } as const;
 
 /** Spread onto a control that must stay visible while it is switched on. */

@@ -15,7 +15,6 @@ import {
 import {
   rowControlsSx,
   rowTailReserveSx,
-  selectionGutterSx,
   useRowKeys,
 } from "../elements/rowControls.ts";
 import { GroupItem } from "../types.ts";
@@ -117,7 +116,6 @@ export const GroupDisplay: FC<{
       onKeyDown={rowKeys}
       sx={[
         { pt: 0.2, pb: 0.2, height: 49.5 },
-        selectionGutterSx("16px"),
         {
           boxShadow: `inset 0.3rem 0px 0px 0px color-mix(in srgb, ${group.color} 60%, transparent)`,
         },

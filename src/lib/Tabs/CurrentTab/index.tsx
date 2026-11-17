@@ -38,7 +38,6 @@ import {
 } from "../actions.ts";
 import { AudioBadge } from "../elements/AudioBadge.tsx";
 import { DragHandle } from "../elements/DragHandle.tsx";
-import { selectionGutterSx } from "../elements/rowControls.ts";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
 import { useActiveTab } from "../useActiveTab.ts";
 
@@ -97,8 +96,6 @@ export const CurrentTab: FC = () => {
           // grip used to sit in front of the favicon, which made matching
           // them impossible — it is with the other actions now.
           pl: "13px",
-          // And moves with them when they open the selection column.
-          ...selectionGutterSx("13px"),
           pr: 1,
           py: 0.5,
           cursor: "grab",

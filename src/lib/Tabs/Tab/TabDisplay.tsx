@@ -25,7 +25,6 @@ import {
   rowPrimaryProps,
   rowTailMaskSx,
   selectedProps,
-  selectionGutterSx,
   useRowKeys,
 } from "../elements/rowControls.ts";
 import { TabFavicon } from "../elements/TabFavicon.tsx";
@@ -183,12 +182,7 @@ export const TabDisplay: FC<{
          edge="end", whose -12px margin comes off the total: drag + close is
          57.7, and 94.3 with mute. Rounded up, so the fade finishes before the
          first icon on either kind of row. */
-      sx={[
-        { pt: 0.2, pb: 0.2 },
-        selectionGutterSx("16px"),
-        rowControlsSx,
-        rowTailMaskSx(noisy ? 96 : 60),
-      ]}
+      sx={[{ pt: 0.2, pb: 0.2 }, rowControlsSx, rowTailMaskSx(noisy ? 96 : 60)]}
     >
       {/* The row's primary action: first in DOM order, so it is the toolbar's
           first control and its one tab stop.
@@ -259,11 +253,9 @@ export const TabDisplay: FC<{
           secondary={tab.url?.replace("https://", "")}
         />
       </ButtonBase>
-      {/* Over the favicon on hover, beside it once anything is selected — see
-          `rowCheckboxSx`. Selection persists, and a persistent checkbox over
-          the favicon would cost the user the one thing that identifies the
-          tab they are about to act on; the selection gutter is what keeps the
-          ticked ones clear of it.
+      {/* Over the favicon, at the row's left edge — the same place on every
+          kind of row; see `rowCheckboxSx`, including why a ticked box covering
+          the favicon was preferred to giving it a column of its own.
 
           Hidden and revealed by `rowControlsSx` like every other control on
           every other row. It used to carry a second class with its own copy
